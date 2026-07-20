@@ -56,14 +56,8 @@ from ._speech_core.settings.voice_profiles_dialog import VoiceProfilesDialog
 from ._speech_core.history import SpeechHistoryBuffer, consume_history_native_passthrough
 from ._speech_core.history_viewer import show_history_dialog, is_history_list_focus
 from ._speech_core.interrupt_control import SpeechInterruptController
-from ._speech_core.web_summary import build_summary, format_summary_with_document_title
-from .page_orientation_runtime import install as install_page_orientation, restore as restore_page_orientation
-from ._speech_core.settings.web_summary_config import (
-    get_automatic_reporting_enabled,
-    get_included_element_types,
-    get_include_document_title,
-    get_page_orientation_enabled,
-)
+from ._speech_core.web_summary import build_summary
+from ._speech_core.settings.web_summary_config import get_included_element_types
 
 log = logHandler.log
 
@@ -76,12 +70,6 @@ from ._speech_core.plugin_config import (
 
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
-
-    # ``documentLoadComplete`` can precede a usable virtual buffer, notably for
-    # early Chromium focus. These retries are wake-ups only: readiness remains
-    # the sole authorization to speak.
-    _AUTOMATIC_PAGE_SUMMARY_RETRY_DELAY_MS = 50
-    _AUTOMATIC_PAGE_SUMMARY_MAX_RETRIES = 8
 
     __gestures = {
         "kb:NVDA+Shift+C": "openClassicSpeechSettings",
@@ -622,10 +610,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._pendingContainerFlush = None
         self._flushingPendingContainer = False
         self._speechHookRegistered = False
-        self._automaticSummaryPending = None
-        self._automaticSummaryReported = None
-        self._automaticSummaryTerminated = False
-        self._pageOrientationRoutes = install_page_orientation(self)
 
         self._installClassicSpeechMenu()
         self.set_speech_hook_enabled(get_speech_hook_enabled())
@@ -633,9 +617,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         log.info(f"ClassicSpeech loaded (profile: {defaultProfile}, hook: {self._speechHookRegistered})")
 
     def terminate(self):
-        self._cancel_automatic_page_summaries()
-        restore_page_orientation(self, getattr(self, "_pageOrientationRoutes", ()))
-        self._pageOrientationRoutes = []
         self._unregister_speech_hook()
         self._restore_remote_speech_compatibility()
         self._restore_windows_toast_system_route()
@@ -1252,178 +1233,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         queueHandler.queueFunction(queueHandler.eventQueue, self._openSettings)
 
 
-    def _report_page_summary_for_document(self, document):
-        """Speak one Page Summary, optionally prefixed by the document name."""
-        summary = build_summary(document, get_included_element_types())
-        document_title = None
-        if get_include_document_title():
-            try:
-                document_title = getattr(getattr(document, "rootNVDAObject", None), "name", None)
-            except Exception:
-                log.debugWarning("ClassicSpeech: unable to read Page Summary document title", exc_info=True)
-        ui.message(format_summary_with_document_title(document_title, summary))
-
-    def _report_page_orientation_for_document(self, document):
-        """Speak the ready current document's summary for Page Orientation.
-
-        Returns true only when the replacement was safely spoken. The runtime
-        wrapper falls back to NVDA's native presentation on every false result.
-        """
-        try:
-            if not get_page_orientation_enabled():
-                return False
-            if self._automatic_summary_document_for_event(document) is not document:
-                return False
-            if getattr(document, "isReady", False) is not True:
-                return False
-            self._report_page_summary_for_document(document)
-            return True
-        except Exception:
-            log.debug("ClassicSpeech: Page Orientation summary failed", exc_info=True)
-            return False
-
-    def _automatic_summary_document_for_event(self, obj):
-        try:
-            focus = api.getFocusObject()
-            document = getattr(focus, "treeInterceptor", None)
-            event_document = obj if hasattr(obj, "_iterNodesByType") else getattr(obj, "treeInterceptor", None)
-            if document is None or document is not event_document:
-                return None
-            return document if hasattr(document, "_iterNodesByType") else None
-        except Exception:
-            return None
-
-    def _automatic_summary_load_cycle_marker(self, document, event_obj=None):
-        """Return the NVDA virtual-buffer generation for one document load.
-
-        A VirtualBuffer can keep its Python identity across a refresh, while
-        ``loadBuffer`` replaces ``VBufHandle`` for the newly loaded buffer.
-        NVDA also exposes ``isLoading`` while that replacement is in progress.
-        Together these form the cycle boundary: repeated events for one ready
-        handle dedupe, while a replacement handle (or an in-progress reload)
-        remains eligible. The event object is only a fallback for lightweight
-        non-VirtualBuffer test doubles without a handle.
-        """
-        try:
-            handle = getattr(document, "VBufHandle", None)
-            if handle is not None:
-                return ("buffer", id(handle))
-        except Exception:
-            pass
-        return ("event", id(event_obj)) if event_obj is not None else None
-
-    def _stop_automatic_page_summary_pending(self):
-        """Cancel the only deferred report before it can become stale."""
-        pending = getattr(self, "_automaticSummaryPending", None)
-        self._automaticSummaryPending = None
-        if pending is None:
-            return
-        try:
-            pending[2].Stop()
-        except Exception:
-            pass
-
-    def _cancel_automatic_page_summaries(self):
-        self._automaticSummaryTerminated = True
-        self._stop_automatic_page_summary_pending()
-        self._automaticSummaryReported = None
-
-    def _cancel_automatic_page_summary_if_focus_changed(self, focus):
-        """Discard deferred automatic work as soon as focus leaves its document."""
-        pending = getattr(self, "_automaticSummaryPending", None)
-        if pending is None:
-            return
-        try:
-            focus_document = getattr(focus, "treeInterceptor", None)
-        except Exception:
-            focus_document = None
-        if pending[0] is not focus_document:
-            self._stop_automatic_page_summary_pending()
-
-    def _queue_automatic_page_summary(self, document, cycle_marker, attempt=0):
-        def callback():
-            self._run_automatic_page_summary(document, cycle_marker, attempt)
-        try:
-            later = wx.CallLater(self._AUTOMATIC_PAGE_SUMMARY_RETRY_DELAY_MS, callback)
-        except Exception:
-            log.debug("ClassicSpeech: failed to defer automatic page summary", exc_info=True)
-            return
-        self._automaticSummaryPending = (document, cycle_marker, later, attempt)
-
-    def _run_automatic_page_summary(self, document, cycle_marker, attempt):
-        pending = getattr(self, "_automaticSummaryPending", None)
-        if (
-            pending is None
-            or pending[0] is not document
-            or pending[1] != cycle_marker
-            or pending[3] != attempt
-        ):
-            return
-        self._automaticSummaryPending = None
-
-        if getattr(self, "_automaticSummaryTerminated", False):
-            return
-
-        try:
-            if (
-                not get_automatic_reporting_enabled()
-                or self._automatic_summary_document_for_event(document) is not document
-            ):
-                return
-            if not callable(getattr(document, "_iterNodesByType", None)):
-                return
-            if getattr(document, "isReady", False) is not True:
-                if attempt < self._AUTOMATIC_PAGE_SUMMARY_MAX_RETRIES:
-                    self._queue_automatic_page_summary(document, cycle_marker, attempt + 1)
-                return
-            ready_cycle_marker = self._automatic_summary_load_cycle_marker(document)
-            if getattr(self, "_automaticSummaryReported", None) == (document, ready_cycle_marker):
-                return
-            self._report_page_summary_for_document(document)
-            self._automaticSummaryReported = (document, ready_cycle_marker)
-        except Exception:
-            # Automatic failures are silent; the manual command remains explicit.
-            log.debug("ClassicSpeech: automatic page summary failed", exc_info=True)
-
-    def event_gainFocus(self, obj, nextHandler):
-        """Cancel only stale deferred summaries after native focus processing."""
-        nextHandler()
-        self._cancel_automatic_page_summary_if_focus_changed(obj)
-
-    def event_documentLoadComplete(self, obj, nextHandler):
-        """Report only one ready current Browse Mode summary after NVDA handles loading."""
-        nextHandler()
-        try:
-            if getattr(self, "_automaticSummaryTerminated", False):
-                return
-            document = self._automatic_summary_document_for_event(obj)
-            if document is None:
-                return
-            cycle_marker = self._automatic_summary_load_cycle_marker(document, obj)
-            pending = getattr(self, "_automaticSummaryPending", None)
-            if pending is not None and (pending[0] is not document or pending[1] != cycle_marker):
-                self._stop_automatic_page_summary_pending()
-                pending = None
-            if get_page_orientation_enabled():
-                # Page Orientation owns the single automatic summary at initial
-                # ready-page presentation; never queue the older deferred path.
-                if pending is not None:
-                    self._stop_automatic_page_summary_pending()
-                return
-            if not get_automatic_reporting_enabled():
-                if pending is not None:
-                    self._stop_automatic_page_summary_pending()
-                return
-            if pending is not None:
-                return
-            if getattr(self, "_automaticSummaryReported", None) != (document, cycle_marker):
-                self._automaticSummaryReported = None
-            if getattr(self, "_automaticSummaryReported", None) == (document, cycle_marker) and not getattr(document, "isLoading", False):
-                return
-            self._queue_automatic_page_summary(document, cycle_marker)
-        except Exception:
-            log.debug("ClassicSpeech: automatic page summary event handling failed", exc_info=True)
-
     @scriptHandler.script(
         description="Reports selected Browse Mode element counts for the current page",
         category="ClassicSpeech",
@@ -1435,7 +1244,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if document is None or not hasattr(document, "_iterNodesByType"):
                 ui.message("Page summary is not available here.")
                 return
-            self._report_page_summary_for_document(document)
+            ui.message(build_summary(document, get_included_element_types()))
         except Exception:
             log.exception("ClassicSpeech page summary failed")
             ui.message("Page summary is not available here.")
