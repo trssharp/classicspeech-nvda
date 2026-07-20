@@ -1,0 +1,57 @@
+name: Verify and package ClassicSpeech
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-package:
+    name: Verify and package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out ClassicSpeech
+        uses: actions/checkout@v4
+
+      - name: Check out NVDA source for compatibility harnesses
+        uses: actions/checkout@v4
+        with:
+          repository: nvaccess/nvda
+          path: .nvda-master
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run ClassicSpeech harnesses
+        env:
+          CLASSICSPEECH_NVDA_MASTER: ${{ github.workspace }}/.nvda-master
+        run: |
+          python -m py_compile classicSpeech.py tests/*.py
+          for test in tests/*harness.py; do
+            python "$test"
+          done
+
+      - name: Build date-named NVDA add-on
+        id: package
+        run: |
+          build_date="$(date -u +%F)"
+          echo "build_date=$build_date" >> "$GITHUB_OUTPUT"
+          python scripts/package_addon.py --date "$build_date"
+
+      - name: Upload date-named add-on artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClassicSpeech-${{ steps.package.outputs.build_date }}
+          path: |
+            dist/ClassicSpeech-${{ steps.package.outputs.build_date }}.nvda-addon
+            dist/ClassicSpeech-${{ steps.package.outputs.build_date }}.nvda-addon.sha256
+          if-no-files-found: error
+          retention-days: 30
