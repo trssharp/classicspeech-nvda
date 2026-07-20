@@ -151,5 +151,57 @@ class WebSummaryModelTests(unittest.TestCase):
         )
 
 
+class WebSummaryConfigTests(unittest.TestCase):
+    def setUp(self):
+        import classic_speech_nvda_master_harness as nvda_harness
+
+        self.nvda_harness = nvda_harness
+        nvda_harness.ClassicSpeechNVDAConfigStartupTests().setUp()
+        nvda_harness._import_classic_speech_like_nvda()
+        import config
+        from globalPlugins._speech_core import plugin_config
+        from globalPlugins._speech_core.settings import web_summary_config
+
+        plugin_config._initClassicSpeechConfig()
+        self.config = config
+        self.summary_config = web_summary_config
+        self.summary_config.get_included_element_types()
+
+    def tearDown(self):
+        self.nvda_harness._reset_global_plugin_imports()
+
+    def test_page_summary_defaults_are_registered_in_classic_speech_config(self):
+        spec = self.config.conf.spec["classicSpeech"]
+        self.assertIn("pageSummaryData", spec)
+        self.assertIn("includedElementTypes", spec["pageSummaryData"])
+        self.assertEqual(
+            self.summary_config.get_included_element_types(),
+            ("heading", "landmark", "link", "formField", "button", "table"),
+        )
+
+    def test_saved_choices_round_trip_in_stable_registry_order(self):
+        self.summary_config.set_included_element_types(["table", "heading", "link"])
+        self.assertEqual(
+            self.summary_config.get_included_element_types(),
+            ("heading", "link", "table"),
+        )
+        section = self.config.conf.profiles[0]["classicSpeech"]
+        self.assertEqual(
+            section["pageSummaryData"]["includedElementTypes"],
+            ["heading", "link", "table"],
+        )
+
+    def test_invalid_saved_choices_are_dropped_without_losing_valid_choices(self):
+        section = self.config.conf.profiles[0]["classicSpeech"]
+        section["pageSummaryData"] = {"includedElementTypes": ["unknown", "link", "link", 1]}
+        self.assertEqual(self.summary_config.get_included_element_types(), ("link",))
+
+    def test_empty_saved_list_is_preserved_as_an_intentional_no_elements_choice(self):
+        self.summary_config.set_included_element_types([])
+        self.assertEqual(self.summary_config.get_included_element_types(), ())
+        section = self.config.conf.profiles[0]["classicSpeech"]
+        self.assertEqual(section["pageSummaryData"]["includedElementTypes"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

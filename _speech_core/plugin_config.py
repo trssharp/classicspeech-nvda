@@ -69,6 +69,9 @@ _CLASSIC_SPEECH_SPEC = {
             "positionMode": "string(default='each')",
         },
     },
+    "pageSummaryData": {
+        "includedElementTypes": "string_list(default=list('heading', 'landmark', 'link', 'formField', 'button', 'table'))",
+    },
     # Arbitrary synth setting types and nested baseline/override records are
     # serialized as JSON so ConfigObj validation cannot discard unknown keys.
     "voiceProfileData": "string(default='{}')",
