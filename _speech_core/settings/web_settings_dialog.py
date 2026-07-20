@@ -5,6 +5,8 @@ import logHandler
 from gui import guiHelper, nvdaControls
 from wx.lib import scrolledpanel
 
+from ..web_summary import SUMMARY_ITEM_TYPES
+from .web_summary_config import get_included_element_types, set_included_element_types
 from .web_formatting_config import (
 	WEB_DOCUMENT_FORMATTING_KEYS,
 	capture_web_browse_state,
@@ -44,6 +46,7 @@ class WebBrowseSettingsDialog(wx.Dialog):
 	CATEGORY_NAMES = [
 		"Browse Mode",
 		"Web Element Reporting",
+		"Page Summary",
 	]
 
 	def __init__(self, parent):
@@ -56,6 +59,7 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		self._popupReleased = False
 		self._committed = False
 		self._originalWebBrowse = capture_web_browse_state()
+		self._originalPageSummaryTypes = get_included_element_types()
 		self._browseModeElements = self._get_browse_mode_touch_elements()
 
 		outerSizer = wx.BoxSizer(wx.VERTICAL)
@@ -86,9 +90,11 @@ class WebBrowseSettingsDialog(wx.Dialog):
 
 		self.browseModePanel = scrolledpanel.ScrolledPanel(self.panelHost, style=wx.TAB_TRAVERSAL)
 		self.webReportingPanel = scrolledpanel.ScrolledPanel(self.panelHost, style=wx.TAB_TRAVERSAL)
+		self.pageSummaryPanel = scrolledpanel.ScrolledPanel(self.panelHost, style=wx.TAB_TRAVERSAL)
 		self._make_browse_mode_panel(self.browseModePanel)
 		self._make_web_reporting_panel(self.webReportingPanel)
-		self.dynamicPanels = [self.browseModePanel, self.webReportingPanel]
+		self._make_page_summary_panel(self.pageSummaryPanel)
+		self.dynamicPanels = [self.browseModePanel, self.webReportingPanel, self.pageSummaryPanel]
 
 		for panel in self.dynamicPanels:
 			self.panelHostSizer.Add(panel, 1, wx.EXPAND)
@@ -248,6 +254,28 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		panel.SetSizer(mainSizer)
 		panel.SetupScrolling(scroll_x=False)
 
+	def _make_page_summary_panel(self, panel):
+		mainSizer = wx.BoxSizer(wx.VERTICAL)
+		sHelper = guiHelper.BoxSizerHelper(panel, sizer=mainSizer)
+		sHelper.addItem(wx.StaticText(
+			panel,
+			label="Choose the Browse Mode element types included when you press NVDA+Shift+U. Checked items are included.",
+		))
+		group, _box = self._add_static_box_group(panel, sHelper, "Page Summary")
+		self._pageSummaryElements = list(SUMMARY_ITEM_TYPES)
+		self.pageSummaryElementList = group.addLabeledControl(
+			"Page Summary choices:",
+			nvdaControls.CustomCheckListBox,
+			choices=[f"{item.plural_label}, {item.key} and Shift+{item.key}" for item in self._pageSummaryElements],
+		)
+		self.pageSummaryElementList.SetName("Included page summary element types")
+		self.pageSummaryElementList.Bind(wx.EVT_CHECKLISTBOX, self.onPageSummaryChanged)
+		enabledTypes = set(get_included_element_types())
+		for index, item in enumerate(self._pageSummaryElements):
+			self.pageSummaryElementList.Check(index, item.item_type in enabledTypes)
+		panel.SetSizer(mainSizer)
+		panel.SetupScrolling(scroll_x=False)
+
 	def _add_browse_checkbox(self, group, parent, label, key):
 		control = group.addItem(wx.CheckBox(parent, label=label))
 		control.SetValue(get_virtual_buffer_setting(key))
@@ -339,9 +367,20 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		set_web_document_formatting_setting("reportFigures", _is_checked(self.figuresCheckBox))
 		set_web_document_formatting_setting("reportClickable", _is_checked(self.clickableCheckBox))
 		self.brailleLiveRegionsCombo.saveCurrentValueToConf()
+		if hasattr(self, "pageSummaryElementList"):
+			set_included_element_types([
+				item.item_type
+				for index, item in enumerate(self._pageSummaryElements)
+				if index in _checked_items(self.pageSummaryElementList)
+			])
 
 	def onCategoryChanged(self, evt):
 		self._showPanelByIndex(evt.GetIndex())
+
+	def onPageSummaryChanged(self, evt=None):
+		if evt is not None and hasattr(evt, "Skip"):
+			evt.Skip()
+		self.onChanged(evt)
 
 	def onTouchNavigationChanged(self, evt=None):
 		# CustomCheckListBox uses EVT_CHECKLISTBOX for keyboard and mouse
@@ -362,6 +401,7 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		try:
 			self._apply_to_config()
 			self._originalWebBrowse = capture_web_browse_state()
+			self._originalPageSummaryTypes = get_included_element_types()
 			self._committed = True
 			self._clearDirty()
 		except Exception:
@@ -373,11 +413,13 @@ class WebBrowseSettingsDialog(wx.Dialog):
 
 	def onCancel(self, evt):
 		restore_web_browse_state(self._originalWebBrowse)
+		set_included_element_types(self._originalPageSummaryTypes)
 		self.Destroy()
 
 	def onClose(self, evt):
 		try:
 			restore_web_browse_state(self._originalWebBrowse)
+			set_included_element_types(self._originalPageSummaryTypes)
 			evt.Skip()
 		finally:
 			self._releasePopup()

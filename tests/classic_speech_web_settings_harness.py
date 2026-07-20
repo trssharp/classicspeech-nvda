@@ -181,8 +181,10 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 				return bool(self.value)
 
 		class CheckListControl:
+			def __init__(self, checked=(0, 2)):
+				self.checked = list(checked)
 			def GetCheckedItems(self):
-				return [0, 2]
+				return list(self.checked)
 
 		class FeatureControl:
 			def __init__(self, section, key, value):
@@ -238,6 +240,10 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		for index, attr in enumerate(web_attrs):
 			setattr(dialog, attr, ValueControl(index % 2 == 0))
 		dialog.brailleLiveRegionsCombo = FeatureControl("braille", "reportLiveRegions", "ENABLED")
+		from globalPlugins._speech_core.web_summary import SUMMARY_ITEM_TYPES
+		dialog._pageSummaryElements = list(SUMMARY_ITEM_TYPES)
+		dialog.pageSummaryElementList = CheckListControl()
+		dialog._originalPageSummaryTypes = ("heading", "landmark", "link", "formField", "button", "table")
 		dialog.applyBtn = ApplyButton()
 		dialog.layoutCalls = 0
 		dialog.Layout = lambda: setattr(dialog, "layoutCalls", dialog.layoutCalls + 1)
@@ -249,6 +255,10 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		).capture_web_browse_state()
 		dialog.onChanged()
 		self.assertEqual(config.conf["virtualBuffers"]["maxLineLength"], 120)
+		self.assertEqual(
+			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includedElementTypes"],
+			["annotation", "comboBox"],
+		)
 		self.assertEqual(config.conf["virtualBuffers"]["browseModeTouchNavigationElements"], ["heading", "table"])
 		self.assertEqual(config.conf["virtualBuffers"]["loadChromiumVBufOnBusyState"], "DISABLED")
 		self.assertTrue(config.conf["annotations"]["reportDetails"])
@@ -258,12 +268,24 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		self.assertTrue(dialog.applyBtn.enabled)
 		self.assertGreaterEqual(dialog.layoutCalls, 1)
 
+		# Apply makes the current Page Summary selection the new Cancel baseline.
+		dialog.onApply(None)
+		dialog.pageSummaryElementList.checked = [7]
+		dialog.onChanged()
+		self.assertEqual(
+			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includedElementTypes"],
+			["heading"],
+		)
 		dialog.onCancel(None)
 		self.assertTrue(dialog.destroyed)
-		self.assertEqual(config.conf["virtualBuffers"]["maxLineLength"], 80)
-		self.assertEqual(config.conf["virtualBuffers"]["loadChromiumVBufOnBusyState"], "DEFAULT")
-		self.assertFalse(config.conf["annotations"]["reportDetails"])
-		self.assertEqual(config.conf["braille"]["reportLiveRegions"], "DEFAULT")
+		self.assertEqual(
+			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includedElementTypes"],
+			["annotation", "comboBox"],
+		)
+		self.assertEqual(config.conf["virtualBuffers"]["maxLineLength"], 120)
+		self.assertEqual(config.conf["virtualBuffers"]["loadChromiumVBufOnBusyState"], "DISABLED")
+		self.assertTrue(config.conf["annotations"]["reportDetails"])
+		self.assertEqual(config.conf["braille"]["reportLiveRegions"], "ENABLED")
 
 	def test_touch_navigation_uses_checklist_event_and_propagating_handler(self):
 		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
@@ -309,6 +331,37 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		self.assertIn("General Settings...", classic_speech)
 		self.assertIn("Web / Browse Mode Settings...", classic_speech)
 		self.assertIn("_openWebBrowseSettings", classic_speech)
+	def test_page_summary_category_uses_accessible_checklist_and_propagating_handler(self):
+		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
+		for expected in (
+			'"Page Summary"',
+			"self.pageSummaryPanel = scrolledpanel.ScrolledPanel",
+			"self.pageSummaryElementList",
+			"Page Summary choices:",
+			"nvdaControls.CustomCheckListBox",
+			"self.pageSummaryElementList.Bind(wx.EVT_CHECKLISTBOX, self.onPageSummaryChanged)",
+			"Choose the Browse Mode element types included when you press NVDA+Shift+U.",
+			"get_included_element_types",
+			"set_included_element_types",
+		):
+			self.assertIn(expected, dialog_source)
+
+	def test_page_summary_handler_propagates_and_marks_dialog_dirty(self):
+		nvda_harness._import_classic_speech_like_nvda()
+		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+
+		dialog = object.__new__(WebBrowseSettingsDialog)
+		calls = []
+		dialog.onChanged = lambda evt=None: calls.append(evt)
+		event = type("ChecklistEvent", (), {
+			"skipped": False,
+			"Skip": lambda self: setattr(self, "skipped", True),
+		})()
+
+		dialog.onPageSummaryChanged(event)
+
+		self.assertTrue(event.skipped)
+		self.assertEqual(calls, [event])
 
 
 if __name__ == "__main__":
