@@ -6,17 +6,7 @@ from gui import guiHelper, nvdaControls
 from wx.lib import scrolledpanel
 
 from ..web_summary import SUMMARY_ITEM_TYPES
-from .web_summary_config import (
-    PAGE_LOAD_SUMMARY_MODE_AFTER_READY,
-    PAGE_LOAD_SUMMARY_MODE_NATIVE,
-    PAGE_LOAD_SUMMARY_MODE_ORIENTATION,
-    get_page_load_summary_mode,
-    get_included_element_types,
-    get_include_document_title,
-    set_page_load_summary_mode,
-    set_included_element_types,
-    set_include_document_title,
-)
+from .web_summary_config import get_included_element_types, set_included_element_types
 from .web_formatting_config import (
 	WEB_DOCUMENT_FORMATTING_KEYS,
 	capture_web_browse_state,
@@ -70,8 +60,6 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		self._committed = False
 		self._originalWebBrowse = capture_web_browse_state()
 		self._originalPageSummaryTypes = get_included_element_types()
-		self._originalPageSummaryTitle = get_include_document_title()
-		self._originalPageLoadSummaryMode = get_page_load_summary_mode()
 		self._browseModeElements = self._get_browse_mode_touch_elements()
 
 		outerSizer = wx.BoxSizer(wx.VERTICAL)
@@ -274,40 +262,17 @@ class WebBrowseSettingsDialog(wx.Dialog):
 			label="Choose the Browse Mode element types included when you press NVDA+Shift+U. Checked items are included.",
 		))
 		group, _box = self._add_static_box_group(panel, sHelper, "Page Summary")
-		self.pageLoadSummaryMode = group.addLabeledControl(
-		    "Page-load summary:",
-		    wx.Choice,
-		    choices=[
-		        "NVDA native, no summary",
-		        "Summary after page is ready",
-		        "Replace initial page speech with summary",
-		    ],
-		)
-		self._pageLoadSummaryModes = (
-		    PAGE_LOAD_SUMMARY_MODE_NATIVE,
-		    PAGE_LOAD_SUMMARY_MODE_AFTER_READY,
-		    PAGE_LOAD_SUMMARY_MODE_ORIENTATION,
-		)
-		self.pageLoadSummaryMode.SetSelection(
-		    self._pageLoadSummaryModes.index(get_page_load_summary_mode())
-		)
-		self.pageLoadSummaryMode.Bind(wx.EVT_CHOICE, self.onChanged)
-		self._pageSummaryElements = [("documentTitle", "Title")] + [
-			(item.item_type, item.plural_label)
-			for item in SUMMARY_ITEM_TYPES
-		]
+		self._pageSummaryElements = list(SUMMARY_ITEM_TYPES)
 		self.pageSummaryElementList = group.addLabeledControl(
 			"Page Summary choices:",
 			nvdaControls.CustomCheckListBox,
-			choices=[label for _itemType, label in self._pageSummaryElements],
+			choices=[f"{item.plural_label}, {item.key} and Shift+{item.key}" for item in self._pageSummaryElements],
 		)
 		self.pageSummaryElementList.SetName("Included page summary element types")
 		self.pageSummaryElementList.Bind(wx.EVT_CHECKLISTBOX, self.onPageSummaryChanged)
 		enabledTypes = set(get_included_element_types())
-		if get_include_document_title():
-			enabledTypes.add("documentTitle")
-		for index, (itemType, _label) in enumerate(self._pageSummaryElements):
-			self.pageSummaryElementList.Check(index, itemType in enabledTypes)
+		for index, item in enumerate(self._pageSummaryElements):
+			self.pageSummaryElementList.Check(index, item.item_type in enabledTypes)
 		panel.SetSizer(mainSizer)
 		panel.SetupScrolling(scroll_x=False)
 
@@ -402,20 +367,12 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		set_web_document_formatting_setting("reportFigures", _is_checked(self.figuresCheckBox))
 		set_web_document_formatting_setting("reportClickable", _is_checked(self.clickableCheckBox))
 		self.brailleLiveRegionsCombo.saveCurrentValueToConf()
-		if hasattr(self, "pageLoadSummaryMode"):
-		    set_page_load_summary_mode(
-		        self._pageLoadSummaryModes[self.pageLoadSummaryMode.GetSelection()]
-		    )
 		if hasattr(self, "pageSummaryElementList"):
-			selectedTypes = [
-				itemType
-				for index, (itemType, _label) in enumerate(self._pageSummaryElements)
+			set_included_element_types([
+				item.item_type
+				for index, item in enumerate(self._pageSummaryElements)
 				if index in _checked_items(self.pageSummaryElementList)
-			]
-			set_include_document_title("documentTitle" in selectedTypes)
-			set_included_element_types(
-				itemType for itemType in selectedTypes if itemType != "documentTitle"
-			)
+			])
 
 	def onCategoryChanged(self, evt):
 		self._showPanelByIndex(evt.GetIndex())
@@ -445,8 +402,6 @@ class WebBrowseSettingsDialog(wx.Dialog):
 			self._apply_to_config()
 			self._originalWebBrowse = capture_web_browse_state()
 			self._originalPageSummaryTypes = get_included_element_types()
-			self._originalPageSummaryTitle = get_include_document_title()
-			self._originalPageLoadSummaryMode = get_page_load_summary_mode()
 			self._committed = True
 			self._clearDirty()
 		except Exception:
@@ -459,16 +414,12 @@ class WebBrowseSettingsDialog(wx.Dialog):
 	def onCancel(self, evt):
 		restore_web_browse_state(self._originalWebBrowse)
 		set_included_element_types(self._originalPageSummaryTypes)
-		set_include_document_title(self._originalPageSummaryTitle)
-		set_page_load_summary_mode(self._originalPageLoadSummaryMode)
 		self.Destroy()
 
 	def onClose(self, evt):
 		try:
 			restore_web_browse_state(self._originalWebBrowse)
 			set_included_element_types(self._originalPageSummaryTypes)
-			set_include_document_title(self._originalPageSummaryTitle)
-			set_page_load_summary_mode(self._originalPageLoadSummaryMode)
 			evt.Skip()
 		finally:
 			self._releasePopup()

@@ -180,13 +180,6 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			def IsChecked(self):
 				return bool(self.value)
 
-		class ChoiceControl:
-			def __init__(self, selection):
-				self.selection = selection
-
-			def GetSelection(self):
-				return self.selection
-
 		class CheckListControl:
 			def __init__(self, checked=(0, 2)):
 				self.checked = list(checked)
@@ -248,17 +241,9 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			setattr(dialog, attr, ValueControl(index % 2 == 0))
 		dialog.brailleLiveRegionsCombo = FeatureControl("braille", "reportLiveRegions", "ENABLED")
 		from globalPlugins._speech_core.web_summary import SUMMARY_ITEM_TYPES
-		dialog._pageSummaryElements = [("documentTitle", "Title")] + [
-			(item.item_type, item.plural_label)
-			for item in SUMMARY_ITEM_TYPES
-		]
-		# The initial page-load mode is native/no summary.
-		dialog.pageLoadSummaryMode = ChoiceControl(0)
-		dialog._pageLoadSummaryModes = ("native", "afterReady", "orientation")
-		dialog.pageSummaryElementList = CheckListControl((1, 3))
+		dialog._pageSummaryElements = list(SUMMARY_ITEM_TYPES)
+		dialog.pageSummaryElementList = CheckListControl()
 		dialog._originalPageSummaryTypes = ("heading", "landmark", "link", "formField", "button", "table")
-		dialog._originalPageSummaryTitle = False
-		dialog._originalPageLoadSummaryMode = "native"
 		dialog.applyBtn = ApplyButton()
 		dialog.layoutCalls = 0
 		dialog.Layout = lambda: setattr(dialog, "layoutCalls", dialog.layoutCalls + 1)
@@ -274,10 +259,6 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includedElementTypes"],
 			["annotation", "comboBox"],
 		)
-		self.assertEqual(
-			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["pageLoadSummaryMode"],
-			"native",
-		)
 		self.assertEqual(config.conf["virtualBuffers"]["browseModeTouchNavigationElements"], ["heading", "table"])
 		self.assertEqual(config.conf["virtualBuffers"]["loadChromiumVBufOnBusyState"], "DISABLED")
 		self.assertTrue(config.conf["annotations"]["reportDetails"])
@@ -287,36 +268,19 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		self.assertTrue(dialog.applyBtn.enabled)
 		self.assertGreaterEqual(dialog.layoutCalls, 1)
 
-		# Selecting Orientation writes through immediately and makes Apply available.
-		dialog.pageLoadSummaryMode.selection = 2
-		dialog.onChanged()
-		self.assertEqual(
-			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["pageLoadSummaryMode"],
-			"orientation",
-		)
-
-		# Apply makes the current Page Summary choices the new Cancel baseline.
+		# Apply makes the current Page Summary selection the new Cancel baseline.
 		dialog.onApply(None)
-		dialog.pageLoadSummaryMode.selection = 0
-		dialog.pageSummaryElementList.checked = [8]
+		dialog.pageSummaryElementList.checked = [7]
 		dialog.onChanged()
 		self.assertEqual(
 			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includedElementTypes"],
 			["heading"],
-		)
-		self.assertEqual(
-			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["pageLoadSummaryMode"],
-			"native",
 		)
 		dialog.onCancel(None)
 		self.assertTrue(dialog.destroyed)
 		self.assertEqual(
 			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includedElementTypes"],
 			["annotation", "comboBox"],
-		)
-		self.assertEqual(
-			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["pageLoadSummaryMode"],
-			"orientation",
 		)
 		self.assertEqual(config.conf["virtualBuffers"]["maxLineLength"], 120)
 		self.assertEqual(config.conf["virtualBuffers"]["loadChromiumVBufOnBusyState"], "DISABLED")
@@ -369,24 +333,6 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		self.assertIn("_openWebBrowseSettings", classic_speech)
 	def test_page_summary_category_uses_accessible_checklist_and_propagating_handler(self):
 		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
-		self.assertIn('self._pageSummaryElements = [("documentTitle", "Title")]', dialog_source)
-		self.assertIn("choices=[label for _itemType, label in self._pageSummaryElements]", dialog_source)
-		self.assertIn("get_include_document_title", dialog_source)
-		self.assertIn("set_include_document_title", dialog_source)
-		self.assertIn('"Page-load summary:"', dialog_source)
-		for choice in (
-			'"NVDA native, no summary"',
-			'"Summary after page is ready"',
-			'"Replace initial page speech with summary"',
-		):
-			self.assertIn(choice, dialog_source)
-		self.assertIn("self.pageLoadSummaryMode.Bind(wx.EVT_CHOICE, self.onChanged)", dialog_source)
-		self.assertLess(
-			dialog_source.index("self.pageLoadSummaryMode"),
-			dialog_source.index('"Page Summary choices:"'),
-		)
-		self.assertNotIn('Shift+{item.key}', dialog_source)
-		self.assertNotIn('item.key} and', dialog_source)
 		for expected in (
 			'"Page Summary"',
 			"self.pageSummaryPanel = scrolledpanel.ScrolledPanel",
@@ -397,9 +343,6 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			"Choose the Browse Mode element types included when you press NVDA+Shift+U.",
 			"get_included_element_types",
 			"set_included_element_types",
-			"get_page_load_summary_mode",
-			"set_page_load_summary_mode",
-			"_originalPageLoadSummaryMode",
 		):
 			self.assertIn(expected, dialog_source)
 
