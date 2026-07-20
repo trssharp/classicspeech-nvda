@@ -16,17 +16,17 @@ jobs:
 
     steps:
       - name: Check out ClassicSpeech
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Check out NVDA source for compatibility harnesses
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: nvaccess/nvda
           path: .nvda-master
           fetch-depth: 1
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
@@ -47,7 +47,7 @@ jobs:
           python scripts/package_addon.py --date "$build_date"
 
       - name: Upload date-named add-on artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ClassicSpeech-${{ steps.package.outputs.build_date }}
           path: |
