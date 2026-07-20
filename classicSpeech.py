@@ -56,6 +56,8 @@ from ._speech_core.settings.voice_profiles_dialog import VoiceProfilesDialog
 from ._speech_core.history import SpeechHistoryBuffer, consume_history_native_passthrough
 from ._speech_core.history_viewer import show_history_dialog, is_history_list_focus
 from ._speech_core.interrupt_control import SpeechInterruptController
+from ._speech_core.web_summary import build_summary
+from ._speech_core.settings.web_summary_config import get_included_element_types
 
 log = logHandler.log
 
@@ -79,6 +81,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         "kb:Control+Shift+F12": "topSpeechHistory",
         "kb:F12": "copySpeechHistory",
         "kb:NVDA+Shift+H": "openSpeechHistory",
+        "kb:NVDA+Shift+U": "pageSummary",
     }
 
     _OBJECT_NAVIGATION_SCRIPTS = {
@@ -1228,6 +1231,23 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     )
     def script_openClassicSpeechSettings(self, gesture):
         queueHandler.queueFunction(queueHandler.eventQueue, self._openSettings)
+
+
+    @scriptHandler.script(
+        description="Reports selected Browse Mode element counts for the current page",
+        category="ClassicSpeech",
+    )
+    def script_pageSummary(self, gesture):
+        try:
+            focus = api.getFocusObject()
+            document = getattr(focus, "treeInterceptor", None)
+            if document is None or not hasattr(document, "_iterNodesByType"):
+                ui.message("Page summary is not available here.")
+                return
+            ui.message(build_summary(document, get_included_element_types()))
+        except Exception:
+            log.exception("ClassicSpeech page summary failed")
+            ui.message("Page summary is not available here.")
 
 
     @scriptHandler.script(
