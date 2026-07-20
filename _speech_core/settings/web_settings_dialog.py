@@ -266,7 +266,7 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		self.pageSummaryElementList = group.addLabeledControl(
 			"Page Summary choices:",
 			nvdaControls.CustomCheckListBox,
-			choices=[f"{item.plural_label}, {item.key} and Shift+{item.key}" for item in self._pageSummaryElements],
+			choices=[item.plural_label for item in self._pageSummaryElements],
 		)
 		self.pageSummaryElementList.SetName("Included page summary element types")
 		self.pageSummaryElementList.Bind(wx.EVT_CHECKLISTBOX, self.onPageSummaryChanged)
