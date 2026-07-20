@@ -194,7 +194,7 @@ def test_page_summary_apply_commits_selection_and_resets_cancel_snapshot(): ...
 - Add a third scrolled panel; preserve existing category behavior and tab order.
 - Bind `wx.EVT_CHECKLISTBOX`, call the normal dirty handler, and call `event.Skip()` so native accessible checklist notifications remain intact.
 - Use a dedicated checklist wrapper or helper. Do not reuse token-editor mute/rename semantics.
-- Checked means included; unchecked means excluded.
+- Choice labels contain only the element name. Use native checklist state speech: checked means on/included; unchecked means off/excluded.
 
 **Step 3: Run the two focused harnesses**
 

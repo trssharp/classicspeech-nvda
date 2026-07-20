@@ -333,6 +333,9 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		self.assertIn("_openWebBrowseSettings", classic_speech)
 	def test_page_summary_category_uses_accessible_checklist_and_propagating_handler(self):
 		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
+		self.assertIn("choices=[item.plural_label for item in self._pageSummaryElements]", dialog_source)
+		self.assertNotIn('Shift+{item.key}', dialog_source)
+		self.assertNotIn('item.key} and', dialog_source)
 		for expected in (
 			'"Page Summary"',
 			"self.pageSummaryPanel = scrolledpanel.ScrolledPanel",
