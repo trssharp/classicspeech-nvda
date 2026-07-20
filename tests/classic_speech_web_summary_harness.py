@@ -203,5 +203,60 @@ class WebSummaryConfigTests(unittest.TestCase):
         self.assertEqual(section["pageSummaryData"]["includedElementTypes"], [])
 
 
+class WebSummaryCommandTests(unittest.TestCase):
+    def setUp(self):
+        import classic_speech_nvda_master_harness as nvda_harness
+        self.nvda_harness = nvda_harness
+        nvda_harness.ClassicSpeechNVDAConfigStartupTests().setUp()
+        self.module = nvda_harness._import_classic_speech_like_nvda()
+        import api
+        import ui
+        from globalPlugins._speech_core.settings.web_summary_config import set_included_element_types
+        self.api = api
+        self.ui = ui
+        self.ui.messages.clear()
+        set_included_element_types(["heading", "link"])
+
+    def tearDown(self):
+        self.nvda_harness._reset_global_plugin_imports()
+
+    def test_page_summary_has_default_gesture_and_classicspeech_input_gestures_category(self):
+        gestures = self.module.GlobalPlugin._GlobalPlugin__gestures
+        self.assertEqual(gestures["kb:NVDA+Shift+U"], "pageSummary")
+        source = (ROOT / "classicSpeech.py").read_text(encoding="utf-8")
+        before_script = source.split("def script_pageSummary", 1)[0]
+        decorator_block = before_script.rsplit("@scriptHandler.script(", 1)[1]
+        self.assertIn('description="Reports selected Browse Mode element counts for the current page"', decorator_block)
+        self.assertIn('category="ClassicSpeech"', decorator_block)
+
+    def test_page_summary_speaks_selected_counts_without_moving_items_or_focus(self):
+        heading = FakeQuickNavItem()
+        link = FakeQuickNavItem()
+        document = FakeBrowseDocument({"heading": [heading], "link": [link, FakeQuickNavItem()]})
+        focus = type("Focus", (), {"treeInterceptor": document})()
+        self.api.getFocusObject = lambda: focus
+        plugin = object.__new__(self.module.GlobalPlugin)
+
+        plugin.script_pageSummary(None)
+
+        self.assertEqual(self.ui.messages, ["1 heading, 2 links."])
+        self.assertEqual(heading.report_calls, 0)
+        self.assertEqual(heading.move_calls, 0)
+        self.assertEqual(link.report_calls, 0)
+        self.assertEqual(link.move_calls, 0)
+        self.assertIs(self.api.getFocusObject(), focus)
+
+    def test_page_summary_reports_unavailable_outside_browse_mode(self):
+        self.api.getFocusObject = lambda: object()
+        plugin = object.__new__(self.module.GlobalPlugin)
+
+        import speech.extensions
+        callbacks_before = list(speech.extensions.filter_speechSequence.callbacks)
+        plugin.script_pageSummary(None)
+
+        self.assertEqual(speech.extensions.filter_speechSequence.callbacks, callbacks_before)
+        self.assertEqual(self.ui.messages, ["Page summary is not available here."])
+
+
 if __name__ == "__main__":
     unittest.main()
