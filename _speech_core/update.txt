@@ -1,0 +1,10 @@
+v3/v01
+
+- Branched from parked v2/v05.
+- Added the Document Reading / Proofing settings panel.
+- Wrapped selected native NVDA documentFormatting settings.
+- Preserved native NVDA GUI/control shapes, labels, enum maps, fallback defaults, and dependency behavior where possible.
+- Kept web/browse Elements settings out of the panel.
+- Used NVDA's native CustomCheckListBox shape for spelling/grammar error reporting.
+- Added OK / Apply / Cancel transaction support for wrapped documentFormatting settings.
+- No document speech processor or TextInfo hook added.

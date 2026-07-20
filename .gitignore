@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# Local NVDA development and user data
+*.log
+log.txt
+feedback.docx
+text.txt
+scratchpad/
+classicSpeech-backups/
+
+# Release/build output
+*.nvda-addon
+*.nvda-addon.sha256
+dist/
+build/
+
+# Editor and Windows metadata
+.vscode/
+.idea/
+*.code-workspace
+[Dd]esktop.ini
+Thumbs.db
