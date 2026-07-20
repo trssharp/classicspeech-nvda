@@ -232,8 +232,8 @@ def test_command_does_not_register_or_modify_the_normal_speech_filter(): ...
 
 **Step 2: Implement minimal command path**
 
-- Add `kb:NVDA+Shift+U` to `GlobalPlugin.__gestures`.
-- Add a script with a clear ClassicSpeech Input Help description.
+- Add `kb:NVDA+Shift+U` to `GlobalPlugin.__gestures` as the default binding only.
+- Add a named script with a clear ClassicSpeech Input Help description and `category="ClassicSpeech"`, so it is listed and fully rebindable in NVDA's Input Gestures dialog.
 - Identify the active browse-mode tree interceptor using NVDA APIs, with defensive guards for no document/unsupported iterator cases.
 - Ask the model for a result and speak exactly that result through native `ui.message` or the appropriate native speech helper.
 - Do not call quick-nav scripts, `QuickNavItem.report`, or `QuickNavItem.moveTo`.
