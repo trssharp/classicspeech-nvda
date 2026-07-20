@@ -83,4 +83,4 @@ A GitHub Actions workflow can run these Python checks and build a `.nvda-addon` 
 
 ## License
 
-A license has not yet been selected for this project. Until one is added, GitHub will show the repository as having no explicit open-source license.
+ClassicSpeech is licensed under the **GNU General Public License, version 2 or later** (`GPL-2.0-or-later`). See [LICENSE](LICENSE) and [NOTICE](NOTICE).
