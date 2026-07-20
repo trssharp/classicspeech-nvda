@@ -71,9 +71,9 @@ Do not include passwords, API keys, access tokens, or private account data in an
 
 ## Development
 
-The source is organized as an NVDA global plugin with an `_speech_core` package. Local harness scripts live under `tests/` and are intentionally excluded from release archives.
+The source is organized as an NVDA global plugin with an `_speech_core` package. Local harness scripts live under `tests/` and are intentionally excluded from release archives. Follow the [development workflow](docs/DEVELOPMENT-WORKFLOW.md) for planning, branches, verification, scratchpad deployment, and date-named RC builds.
 
-Before publishing a change, run the project harnesses from the active source folder:
+Before opening or merging a change, run the project harnesses from the active source folder:
 
 ```bash
 for test in tests/*harness.py; do python "$test"; done
