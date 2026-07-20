@@ -61,7 +61,7 @@ Do not include `notLinkBlock` (`N`) in v0 because it is a navigation skip operat
 - Add a `Page Summary` category to the existing ClassicSpeech Web / Browse Mode Settings dialog.
 - Explain: `Choose the Browse Mode element types included when you press NVDA+Shift+U. Checked items are included.`
 - Use `nvdaControls.CustomCheckListBox`, not raw `wx.CheckListBox`.
-- Each accessible row includes the label, forward key, backward key, and inclusion state; for example: `Headings, H and Shift+H, included.`
+- Each accessible row contains only the element label and its native checkbox state. Checked means on/included; unchecked means off/excluded. The quick-navigation key mapping remains documented in the canonical choices table above.
 - Initial checked defaults: Headings, Landmarks, Links, Form fields, Buttons, and Tables.
 - The checklist must honor the dialog's existing Apply / OK / Cancel transaction behavior.
 - Do not expose an automatic-reporting checkbox until the page-ready lifecycle is separately designed, implemented, and proven. A no-op or future-only checkbox is not acceptable.
@@ -339,7 +339,7 @@ Do not merge or push until Tim reviews the live results. If approved, push the f
 ## Definition of done
 
 - `NVDA+Shift+U` reports only selected, non-zero count categories from the current supported browse-mode document.
-- All requested option keys appear with correct labels and `key` / `Shift+key` information.
+- All requested option labels appear, and the documented canonical choices table preserves their forward and backward quick-navigation key mappings.
 - Zero counts are omitted.
 - An all-zero result says `No selected element types found.`
 - Settings persist and Apply / OK / Cancel work accessibly.
