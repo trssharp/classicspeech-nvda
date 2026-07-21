@@ -16,7 +16,9 @@ from speech import shortcutKeys as nvdaShortcutKeys
 import braille
 import wx
 import functools
+import json
 import inputCore
+import time
 
 from speech.commands import BreakCommand
 
@@ -56,13 +58,10 @@ from ._speech_core.settings.voice_profiles_dialog import VoiceProfilesDialog
 from ._speech_core.history import SpeechHistoryBuffer, consume_history_native_passthrough
 from ._speech_core.history_viewer import show_history_dialog, is_history_list_focus
 from ._speech_core.interrupt_control import SpeechInterruptController
-from ._speech_core.web_summary import build_summary, format_summary_with_document_title
-from .page_orientation_runtime import install as install_page_orientation, restore as restore_page_orientation
+from ._speech_core.web_summary import build_summary
 from ._speech_core.settings.web_summary_config import (
     get_automatic_reporting_enabled,
     get_included_element_types,
-    get_include_document_title,
-    get_page_orientation_enabled,
 )
 
 log = logHandler.log
@@ -625,7 +624,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._automaticSummaryPending = None
         self._automaticSummaryReported = None
         self._automaticSummaryTerminated = False
-        self._pageOrientationRoutes = install_page_orientation(self)
 
         self._installClassicSpeechMenu()
         self.set_speech_hook_enabled(get_speech_hook_enabled())
@@ -634,8 +632,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def terminate(self):
         self._cancel_automatic_page_summaries()
-        restore_page_orientation(self, getattr(self, "_pageOrientationRoutes", ()))
-        self._pageOrientationRoutes = []
         self._unregister_speech_hook()
         self._restore_remote_speech_compatibility()
         self._restore_windows_toast_system_route()
@@ -1253,34 +1249,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
 
     def _report_page_summary_for_document(self, document):
-        """Speak one Page Summary, optionally prefixed by the document name."""
-        summary = build_summary(document, get_included_element_types())
-        document_title = None
-        if get_include_document_title():
-            try:
-                document_title = getattr(getattr(document, "rootNVDAObject", None), "name", None)
-            except Exception:
-                log.debugWarning("ClassicSpeech: unable to read Page Summary document title", exc_info=True)
-        ui.message(format_summary_with_document_title(document_title, summary))
-
-    def _report_page_orientation_for_document(self, document):
-        """Speak the ready current document's summary for Page Orientation.
-
-        Returns true only when the replacement was safely spoken. The runtime
-        wrapper falls back to NVDA's native presentation on every false result.
-        """
-        try:
-            if not get_page_orientation_enabled():
-                return False
-            if self._automatic_summary_document_for_event(document) is not document:
-                return False
-            if getattr(document, "isReady", False) is not True:
-                return False
-            self._report_page_summary_for_document(document)
-            return True
-        except Exception:
-            log.debug("ClassicSpeech: Page Orientation summary failed", exc_info=True)
-            return False
+        """Speak one count-only Page Summary with native UI messaging."""
+        ui.message(build_summary(document, get_included_element_types()))
 
     def _automatic_summary_document_for_event(self, obj):
         try:
@@ -1385,14 +1355,132 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             # Automatic failures are silent; the manual command remains explicit.
             log.debug("ClassicSpeech: automatic page summary failed", exc_info=True)
 
+    @staticmethod
+    def _busy_diagnostic_class_name(value):
+        try:
+            value_class = type(value)
+            return f"{value_class.__module__}.{value_class.__qualname__}"
+        except Exception:
+            return "<unavailable>"
+
+    @staticmethod
+    def _busy_diagnostic_state_names(states):
+        try:
+            return sorted({str(getattr(state, "name", state)) for state in states})
+        except Exception:
+            return []
+
+    def _busy_diagnostic_snapshot(self, event_name, obj):
+        """Build one privacy-conscious, fail-closed event provenance record."""
+        record = {
+            "t_monotonic": time.monotonic(), "event": event_name,
+            "obj_id": id(obj), "obj_class": self._busy_diagnostic_class_name(obj),
+            "app_name": "<unavailable>", "app_module_class": "<unavailable>",
+            "role": "<unavailable>", "name": "<redacted>", "states": [], "busy_now": False,
+            "focus_id": None, "is_focus": False, "focus_ancestor_ids": [],
+            "is_focus_ancestor": False, "focus_difference_level": None,
+            "tree_interceptor_id": None, "tree_interceptor_class": "<unavailable>",
+            "backend": "none/other", "root_id": None, "is_root": False,
+            "vbuf_handle_id": None, "is_loading": None, "is_ready": None, "pass_through": None,
+            "cached_states_present": False, "cached_states": [], "current_states": [],
+            "state_symmetric_difference": [], "busy_only_delta": False, "strict_candidate": False,
+            "automatic_summary_pending": bool(getattr(self, "_automaticSummaryPending", None)),
+            "automatic_summary_reported": bool(getattr(self, "_automaticSummaryReported", None)),
+        }
+        try:
+            app_module = getattr(obj, "appModule", None)
+            record["app_name"] = str(getattr(app_module, "appName", "<unavailable>"))
+            record["app_module_class"] = self._busy_diagnostic_class_name(app_module)
+            record["role"] = str(getattr(getattr(obj, "role", None), "name", getattr(obj, "role", "<unavailable>")))
+            current_states = self._busy_diagnostic_state_names(getattr(obj, "states", ()))
+            record["states"] = current_states
+            record["current_states"] = current_states
+            record["busy_now"] = "BUSY" in current_states
+
+            focus = api.getFocusObject()
+            record["focus_id"] = id(focus) if focus is not None else None
+            record["is_focus"] = obj is focus
+            ancestors = []
+            parent = getattr(focus, "parent", None)
+            for level in range(1, 33):
+                if parent is None or any(parent is ancestor for ancestor in ancestors):
+                    break
+                ancestors.append(parent)
+                if parent is obj:
+                    record["is_focus_ancestor"] = True
+                    record["focus_difference_level"] = level
+                parent = getattr(parent, "parent", None)
+            record["focus_ancestor_ids"] = [id(ancestor) for ancestor in ancestors]
+
+            tree_interceptor = getattr(focus, "treeInterceptor", None)
+            if tree_interceptor is None:
+                tree_interceptor = getattr(obj, "treeInterceptor", None)
+            if tree_interceptor is not None:
+                tree_class = self._busy_diagnostic_class_name(tree_interceptor)
+                tree_class_lower = tree_class.lower()
+                record["tree_interceptor_id"] = id(tree_interceptor)
+                record["tree_interceptor_class"] = tree_class
+                if "gecko" in tree_class_lower:
+                    record["backend"] = "gecko"
+                elif "chromium" in tree_class_lower:
+                    record["backend"] = "chromium"
+                root = getattr(tree_interceptor, "rootNVDAObject", None)
+                record["root_id"] = id(root) if root is not None else None
+                record["is_root"] = obj is root
+                handle = getattr(tree_interceptor, "VBufHandle", None)
+                record["vbuf_handle_id"] = id(handle) if handle is not None else None
+                record["is_loading"] = getattr(tree_interceptor, "isLoading", None)
+                record["is_ready"] = getattr(tree_interceptor, "isReady", None)
+                record["pass_through"] = getattr(tree_interceptor, "passThrough", None)
+
+            cache = getattr(obj, "_speakObjectPropertiesCache", None)
+            if isinstance(cache, dict) and "states" in cache:
+                record["cached_states_present"] = True
+                cached_states = self._busy_diagnostic_state_names(cache.get("states"))
+                record["cached_states"] = cached_states
+                difference = sorted(set(cached_states).symmetric_difference(current_states))
+                record["state_symmetric_difference"] = difference
+                record["busy_only_delta"] = difference == ["BUSY"]
+            record["strict_candidate"] = bool(
+                event_name == "stateChange"
+                and record["backend"] == "gecko"
+                and record["is_focus"] and record["is_root"]
+                and record["is_loading"] is True and record["is_ready"] is False
+                and record["pass_through"] is False
+                and record["cached_states_present"] and record["busy_only_delta"]
+            )
+        except Exception:
+            # The partial safe record is evidence of an unavailable/dead object,
+            # never authorization to treat an event as a candidate.
+            record["strict_candidate"] = False
+        return record
+
+    def _log_busy_diagnostic(self, event_name, obj):
+        if not get_debug_logging_enabled():
+            return
+        try:
+            snapshot = self._busy_diagnostic_snapshot(event_name, obj)
+            log.info("ClassicSpeech debug: %s", json.dumps(snapshot, sort_keys=True, separators=(",", ":")))
+        except Exception:
+            log.info("ClassicSpeech debug: busy diagnostic failed", exc_info=True)
+
     def event_gainFocus(self, obj, nextHandler):
         """Cancel only stale deferred summaries after native focus processing."""
         nextHandler()
+        if get_debug_logging_enabled():
+            self._log_busy_diagnostic("gainFocus", obj)
         self._cancel_automatic_page_summary_if_focus_changed(obj)
+
+    def event_stateChange(self, obj, nextHandler):
+        nextHandler()
+        if get_debug_logging_enabled():
+            self._log_busy_diagnostic("stateChange", obj)
 
     def event_documentLoadComplete(self, obj, nextHandler):
         """Report only one ready current Browse Mode summary after NVDA handles loading."""
         nextHandler()
+        if get_debug_logging_enabled():
+            self._log_busy_diagnostic("documentLoadComplete", obj)
         try:
             if getattr(self, "_automaticSummaryTerminated", False):
                 return
@@ -1404,12 +1492,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if pending is not None and (pending[0] is not document or pending[1] != cycle_marker):
                 self._stop_automatic_page_summary_pending()
                 pending = None
-            if get_page_orientation_enabled():
-                # Page Orientation owns the single automatic summary at initial
-                # ready-page presentation; never queue the older deferred path.
-                if pending is not None:
-                    self._stop_automatic_page_summary_pending()
-                return
             if not get_automatic_reporting_enabled():
                 if pending is not None:
                     self._stop_automatic_page_summary_pending()
