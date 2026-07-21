@@ -216,6 +216,10 @@ class WebSummaryConfigTests(unittest.TestCase):
         self.assertIn("includedElementTypes", spec["pageSummaryData"])
         self.assertIn("includeDocumentTitle", spec["pageSummaryData"])
         self.assertIn("automaticReportOnPageLoad", spec["pageSummaryData"])
+        self.assertEqual(
+            spec["pageSummaryData"]["automaticReportOnPageLoad"],
+            "boolean(default=False)",
+        )
         self.assertFalse(self.summary_config.get_include_document_title())
         self.assertFalse(self.summary_config.get_automatic_reporting_enabled())
         self.assertEqual(
