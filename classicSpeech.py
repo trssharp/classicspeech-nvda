@@ -80,7 +80,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     # the sole authorization to speak.
     _AUTOMATIC_PAGE_SUMMARY_RETRY_DELAY_MS = 50
     _AUTOMATIC_PAGE_SUMMARY_MAX_RETRIES = 8
-    _AUTOMATIC_PAGE_SUMMARY_STATE_LIMIT = 32
 
     __gestures = {
         "kb:NVDA+Shift+C": "openClassicSpeechSettings",
@@ -621,8 +620,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._pendingContainerFlush = None
         self._flushingPendingContainer = False
         self._speechHookRegistered = False
-        self._automaticSummaryPending = {}
-        self._automaticSummaryReported = {}
+        self._automaticSummaryPending = None
+        self._automaticSummaryReported = None
         self._automaticSummaryTerminated = False
 
         self._installClassicSpeechMenu()
@@ -1278,13 +1277,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         except Exception:
             return None
 
-    def _automatic_summary_state(self, name):
-        state = getattr(self, name, None)
-        if not isinstance(state, dict):
-            state = {}
-            setattr(self, name, state)
-        return state
-
     def _automatic_summary_load_cycle_marker(self, document, event_obj=None):
         """Return the NVDA virtual-buffer generation for one document load.
 
@@ -1304,68 +1296,63 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             pass
         return ("event", id(event_obj)) if event_obj is not None else None
 
-    def _trim_automatic_summary_pending(self, pending):
-        while len(pending) > self._AUTOMATIC_PAGE_SUMMARY_STATE_LIMIT:
-            _key = next(iter(pending))
-            _document, callback, _attempt = pending.pop(_key)
-            try:
-                callback.Stop()
-            except Exception:
-                pass
-
-    def _trim_automatic_summary_reported(self, reported):
-        while len(reported) > self._AUTOMATIC_PAGE_SUMMARY_STATE_LIMIT:
-            reported.pop(next(iter(reported)))
+    def _stop_automatic_page_summary_pending(self):
+        """Cancel the only deferred report before it can become stale."""
+        pending = getattr(self, "_automaticSummaryPending", None)
+        self._automaticSummaryPending = None
+        if pending is None:
+            return
+        try:
+            pending[2].Stop()
+        except Exception:
+            pass
 
     def _cancel_automatic_page_summaries(self):
         self._automaticSummaryTerminated = True
-        pending = self._automatic_summary_state("_automaticSummaryPending")
-        for _document, callback, _attempt in tuple(pending.values()):
-            try:
-                callback.Stop()
-            except Exception:
-                pass
-        pending.clear()
-        self._automatic_summary_state("_automaticSummaryReported").clear()
+        self._stop_automatic_page_summary_pending()
+        self._automaticSummaryReported = None
 
-    def _queue_automatic_page_summary(self, document, attempt=0):
-        pending = self._automatic_summary_state("_automaticSummaryPending")
-        key = id(document)
+    def _queue_automatic_page_summary(self, document, cycle_marker, attempt=0):
         def callback():
-            self._run_automatic_page_summary(document, attempt)
+            self._run_automatic_page_summary(document, cycle_marker, attempt)
         try:
             later = wx.CallLater(self._AUTOMATIC_PAGE_SUMMARY_RETRY_DELAY_MS, callback)
         except Exception:
             log.debug("ClassicSpeech: failed to defer automatic page summary", exc_info=True)
             return
-        pending[key] = (document, later, attempt)
-        self._trim_automatic_summary_pending(pending)
+        self._automaticSummaryPending = (document, cycle_marker, later, attempt)
 
-    def _run_automatic_page_summary(self, document, attempt):
-        key = id(document)
-        pending = self._automatic_summary_state("_automaticSummaryPending")
-        entry = pending.get(key)
-        if entry is None or entry[0] is not document or entry[2] != attempt:
+    def _run_automatic_page_summary(self, document, cycle_marker, attempt):
+        pending = getattr(self, "_automaticSummaryPending", None)
+        if (
+            pending is None
+            or pending[0] is not document
+            or pending[1] != cycle_marker
+            or pending[3] != attempt
+        ):
             return
-        pending.pop(key, None)
+        self._automaticSummaryPending = None
+
         if getattr(self, "_automaticSummaryTerminated", False):
             return
+
         try:
-            if not get_automatic_reporting_enabled() or self._automatic_summary_document_for_event(document) is not document:
+            if (
+                not get_automatic_reporting_enabled()
+                or self._automatic_summary_document_for_event(document) is not document
+            ):
                 return
             if not callable(getattr(document, "_iterNodesByType", None)):
                 return
             if getattr(document, "isReady", False) is not True:
                 if attempt < self._AUTOMATIC_PAGE_SUMMARY_MAX_RETRIES:
-                    self._queue_automatic_page_summary(document, attempt + 1)
+                    self._queue_automatic_page_summary(document, cycle_marker, attempt + 1)
                 return
-            reported = self._automatic_summary_state("_automaticSummaryReported")
-            cycle_marker = self._automatic_summary_load_cycle_marker(document)
-            if reported.get(key) == (document, cycle_marker):
+            ready_cycle_marker = self._automatic_summary_load_cycle_marker(document)
+            if getattr(self, "_automaticSummaryReported", None) == (document, ready_cycle_marker):
                 return
             self._report_page_summary_for_document(document)
-            reported[key] = (document, cycle_marker)
-            self._trim_automatic_summary_reported(reported)
+            self._automaticSummaryReported = (document, ready_cycle_marker)
         except Exception:
             # Automatic failures are silent; the manual command remains explicit.
             log.debug("ClassicSpeech: automatic page summary failed", exc_info=True)
@@ -1374,21 +1361,27 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         """Report only one ready current Browse Mode summary after NVDA handles loading."""
         nextHandler()
         try:
-            if getattr(self, "_automaticSummaryTerminated", False) or not get_automatic_reporting_enabled():
+            if getattr(self, "_automaticSummaryTerminated", False):
                 return
             document = self._automatic_summary_document_for_event(obj)
             if document is None:
                 return
-            key = id(document)
-            pending = self._automatic_summary_state("_automaticSummaryPending")
-            reported = self._automatic_summary_state("_automaticSummaryReported")
-            if pending.get(key) and pending[key][0] is document:
-                return
             cycle_marker = self._automatic_summary_load_cycle_marker(document, obj)
-            was_reported = reported.get(key)
-            if was_reported == (document, cycle_marker) and not getattr(document, "isLoading", False):
+            pending = getattr(self, "_automaticSummaryPending", None)
+            if pending is not None and (pending[0] is not document or pending[1] != cycle_marker):
+                self._stop_automatic_page_summary_pending()
+                pending = None
+            if not get_automatic_reporting_enabled():
+                if pending is not None:
+                    self._stop_automatic_page_summary_pending()
                 return
-            self._queue_automatic_page_summary(document)
+            if pending is not None:
+                return
+            if getattr(self, "_automaticSummaryReported", None) != (document, cycle_marker):
+                self._automaticSummaryReported = None
+            if getattr(self, "_automaticSummaryReported", None) == (document, cycle_marker) and not getattr(document, "isLoading", False):
+                return
+            self._queue_automatic_page_summary(document, cycle_marker)
         except Exception:
             log.debug("ClassicSpeech: automatic page summary event handling failed", exc_info=True)
 
