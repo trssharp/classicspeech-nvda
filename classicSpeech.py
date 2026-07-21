@@ -1236,6 +1236,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         queueHandler.queueFunction(queueHandler.eventQueue, self._openSettings)
 
 
+    def _get_page_summary_document_title(self, document):
+        """Best-effort title retrieval that cannot discard a valid count summary."""
+
+        try:
+            return getattr(getattr(document, "rootNVDAObject", None), "name", None)
+        except Exception:
+            log.debug("ClassicSpeech: failed to read page summary document title", exc_info=True)
+            return None
+
     @scriptHandler.script(
         description="Reports selected Browse Mode element counts for the current page",
         category="ClassicSpeech",
@@ -1250,7 +1259,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             summary = build_summary(document, get_included_element_types())
             document_title = None
             if get_include_document_title():
-                document_title = getattr(getattr(document, "rootNVDAObject", None), "name", None)
+                document_title = self._get_page_summary_document_title(document)
             ui.message(format_summary_with_document_title(document_title, summary))
         except Exception:
             log.exception("ClassicSpeech page summary failed")

@@ -112,11 +112,27 @@ class WebSummaryModelTests(unittest.TestCase):
         result = self.summary.build_summary(document, ["heading", "table"])
         self.assertEqual(result, "No selected element types found.")
 
-    def test_document_title_formatting_prefixes_a_nonblank_title_and_preserves_blank_fallback(self):
+    def test_document_title_formatting_normalizes_whitespace_and_uses_one_sentence_separator(self):
         summary = "1 heading, 2 links."
         self.assertEqual(
             self.summary.format_summary_with_document_title("Example page", summary),
             "Title: Example page. 1 heading, 2 links.",
+        )
+        self.assertEqual(
+            self.summary.format_summary_with_document_title("  Help! \n", summary),
+            "Title: Help! 1 heading, 2 links.",
+        )
+        self.assertEqual(
+            self.summary.format_summary_with_document_title("What\t is\nnew?", summary),
+            "Title: What is new? 1 heading, 2 links.",
+        )
+        self.assertEqual(
+            self.summary.format_summary_with_document_title("Loading…", summary),
+            "Title: Loading… 1 heading, 2 links.",
+        )
+        self.assertEqual(
+            self.summary.format_summary_with_document_title("  Example\n page\t overview  ", summary),
+            "Title: Example page overview. 1 heading, 2 links.",
         )
         for title in (None, "", " \t ", 1):
             self.assertEqual(self.summary.format_summary_with_document_title(title, summary), summary)
@@ -211,6 +227,22 @@ class WebSummaryConfigTests(unittest.TestCase):
         self.assertTrue(section["pageSummaryData"]["includeDocumentTitle"])
         self.assertFalse(self.summary_config.set_include_document_title(False))
 
+    def test_document_title_choice_parses_only_explicit_boolean_values(self):
+        section = self.config.conf.profiles[0]["classicSpeech"]
+        data = section["pageSummaryData"]
+        for saved_value, expected in (
+            ("False", False),
+            ("True", True),
+            (" false ", False),
+            ("unexpected", False),
+        ):
+            data["includeDocumentTitle"] = saved_value
+            self.assertIs(self.summary_config.get_include_document_title(), expected)
+        self.assertFalse(self.summary_config.set_include_document_title("unexpected"))
+        self.assertFalse(data["includeDocumentTitle"])
+        self.assertTrue(self.summary_config.set_include_document_title(" true "))
+        self.assertTrue(data["includeDocumentTitle"])
+
     def test_invalid_saved_choices_are_dropped_without_losing_valid_choices(self):
         section = self.config.conf.profiles[0]["classicSpeech"]
         section["pageSummaryData"] = {"includedElementTypes": ["unknown", "link", "link", 1]}
@@ -286,6 +318,53 @@ class WebSummaryCommandTests(unittest.TestCase):
         plugin.script_pageSummary(None)
 
         self.assertEqual(self.ui.messages, ["Title: ClassicSpeech documentation. 1 heading, 1 link."])
+        self.assertIs(self.api.getFocusObject(), focus)
+        self.assertEqual(heading.report_calls, 0)
+        self.assertEqual(heading.move_calls, 0)
+        self.assertEqual(link.report_calls, 0)
+        self.assertEqual(link.move_calls, 0)
+
+    def test_page_summary_uses_count_only_output_when_document_root_is_missing(self):
+        heading = FakeQuickNavItem()
+        link = FakeQuickNavItem()
+        document = FakeBrowseDocument({"heading": [heading], "link": [link]})
+        del document.rootNVDAObject
+        focus = type("Focus", (), {"treeInterceptor": document})()
+        self.api.getFocusObject = lambda: focus
+        from globalPlugins._speech_core.settings.web_summary_config import set_include_document_title
+
+        set_include_document_title(True)
+        plugin = object.__new__(self.module.GlobalPlugin)
+
+        plugin.script_pageSummary(None)
+
+        self.assertEqual(self.ui.messages, ["1 heading, 1 link."])
+        self.assertIs(self.api.getFocusObject(), focus)
+        self.assertEqual(heading.report_calls, 0)
+        self.assertEqual(heading.move_calls, 0)
+        self.assertEqual(link.report_calls, 0)
+        self.assertEqual(link.move_calls, 0)
+
+    def test_page_summary_uses_count_only_output_when_document_title_access_raises(self):
+        class BrokenRoot:
+            @property
+            def name(self):
+                raise RuntimeError("stale root")
+
+        heading = FakeQuickNavItem()
+        link = FakeQuickNavItem()
+        document = FakeBrowseDocument({"heading": [heading], "link": [link]})
+        document.rootNVDAObject = BrokenRoot()
+        focus = type("Focus", (), {"treeInterceptor": document})()
+        self.api.getFocusObject = lambda: focus
+        from globalPlugins._speech_core.settings.web_summary_config import set_include_document_title
+
+        set_include_document_title(True)
+        plugin = object.__new__(self.module.GlobalPlugin)
+
+        plugin.script_pageSummary(None)
+
+        self.assertEqual(self.ui.messages, ["1 heading, 1 link."])
         self.assertIs(self.api.getFocusObject(), focus)
         self.assertEqual(heading.report_calls, 0)
         self.assertEqual(heading.move_calls, 0)

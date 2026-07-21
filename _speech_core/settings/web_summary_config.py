@@ -42,15 +42,31 @@ def set_included_element_types(item_types: Iterable[object] | None) -> tuple[str
     return normalized
 
 
+def _normalize_include_document_title(value: object) -> bool:
+    """Accept only explicit persisted boolean values; fail closed otherwise."""
+
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized == "true":
+            return True
+        if normalized == "false":
+            return False
+    return False
+
+
 def get_include_document_title() -> bool:
     """Return whether Page Summary should include the current document title."""
 
-    return bool(_get_page_summary_data().get(INCLUDE_DOCUMENT_TITLE_KEY, False))
+    return _normalize_include_document_title(
+        _get_page_summary_data().get(INCLUDE_DOCUMENT_TITLE_KEY, False),
+    )
 
 
 def set_include_document_title(enabled: object) -> bool:
-    """Persist whether Page Summary should include the current document title."""
+    """Persist an explicitly enabled or disabled Page Summary title choice."""
 
-    normalized = bool(enabled)
+    normalized = _normalize_include_document_title(enabled)
     _get_page_summary_data()[INCLUDE_DOCUMENT_TITLE_KEY] = normalized
     return normalized

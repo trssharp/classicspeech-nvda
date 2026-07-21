@@ -122,14 +122,15 @@ def format_summary_counts(counts: Iterable[tuple[SummaryItemType, int]]) -> str:
 
 
 def format_summary_with_document_title(document_title: object, summary: str) -> str:
-    """Prefix a nonblank document title without changing the count-only model."""
+    """Prefix a normalized nonblank title without changing the count-only model."""
 
     if not isinstance(document_title, str):
         return summary
-    title = document_title.strip()
+    title = " ".join(document_title.split())
     if not title:
         return summary
-    return f"Title: {title}. {summary}"
+    separator = " " if title.endswith((".", "!", "?", "…")) else ". "
+    return f"Title: {title}{separator}{summary}"
 
 
 def build_summary(
