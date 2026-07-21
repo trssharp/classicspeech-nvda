@@ -606,6 +606,59 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.ui.messages, [])
         self.assertEqual(self.laters, [])
 
+    def test_focus_leaving_pending_document_stops_and_clears_callback_before_it_runs(self):
+        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        set_automatic_reporting_enabled(True)
+        plugin, _focus, _target = self._start_event(document)
+        pending = self.laters[0]
+        next_calls = []
+        other_document_focus = type("Focus", (), {"treeInterceptor": FakeBrowseDocument()})()
+
+        plugin.event_gainFocus(other_document_focus, lambda: next_calls.append("native"))
+
+        self.assertEqual(next_calls, ["native"])
+        self.assertTrue(pending.stopped)
+        self.assertIsNone(getattr(plugin, "_automaticSummaryPending", None))
+        pending.run()
+        self.assertEqual(self.ui.messages, [])
+
+    def test_non_browse_focus_immediately_cancels_pending_callback(self):
+        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        set_automatic_reporting_enabled(True)
+        plugin, _focus, _target = self._start_event(document)
+        pending = self.laters[0]
+        next_calls = []
+
+        plugin.event_gainFocus(object(), lambda: next_calls.append("native"))
+
+        self.assertEqual(next_calls, ["native"])
+        self.assertTrue(pending.stopped)
+        self.assertIsNone(getattr(plugin, "_automaticSummaryPending", None))
+        pending.run()
+        self.assertEqual(self.ui.messages, [])
+
+    def test_focus_within_pending_document_preserves_callback(self):
+        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        set_automatic_reporting_enabled(True)
+        plugin, _focus, _target = self._start_event(document)
+        pending = self.laters[0]
+        next_calls = []
+        same_document_focus = type("Focus", (), {"treeInterceptor": document})()
+
+        plugin.event_gainFocus(same_document_focus, lambda: next_calls.append("native"))
+
+        self.assertEqual(next_calls, ["native"])
+        self.assertFalse(pending.stopped)
+        self.assertIs(getattr(plugin, "_automaticSummaryPending", None)[0], document)
+        pending.run()
+        self.assertEqual(self.ui.messages, ["1 heading."])
+
     def test_repeated_document_load_events_dedupe_pending_and_reported_cycles(self):
         from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
 

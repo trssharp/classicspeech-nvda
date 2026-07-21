@@ -1312,6 +1312,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._stop_automatic_page_summary_pending()
         self._automaticSummaryReported = None
 
+    def _cancel_automatic_page_summary_if_focus_changed(self, focus):
+        """Discard deferred automatic work as soon as focus leaves its document."""
+        pending = getattr(self, "_automaticSummaryPending", None)
+        if pending is None:
+            return
+        try:
+            focus_document = getattr(focus, "treeInterceptor", None)
+        except Exception:
+            focus_document = None
+        if pending[0] is not focus_document:
+            self._stop_automatic_page_summary_pending()
+
     def _queue_automatic_page_summary(self, document, cycle_marker, attempt=0):
         def callback():
             self._run_automatic_page_summary(document, cycle_marker, attempt)
@@ -1356,6 +1368,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         except Exception:
             # Automatic failures are silent; the manual command remains explicit.
             log.debug("ClassicSpeech: automatic page summary failed", exc_info=True)
+
+    def event_gainFocus(self, obj, nextHandler):
+        """Cancel only stale deferred summaries after native focus processing."""
+        nextHandler()
+        self._cancel_automatic_page_summary_if_focus_changed(obj)
 
     def event_documentLoadComplete(self, obj, nextHandler):
         """Report only one ready current Browse Mode summary after NVDA handles loading."""
