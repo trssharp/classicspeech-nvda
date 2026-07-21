@@ -23,12 +23,13 @@ class FakeQuickNavItem:
 
 
 class FakeBrowseDocument:
-    def __init__(self, items_by_type=None, unsupported_types=()):
+    def __init__(self, items_by_type=None, unsupported_types=(), root_name=None):
         self.items_by_type = dict(items_by_type or {})
         self.unsupported_types = set(unsupported_types)
         self.iterator_calls = []
         self.focus_marker = object()
         self.cursor_marker = object()
+        self.rootNVDAObject = type("Root", (), {"name": root_name})()
 
     def _iterNodesByType(self, item_type, direction="next", pos=None):
         self.iterator_calls.append((item_type, direction, pos))
@@ -111,6 +112,15 @@ class WebSummaryModelTests(unittest.TestCase):
         result = self.summary.build_summary(document, ["heading", "table"])
         self.assertEqual(result, "No selected element types found.")
 
+    def test_document_title_formatting_prefixes_a_nonblank_title_and_preserves_blank_fallback(self):
+        summary = "1 heading, 2 links."
+        self.assertEqual(
+            self.summary.format_summary_with_document_title("Example page", summary),
+            "Title: Example page. 1 heading, 2 links.",
+        )
+        for title in (None, "", " \t ", 1):
+            self.assertEqual(self.summary.format_summary_with_document_title(title, summary), summary)
+
     def test_summary_uses_natural_singular_and_plural_phrases(self):
         document = FakeBrowseDocument(
             {
@@ -174,6 +184,8 @@ class WebSummaryConfigTests(unittest.TestCase):
         spec = self.config.conf.spec["classicSpeech"]
         self.assertIn("pageSummaryData", spec)
         self.assertIn("includedElementTypes", spec["pageSummaryData"])
+        self.assertIn("includeDocumentTitle", spec["pageSummaryData"])
+        self.assertFalse(self.summary_config.get_include_document_title())
         self.assertEqual(
             self.summary_config.get_included_element_types(),
             ("heading", "landmark", "link", "formField", "button", "table"),
@@ -190,6 +202,14 @@ class WebSummaryConfigTests(unittest.TestCase):
             section["pageSummaryData"]["includedElementTypes"],
             ["heading", "link", "table"],
         )
+
+    def test_document_title_choice_defaults_off_and_round_trips(self):
+        self.assertFalse(self.summary_config.get_include_document_title())
+        self.assertTrue(self.summary_config.set_include_document_title(True))
+        self.assertTrue(self.summary_config.get_include_document_title())
+        section = self.config.conf.profiles[0]["classicSpeech"]
+        self.assertTrue(section["pageSummaryData"]["includeDocumentTitle"])
+        self.assertFalse(self.summary_config.set_include_document_title(False))
 
     def test_invalid_saved_choices_are_dropped_without_losing_valid_choices(self):
         section = self.config.conf.profiles[0]["classicSpeech"]
@@ -211,11 +231,15 @@ class WebSummaryCommandTests(unittest.TestCase):
         self.module = nvda_harness._import_classic_speech_like_nvda()
         import api
         import ui
-        from globalPlugins._speech_core.settings.web_summary_config import set_included_element_types
+        from globalPlugins._speech_core.settings.web_summary_config import (
+            set_include_document_title,
+            set_included_element_types,
+        )
         self.api = api
         self.ui = ui
         self.ui.messages.clear()
         set_included_element_types(["heading", "link"])
+        set_include_document_title(False)
 
     def tearDown(self):
         self.nvda_harness._reset_global_plugin_imports()
@@ -245,6 +269,28 @@ class WebSummaryCommandTests(unittest.TestCase):
         self.assertEqual(link.report_calls, 0)
         self.assertEqual(link.move_calls, 0)
         self.assertIs(self.api.getFocusObject(), focus)
+
+    def test_page_summary_includes_enabled_document_title_without_moving_quick_nav_or_focus(self):
+        from globalPlugins._speech_core.settings.web_summary_config import set_include_document_title
+
+        heading = FakeQuickNavItem()
+        link = FakeQuickNavItem()
+        document = FakeBrowseDocument(
+            {"heading": [heading], "link": [link]}, root_name="ClassicSpeech documentation",
+        )
+        focus = type("Focus", (), {"treeInterceptor": document})()
+        self.api.getFocusObject = lambda: focus
+        set_include_document_title(True)
+        plugin = object.__new__(self.module.GlobalPlugin)
+
+        plugin.script_pageSummary(None)
+
+        self.assertEqual(self.ui.messages, ["Title: ClassicSpeech documentation. 1 heading, 1 link."])
+        self.assertIs(self.api.getFocusObject(), focus)
+        self.assertEqual(heading.report_calls, 0)
+        self.assertEqual(heading.move_calls, 0)
+        self.assertEqual(link.report_calls, 0)
+        self.assertEqual(link.move_calls, 0)
 
     def test_page_summary_reports_unavailable_outside_browse_mode(self):
         self.api.getFocusObject = lambda: object()

@@ -242,8 +242,10 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		dialog.brailleLiveRegionsCombo = FeatureControl("braille", "reportLiveRegions", "ENABLED")
 		from globalPlugins._speech_core.web_summary import SUMMARY_ITEM_TYPES
 		dialog._pageSummaryElements = list(SUMMARY_ITEM_TYPES)
+		dialog.pageSummaryTitleCheckBox = ValueControl(True)
 		dialog.pageSummaryElementList = CheckListControl()
 		dialog._originalPageSummaryTypes = ("heading", "landmark", "link", "formField", "button", "table")
+		dialog._originalPageSummaryTitle = False
 		dialog.applyBtn = ApplyButton()
 		dialog.layoutCalls = 0
 		dialog.Layout = lambda: setattr(dialog, "layoutCalls", dialog.layoutCalls + 1)
@@ -259,6 +261,7 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includedElementTypes"],
 			["annotation", "comboBox"],
 		)
+		self.assertTrue(config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includeDocumentTitle"])
 		self.assertEqual(config.conf["virtualBuffers"]["browseModeTouchNavigationElements"], ["heading", "table"])
 		self.assertEqual(config.conf["virtualBuffers"]["loadChromiumVBufOnBusyState"], "DISABLED")
 		self.assertTrue(config.conf["annotations"]["reportDetails"])
@@ -270,18 +273,21 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 
 		# Apply makes the current Page Summary selection the new Cancel baseline.
 		dialog.onApply(None)
+		dialog.pageSummaryTitleCheckBox.value = False
 		dialog.pageSummaryElementList.checked = [7]
 		dialog.onChanged()
 		self.assertEqual(
 			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includedElementTypes"],
 			["heading"],
 		)
+		self.assertFalse(config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includeDocumentTitle"])
 		dialog.onCancel(None)
 		self.assertTrue(dialog.destroyed)
 		self.assertEqual(
 			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includedElementTypes"],
 			["annotation", "comboBox"],
 		)
+		self.assertTrue(config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includeDocumentTitle"])
 		self.assertEqual(config.conf["virtualBuffers"]["maxLineLength"], 120)
 		self.assertEqual(config.conf["virtualBuffers"]["loadChromiumVBufOnBusyState"], "DISABLED")
 		self.assertTrue(config.conf["annotations"]["reportDetails"])
@@ -334,12 +340,18 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 	def test_page_summary_category_uses_accessible_checklist_and_propagating_handler(self):
 		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
 		self.assertIn("choices=[item.plural_label for item in self._pageSummaryElements]", dialog_source)
+		self.assertIn('wx.CheckBox(_box, label="Title")', dialog_source)
+		self.assertLess(
+			dialog_source.index('wx.CheckBox(_box, label="Title")'),
+			dialog_source.index('"Page Summary choices:"'),
+		)
 		self.assertNotIn('Shift+{item.key}', dialog_source)
 		self.assertNotIn('item.key} and', dialog_source)
 		for expected in (
 			'"Page Summary"',
 			"self.pageSummaryPanel = scrolledpanel.ScrolledPanel",
 			"self.pageSummaryElementList",
+			"self.pageSummaryTitleCheckBox",
 			"Page Summary choices:",
 			"nvdaControls.CustomCheckListBox",
 			"self.pageSummaryElementList.Bind(wx.EVT_CHECKLISTBOX, self.onPageSummaryChanged)",

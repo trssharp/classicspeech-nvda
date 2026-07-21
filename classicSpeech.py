@@ -56,8 +56,11 @@ from ._speech_core.settings.voice_profiles_dialog import VoiceProfilesDialog
 from ._speech_core.history import SpeechHistoryBuffer, consume_history_native_passthrough
 from ._speech_core.history_viewer import show_history_dialog, is_history_list_focus
 from ._speech_core.interrupt_control import SpeechInterruptController
-from ._speech_core.web_summary import build_summary
-from ._speech_core.settings.web_summary_config import get_included_element_types
+from ._speech_core.web_summary import build_summary, format_summary_with_document_title
+from ._speech_core.settings.web_summary_config import (
+    get_include_document_title,
+    get_included_element_types,
+)
 
 log = logHandler.log
 
@@ -1244,7 +1247,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if document is None or not hasattr(document, "_iterNodesByType"):
                 ui.message("Page summary is not available here.")
                 return
-            ui.message(build_summary(document, get_included_element_types()))
+            summary = build_summary(document, get_included_element_types())
+            document_title = None
+            if get_include_document_title():
+                document_title = getattr(getattr(document, "rootNVDAObject", None), "name", None)
+            ui.message(format_summary_with_document_title(document_title, summary))
         except Exception:
             log.exception("ClassicSpeech page summary failed")
             ui.message("Page summary is not available here.")
