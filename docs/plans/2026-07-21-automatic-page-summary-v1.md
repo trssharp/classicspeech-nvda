@@ -16,6 +16,7 @@
 - A new native checkbox lives in the existing **Page Summary** category:
   `Automatically report summary when a Browse Mode page is ready`.
 - The manual `NVDA+Shift+U` command stays unchanged and works whether automatic reporting is on or off.
+- A separate `Title` checkbox appears first in the Page Summary category, before the selectable quick-navigation element list. When checked, the summary begins with the current virtual buffer document title; when unavailable, only the selected element counts are spoken.
 - Automatic reporting is limited to the current, focused Browse Mode tree interceptor.
 - It speaks once per document-load cycle only after `document.isReady` is true.
 - It uses existing Page Summary selected types and wording, including `No selected element types found.`
@@ -30,6 +31,29 @@
 - `VirtualBuffer.isReady` is true only when NVDA has a valid buffer handle and it is no longer loading (`source/virtualBuffers/__init__.py`).
 - A Chromium buffer can initially be empty; NVDA explicitly waits for a later `documentLoadComplete` opportunity rather than assuming a first focus event was ready.
 - Therefore, `documentLoadComplete` is the wake-up event, while `isReady` plus same-document identity is the permission to speak.
+
+## Scope amendment: Include the document title
+
+**Objective:** Add an independent, opt-in `Title` checkbox at the top of Page Summary settings and prefix an available virtual-buffer document title to manual and automatic summaries.
+
+**Files:**
+- Modify: `_speech_core/plugin_config.py`
+- Modify: `_speech_core/settings/web_summary_config.py`
+- Modify: `_speech_core/web_summary.py`
+- Modify: `_speech_core/settings/web_settings_dialog.py`
+- Modify: `classicSpeech.py`
+- Test: `tests/classic_speech_web_summary_harness.py`
+- Test: `tests/classic_speech_web_settings_harness.py`
+
+**TDD requirements:**
+
+1. Write failing tests for a default-disabled title setting, persisted round trip, and transaction-safe checkbox Apply/Cancel behavior.
+2. Write failing model tests proving an available title is formatted before the normal count result, while missing/blank title leaves the count result unchanged.
+3. Write failing command tests using a fake `rootNVDAObject.name` that prove the manual command uses the checked title setting and does not move focus or Quick Navigation items.
+4. Implement the minimal configuration helper and a distinct `Title` checkbox before the checklist. Do not add title to `SUMMARY_ITEM_TYPES`, because it is document metadata rather than a Quick Navigation iterator type.
+5. Extract title only from the active `document.rootNVDAObject.name` integration boundary; retain the pure model by passing the normalized string into its formatter.
+6. Use the exact format `Title: <document title>. <existing summary>` when a nonblank title is selected; otherwise preserve existing output byte-for-byte.
+7. Run both focused harnesses, compile changed modules, review the diff, and commit the title change separately before beginning automatic-report runtime work.
 
 ## Task 1: Add persistent opt-in configuration
 
@@ -260,6 +284,18 @@ For each browser, verify:
 **Step 4: Record results and only then mark complete**
 
 Report exact pages, browser, NVDA log evidence, observed speech, and any remaining timing limitation.
+
+## Post-validation follow-up: Page-load speech taming (deferred)
+
+Do not implement this while validating automatic summary correctness. After Title and automatic reporting are live-proven in Firefox and Edge, separately design a user-controlled page-load speech policy. NVDA's current `BrowseModeDocumentTreeInterceptor.event_treeInterceptor_gainFocus` speaks the root document object (or, with NVDA's Auto Say All enabled, root properties then Say All) and then the initial caret line. The proposed automatic summary will therefore initially be additive: it is scheduled only after NVDA's normal handler has run.
+
+The follow-up must decide, through explicit settings and live tests, whether users want:
+
+1. NVDA native initial page speech unchanged plus a summary;
+2. summary replacing only duplicative root-document/title reporting; or
+3. a concise Page Summary-first page-load mode that leaves Say All and all non-page-load browsing untouched.
+
+Do not suppress, monkey-patch, or reorder NVDA's native page-load path without a separate source-backed plan and Firefox/Edge regression matrix. The decision must preserve the configured NVDA `autoSayAllOnPageLoad` behavior unless the user explicitly selects a replacement policy.
 
 ## Risks and mitigations
 
