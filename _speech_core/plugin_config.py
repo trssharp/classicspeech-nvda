@@ -20,6 +20,7 @@ _CLASSIC_SPEECH_SPEC = {
     "announceSpeechHookLoaded": "boolean(default=False)",
     "speechHookLoadedMessage": "string(default='ClassicSpeech hook loaded')",
     "debugLogging": "boolean(default=False)",
+    "suppressGeckoInitialBusyStatePresentation": "boolean(default=False)",
     "announceMenuOpen": "boolean(default=True)",
     "announceMenuClose": "boolean(default=True)",
     "announceMenuBarFocus": "boolean(default=True)",

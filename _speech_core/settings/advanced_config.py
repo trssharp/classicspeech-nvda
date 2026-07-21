@@ -61,6 +61,29 @@ def _set_speech_hook_loaded_message(message: str):
 	return message
 
 
+def _get_gecko_initial_busy_state_presentation_suppressed():
+	"""Return the explicit opt-in state for the Firefox Busy experiment."""
+	conf = _ensure_classic_speech_section()
+	return conf.get("suppressGeckoInitialBusyStatePresentation", False) is True
+
+
+def get_gecko_initial_busy_state_presentation_suppressed():
+	return _get_gecko_initial_busy_state_presentation_suppressed()
+
+
+def _set_gecko_initial_busy_state_presentation_suppressed(enabled: bool):
+	conf = _ensure_classic_speech_section()
+	enabled = enabled is True
+	conf["suppressGeckoInitialBusyStatePresentation"] = enabled
+	plugin = _get_running_classic_speech_plugin()
+	if plugin is not None and hasattr(plugin, "set_gecko_initial_busy_state_presentation_suppressed"):
+		try:
+			plugin.set_gecko_initial_busy_state_presentation_suppressed(enabled)
+		except Exception:
+			log.exception("ClassicSpeech: failed to live-apply Firefox Busy experiment setting")
+	return enabled
+
+
 def _get_debug_logging_enabled():
 	conf = _ensure_classic_speech_section()
 	return bool(conf.get("debugLogging", False))

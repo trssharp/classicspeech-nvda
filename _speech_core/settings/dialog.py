@@ -18,6 +18,7 @@ from .config import (
 	_ensure_classic_speech_section,
 	_get_active_profile_name,
 	_get_default_button_enabled,
+	_get_gecko_initial_busy_state_presentation_suppressed,
 	_get_nvda_setting,
 	_get_profile_behavior,
 	_get_speech_hook_enabled,
@@ -28,6 +29,7 @@ from .config import (
 	_save_shape_config,
 	_set_active_profile_name,
 	_set_default_button_enabled,
+	_set_gecko_initial_busy_state_presentation_suppressed,
 	_set_hotkey_dialog_access_key_only,
 	_set_hotkey_format,
 	_set_hotkey_mode,
@@ -252,6 +254,9 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 	def _applyRuntimeFromCurrentConfig(self):
 		"""Re-apply live state after restoring the saved dialog snapshot."""
 		_set_speech_hook_enabled(_get_speech_hook_enabled())
+		_set_gecko_initial_busy_state_presentation_suppressed(
+			_get_gecko_initial_busy_state_presentation_suppressed(),
+		)
 		apply_key_labels_live(get_key_label_config())
 
 		active = _get_active_profile_name()

@@ -198,14 +198,17 @@ from .number_processing_config import (
 from .advanced_config import (
 	_get_announce_speech_hook_loaded_enabled,
 	_get_debug_logging_enabled,
+	_get_gecko_initial_busy_state_presentation_suppressed,
 	_get_speech_hook_enabled,
 	_get_speech_hook_loaded_message,
 	_set_announce_speech_hook_loaded_enabled,
 	_set_debug_logging_enabled,
+	_set_gecko_initial_busy_state_presentation_suppressed,
 	_set_speech_hook_enabled,
 	_set_speech_hook_loaded_message,
 	get_announce_speech_hook_loaded_enabled,
 	get_debug_logging_enabled,
+	get_gecko_initial_busy_state_presentation_suppressed,
 	get_speech_hook_enabled,
 	get_speech_hook_loaded_message,
 )
