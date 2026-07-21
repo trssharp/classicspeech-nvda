@@ -215,7 +215,9 @@ class WebSummaryConfigTests(unittest.TestCase):
         self.assertIn("pageSummaryData", spec)
         self.assertIn("includedElementTypes", spec["pageSummaryData"])
         self.assertIn("includeDocumentTitle", spec["pageSummaryData"])
+        self.assertIn("automaticReportOnPageLoad", spec["pageSummaryData"])
         self.assertFalse(self.summary_config.get_include_document_title())
+        self.assertFalse(self.summary_config.get_automatic_reporting_enabled())
         self.assertEqual(
             self.summary_config.get_included_element_types(),
             ("heading", "landmark", "link", "formField", "button", "table"),
@@ -258,6 +260,36 @@ class WebSummaryConfigTests(unittest.TestCase):
         self.assertFalse(data["includeDocumentTitle"])
         self.assertTrue(self.summary_config.set_include_document_title(" true "))
         self.assertTrue(data["includeDocumentTitle"])
+
+    def test_automatic_reporting_parses_only_explicit_boolean_values(self):
+        section = self.config.conf.profiles[0]["classicSpeech"]
+        data = section["pageSummaryData"]
+        for saved_value, expected in (
+            (True, True),
+            (False, False),
+            ("False", False),
+            ("True", True),
+            (" false ", False),
+            (" true ", True),
+            ("unexpected", False),
+            (1, False),
+            (None, False),
+        ):
+            data["automaticReportOnPageLoad"] = saved_value
+            self.assertIs(self.summary_config.get_automatic_reporting_enabled(), expected)
+
+    def test_automatic_reporting_setter_fails_closed_and_persists_normalized_boolean(self):
+        section = self.config.conf.profiles[0]["classicSpeech"]
+        data = section["pageSummaryData"]
+
+        self.assertTrue(self.summary_config.set_automatic_reporting_enabled(" true "))
+        self.assertIs(data["automaticReportOnPageLoad"], True)
+        self.assertTrue(self.summary_config.get_automatic_reporting_enabled())
+
+        for invalid_value in ("unexpected", 1, object(), None):
+            self.assertFalse(self.summary_config.set_automatic_reporting_enabled(invalid_value))
+            self.assertIs(data["automaticReportOnPageLoad"], False)
+            self.assertFalse(self.summary_config.get_automatic_reporting_enabled())
 
     def test_invalid_saved_choices_are_dropped_without_losing_valid_choices(self):
         section = self.config.conf.profiles[0]["classicSpeech"]
