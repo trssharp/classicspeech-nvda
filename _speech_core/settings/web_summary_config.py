@@ -9,7 +9,6 @@ from .config_core import _ensure_classic_speech_section
 
 PAGE_SUMMARY_DATA_KEY = "pageSummaryData"
 INCLUDED_ELEMENT_TYPES_KEY = "includedElementTypes"
-INCLUDE_DOCUMENT_TITLE_KEY = "includeDocumentTitle"
 AUTOMATIC_REPORT_ON_PAGE_LOAD_KEY = "automaticReportOnPageLoad"
 
 
@@ -43,7 +42,7 @@ def set_included_element_types(item_types: Iterable[object] | None) -> tuple[str
     return normalized
 
 
-def _normalize_include_document_title(value: object) -> bool:
+def _normalize_explicit_boolean(value: object) -> bool:
     """Accept only explicit persisted boolean values; fail closed otherwise."""
 
     if isinstance(value, bool):
@@ -57,26 +56,10 @@ def _normalize_include_document_title(value: object) -> bool:
     return False
 
 
-def get_include_document_title() -> bool:
-    """Return whether Page Summary should include the current document title."""
-
-    return _normalize_include_document_title(
-        _get_page_summary_data().get(INCLUDE_DOCUMENT_TITLE_KEY, False),
-    )
-
-
-def set_include_document_title(enabled: object) -> bool:
-    """Persist an explicitly enabled or disabled Page Summary title choice."""
-
-    normalized = _normalize_include_document_title(enabled)
-    _get_page_summary_data()[INCLUDE_DOCUMENT_TITLE_KEY] = normalized
-    return normalized
-
-
 def get_automatic_reporting_enabled() -> bool:
     """Return whether automatic Page Summary reporting is explicitly enabled."""
 
-    return _normalize_include_document_title(
+    return _normalize_explicit_boolean(
         _get_page_summary_data().get(AUTOMATIC_REPORT_ON_PAGE_LOAD_KEY, False),
     )
 
@@ -84,6 +67,6 @@ def get_automatic_reporting_enabled() -> bool:
 def set_automatic_reporting_enabled(enabled: object) -> bool:
     """Persist an explicitly enabled automatic Page Summary reporting choice."""
 
-    normalized = _normalize_include_document_title(enabled)
+    normalized = _normalize_explicit_boolean(enabled)
     _get_page_summary_data()[AUTOMATIC_REPORT_ON_PAGE_LOAD_KEY] = normalized
     return normalized

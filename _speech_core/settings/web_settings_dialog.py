@@ -8,10 +8,8 @@ from wx.lib import scrolledpanel
 from ..web_summary import SUMMARY_ITEM_TYPES
 from .web_summary_config import (
 	get_automatic_reporting_enabled,
-	get_include_document_title,
 	get_included_element_types,
 	set_automatic_reporting_enabled,
-	set_include_document_title,
 	set_included_element_types,
 )
 from .web_formatting_config import (
@@ -66,7 +64,6 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		self._popupReleased = False
 		self._committed = False
 		self._originalWebBrowse = capture_web_browse_state()
-		self._originalPageSummaryTitle = get_include_document_title()
 		self._originalPageSummaryTypes = get_included_element_types()
 		self._originalPageSummaryAutomaticReporting = get_automatic_reporting_enabled()
 		self._browseModeElements = self._get_browse_mode_touch_elements()
@@ -271,9 +268,6 @@ class WebBrowseSettingsDialog(wx.Dialog):
 			label="Choose the Browse Mode element types included when you press NVDA+Shift+U. Checked items are included.",
 		))
 		group, _box = self._add_static_box_group(panel, sHelper, "Page Summary")
-		self.pageSummaryTitleCheckBox = group.addItem(wx.CheckBox(_box, label="Title"))
-		self.pageSummaryTitleCheckBox.SetValue(get_include_document_title())
-		self.pageSummaryTitleCheckBox.Bind(wx.EVT_CHECKBOX, self.onChanged)
 		self.pageSummaryAutomaticReportingCheckBox = group.addItem(
 			wx.CheckBox(
 				_box,
@@ -387,8 +381,6 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		set_web_document_formatting_setting("reportFigures", _is_checked(self.figuresCheckBox))
 		set_web_document_formatting_setting("reportClickable", _is_checked(self.clickableCheckBox))
 		self.brailleLiveRegionsCombo.saveCurrentValueToConf()
-		if hasattr(self, "pageSummaryTitleCheckBox"):
-			set_include_document_title(_is_checked(self.pageSummaryTitleCheckBox))
 		if hasattr(self, "pageSummaryAutomaticReportingCheckBox"):
 			set_automatic_reporting_enabled(_is_checked(self.pageSummaryAutomaticReportingCheckBox))
 		if hasattr(self, "pageSummaryElementList"):
@@ -425,7 +417,6 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		try:
 			self._apply_to_config()
 			self._originalWebBrowse = capture_web_browse_state()
-			self._originalPageSummaryTitle = get_include_document_title()
 			self._originalPageSummaryTypes = get_included_element_types()
 			self._originalPageSummaryAutomaticReporting = get_automatic_reporting_enabled()
 			self._committed = True
@@ -439,7 +430,6 @@ class WebBrowseSettingsDialog(wx.Dialog):
 
 	def onCancel(self, evt):
 		restore_web_browse_state(self._originalWebBrowse)
-		set_include_document_title(self._originalPageSummaryTitle)
 		set_included_element_types(self._originalPageSummaryTypes)
 		set_automatic_reporting_enabled(self._originalPageSummaryAutomaticReporting)
 		self.Destroy()
@@ -447,7 +437,6 @@ class WebBrowseSettingsDialog(wx.Dialog):
 	def onClose(self, evt):
 		try:
 			restore_web_browse_state(self._originalWebBrowse)
-			set_include_document_title(self._originalPageSummaryTitle)
 			set_included_element_types(self._originalPageSummaryTypes)
 			set_automatic_reporting_enabled(self._originalPageSummaryAutomaticReporting)
 			evt.Skip()

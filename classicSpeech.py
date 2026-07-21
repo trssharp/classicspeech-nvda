@@ -56,10 +56,9 @@ from ._speech_core.settings.voice_profiles_dialog import VoiceProfilesDialog
 from ._speech_core.history import SpeechHistoryBuffer, consume_history_native_passthrough
 from ._speech_core.history_viewer import show_history_dialog, is_history_list_focus
 from ._speech_core.interrupt_control import SpeechInterruptController
-from ._speech_core.web_summary import build_summary, format_summary_with_document_title
+from ._speech_core.web_summary import build_summary
 from ._speech_core.settings.web_summary_config import (
     get_automatic_reporting_enabled,
-    get_include_document_title,
     get_included_element_types,
 )
 
@@ -1247,24 +1246,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         queueHandler.queueFunction(queueHandler.eventQueue, self._openSettings)
 
 
-    def _get_page_summary_document_title(self, document):
-        """Best-effort title retrieval that cannot discard a valid count summary."""
-
-        try:
-            root = getattr(document, "rootNVDAObject", None)
-            if root is None:
-                log.debug("ClassicSpeech: failed to read page summary document title")
-                return None
-            return getattr(root, "name", None)
-        except Exception:
-            log.debug("ClassicSpeech: failed to read page summary document title", exc_info=True)
-            return None
-
     def _report_page_summary_for_document(self, document):
-        """Use the manual Page Summary formatting and one native UI message."""
-        summary = build_summary(document, get_included_element_types())
-        document_title = self._get_page_summary_document_title(document) if get_include_document_title() else None
-        ui.message(format_summary_with_document_title(document_title, summary))
+        """Speak one count-only Page Summary with native UI messaging."""
+        ui.message(build_summary(document, get_included_element_types()))
 
     def _automatic_summary_document_for_event(self, obj):
         try:

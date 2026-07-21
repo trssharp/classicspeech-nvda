@@ -71,7 +71,6 @@ _CLASSIC_SPEECH_SPEC = {
     },
     "pageSummaryData": {
         "includedElementTypes": "string_list(default=list('heading', 'landmark', 'link', 'formField', 'button', 'table'))",
-        "includeDocumentTitle": "boolean(default=False)",
         "automaticReportOnPageLoad": "boolean(default=False)",
     },
     # Arbitrary synth setting types and nested baseline/override records are

@@ -242,12 +242,10 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		dialog.brailleLiveRegionsCombo = FeatureControl("braille", "reportLiveRegions", "ENABLED")
 		from globalPlugins._speech_core.web_summary import SUMMARY_ITEM_TYPES
 		dialog._pageSummaryElements = list(SUMMARY_ITEM_TYPES)
-		dialog.pageSummaryTitleCheckBox = ValueControl(True)
 		# The initial automatic-reporting choice is independently false.
 		dialog.pageSummaryAutomaticReportingCheckBox = ValueControl(False)
 		dialog.pageSummaryElementList = CheckListControl()
 		dialog._originalPageSummaryTypes = ("heading", "landmark", "link", "formField", "button", "table")
-		dialog._originalPageSummaryTitle = False
 		dialog._originalPageSummaryAutomaticReporting = False
 		dialog.applyBtn = ApplyButton()
 		dialog.layoutCalls = 0
@@ -264,7 +262,6 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includedElementTypes"],
 			["annotation", "comboBox"],
 		)
-		self.assertTrue(config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includeDocumentTitle"])
 		self.assertFalse(
 			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["automaticReportOnPageLoad"]
 		)
@@ -286,7 +283,6 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 
 		# Apply makes the current Page Summary choices the new Cancel baseline.
 		dialog.onApply(None)
-		dialog.pageSummaryTitleCheckBox.value = False
 		dialog.pageSummaryAutomaticReportingCheckBox.value = False
 		dialog.pageSummaryElementList.checked = [7]
 		dialog.onChanged()
@@ -294,7 +290,6 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includedElementTypes"],
 			["heading"],
 		)
-		self.assertFalse(config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includeDocumentTitle"])
 		self.assertFalse(
 			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["automaticReportOnPageLoad"]
 		)
@@ -304,7 +299,6 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includedElementTypes"],
 			["annotation", "comboBox"],
 		)
-		self.assertTrue(config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includeDocumentTitle"])
 		self.assertTrue(
 			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["automaticReportOnPageLoad"]
 		)
@@ -360,7 +354,10 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 	def test_page_summary_category_uses_accessible_checklist_and_propagating_handler(self):
 		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
 		self.assertIn("choices=[item.plural_label for item in self._pageSummaryElements]", dialog_source)
-		self.assertIn('wx.CheckBox(_box, label="Title")', dialog_source)
+		self.assertNotIn("pageSummaryTitleCheckBox", dialog_source)
+		self.assertNotIn('wx.CheckBox(_box, label="Title")', dialog_source)
+		self.assertNotIn("get_include_document_title", dialog_source)
+		self.assertNotIn("set_include_document_title", dialog_source)
 		automatic_checkbox = (
 			'self.pageSummaryAutomaticReportingCheckBox = group.addItem(\n'
 			'			wx.CheckBox(\n'
@@ -379,10 +376,6 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			dialog_source,
 		)
 		self.assertLess(
-			dialog_source.index('wx.CheckBox(_box, label="Title")'),
-			dialog_source.index("self.pageSummaryAutomaticReportingCheckBox"),
-		)
-		self.assertLess(
 			dialog_source.index("self.pageSummaryAutomaticReportingCheckBox"),
 			dialog_source.index('"Page Summary choices:"'),
 		)
@@ -392,7 +385,6 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			'"Page Summary"',
 			"self.pageSummaryPanel = scrolledpanel.ScrolledPanel",
 			"self.pageSummaryElementList",
-			"self.pageSummaryTitleCheckBox",
 			"Page Summary choices:",
 			"nvdaControls.CustomCheckListBox",
 			"self.pageSummaryElementList.Bind(wx.EVT_CHECKLISTBOX, self.onPageSummaryChanged)",
