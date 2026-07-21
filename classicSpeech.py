@@ -1560,9 +1560,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             return
         try:
             snapshot = self._busy_diagnostic_snapshot(event_name, obj)
-            log.debug("ClassicSpeech debug: %s", json.dumps(snapshot, sort_keys=True, separators=(",", ":")))
+            log.info("ClassicSpeech debug: %s", json.dumps(snapshot, sort_keys=True, separators=(",", ":")))
         except Exception:
-            log.debug("ClassicSpeech debug: busy diagnostic failed", exc_info=True)
+            log.info("ClassicSpeech debug: busy diagnostic failed", exc_info=True)
 
     def event_gainFocus(self, obj, nextHandler):
         """Cancel only stale deferred summaries after native focus processing."""

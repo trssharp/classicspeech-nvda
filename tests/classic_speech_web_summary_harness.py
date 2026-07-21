@@ -1104,28 +1104,41 @@ class BusyDiagnosticRuntimeTests(unittest.TestCase):
     def test_busy_diagnostic_is_silent_when_classicspeech_debug_logging_is_off(self):
         root, _document = self._gecko_context(current=("BUSY",), cached=())
         plugin = object.__new__(self.module.GlobalPlugin)
+        calls = []
+        original_info = self.module.log.info
+        original_debug = self.module.log.debug
+        self.module.log.info = lambda *args, **kwargs: calls.append(("info", args, kwargs))
+        self.module.log.debug = lambda *args, **kwargs: calls.append(("debug", args, kwargs))
+        try:
+            plugin._log_busy_diagnostic("stateChange", root)
+        finally:
+            self.module.log.info = original_info
+            self.module.log.debug = original_debug
 
-        plugin._log_busy_diagnostic("stateChange", root)
-
+        self.assertEqual(calls, [])
         self.assertEqual(self.log.messages, [])
 
-    def test_busy_diagnostic_enabled_emits_one_structured_redacted_record(self):
+    def test_busy_diagnostic_enabled_emits_one_structured_redacted_info_record(self):
         import json
 
         root, _document = self._gecko_context(current=("BUSY",), cached=())
         plugin = object.__new__(self.module.GlobalPlugin)
         calls = []
+        original_info = self.module.log.info
         original_debug = self.module.log.debug
-        self.module.log.debug = lambda *args, **kwargs: calls.append((args, kwargs))
+        self.module.log.info = lambda *args, **kwargs: calls.append(("info", args, kwargs))
+        self.module.log.debug = lambda *args, **kwargs: calls.append(("debug", args, kwargs))
         self._set_debug(True)
         try:
             plugin._log_busy_diagnostic("stateChange", root)
         finally:
+            self.module.log.info = original_info
             self.module.log.debug = original_debug
 
         self.assertEqual(len(calls), 1)
-        self.assertEqual(calls[0][0][0], "ClassicSpeech debug: %s")
-        record = json.loads(calls[0][0][1])
+        self.assertEqual(calls[0][0], "info")
+        self.assertEqual(calls[0][1][0], "ClassicSpeech debug: %s")
+        record = json.loads(calls[0][1][1])
         self.assertEqual(record["event"], "stateChange")
         self.assertEqual(record["name"], "<redacted>")
         self.assertTrue(record["strict_candidate"])
