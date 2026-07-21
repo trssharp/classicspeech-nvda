@@ -1240,7 +1240,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         """Best-effort title retrieval that cannot discard a valid count summary."""
 
         try:
-            return getattr(getattr(document, "rootNVDAObject", None), "name", None)
+            root = getattr(document, "rootNVDAObject", None)
+            if root is None:
+                log.debug("ClassicSpeech: failed to read page summary document title")
+                return None
+            return getattr(root, "name", None)
         except Exception:
             log.debug("ClassicSpeech: failed to read page summary document title", exc_info=True)
             return None

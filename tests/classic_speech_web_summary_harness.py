@@ -245,6 +245,8 @@ class WebSummaryConfigTests(unittest.TestCase):
         section = self.config.conf.profiles[0]["classicSpeech"]
         data = section["pageSummaryData"]
         for saved_value, expected in (
+            (True, True),
+            (False, False),
             ("False", False),
             ("True", True),
             (" false ", False),
@@ -339,6 +341,8 @@ class WebSummaryCommandTests(unittest.TestCase):
         self.assertEqual(link.move_calls, 0)
 
     def test_page_summary_uses_count_only_output_when_document_root_is_missing(self):
+        import logHandler
+
         heading = FakeQuickNavItem()
         link = FakeQuickNavItem()
         document = FakeBrowseDocument({"heading": [heading], "link": [link]})
@@ -347,12 +351,17 @@ class WebSummaryCommandTests(unittest.TestCase):
         self.api.getFocusObject = lambda: focus
         from globalPlugins._speech_core.settings.web_summary_config import set_include_document_title
 
+        logHandler.log.messages.clear()
         set_include_document_title(True)
         plugin = object.__new__(self.module.GlobalPlugin)
 
         plugin.script_pageSummary(None)
 
         self.assertEqual(self.ui.messages, ["1 heading, 1 link."])
+        self.assertIn(
+            ("debug", "ClassicSpeech: failed to read page summary document title"),
+            logHandler.log.messages,
+        )
         self.assertIs(self.api.getFocusObject(), focus)
         self.assertEqual(heading.report_calls, 0)
         self.assertEqual(heading.move_calls, 0)
