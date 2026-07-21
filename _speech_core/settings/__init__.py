@@ -5,6 +5,7 @@ from .constants import *
 from .config import (
 	get_announce_speech_hook_loaded_enabled,
 	get_debug_logging_enabled,
+	get_gecko_initial_busy_state_presentation_suppressed,
 	get_object_navigation_processing_enabled,
 	get_query_object_source,
 	get_speech_hook_enabled,
@@ -47,5 +48,6 @@ __all__ = [
 	"get_announce_speech_hook_loaded_enabled",
 	"get_speech_hook_loaded_message",
 	"get_debug_logging_enabled",
+	"get_gecko_initial_busy_state_presentation_suppressed",
 ]
 __all__ += [name for name in globals() if name.isupper()]

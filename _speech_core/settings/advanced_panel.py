@@ -5,10 +5,12 @@ from .accessibility import _set_panel_description
 from .advanced_config import (
 	_get_announce_speech_hook_loaded_enabled,
 	_get_debug_logging_enabled,
+	_get_gecko_initial_busy_state_presentation_suppressed,
 	_get_speech_hook_enabled,
 	_get_speech_hook_loaded_message,
 	_set_announce_speech_hook_loaded_enabled,
 	_set_debug_logging_enabled,
+	_set_gecko_initial_busy_state_presentation_suppressed,
 	_set_speech_hook_enabled,
 	_set_speech_hook_loaded_message,
 )
@@ -44,6 +46,14 @@ class AdvancedPanel(wx.Panel):
 		self.speechHookEnabled.SetValue(_get_speech_hook_enabled())
 		mainSizer.Add(self.speechHookEnabled, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
+		self.geckoBusyExperiment = wx.CheckBox(
+			self,
+			label="Experimental: suppress Busy on initial Firefox Browse Mode focus",
+		)
+		self.geckoBusyExperiment.SetValue(_get_gecko_initial_busy_state_presentation_suppressed())
+		self.geckoBusyExperiment.SetName("Experimental Firefox initial Busy suppression")
+		mainSizer.Add(self.geckoBusyExperiment, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+
 		self.announceSpeechHookLoaded = wx.CheckBox(
 			self,
 			label="Speak a message when the speech hook loads",
@@ -78,6 +88,7 @@ class AdvancedPanel(wx.Panel):
 		self.SetSizer(mainSizer)
 		self.debugLogging.Bind(wx.EVT_CHECKBOX, self.onChanged)
 		self.speechHookEnabled.Bind(wx.EVT_CHECKBOX, self.onChanged)
+		self.geckoBusyExperiment.Bind(wx.EVT_CHECKBOX, self.onChanged)
 		self.announceSpeechHookLoaded.Bind(wx.EVT_CHECKBOX, self.onChanged)
 		self.speechHookLoadedMessage.Bind(wx.EVT_TEXT, self.onChanged)
 
@@ -92,6 +103,7 @@ class AdvancedPanel(wx.Panel):
 
 	def apply_live(self, save=True):
 		_set_debug_logging_enabled(self.debugLogging.GetValue())
+		_set_gecko_initial_busy_state_presentation_suppressed(self.geckoBusyExperiment.GetValue())
 		_set_announce_speech_hook_loaded_enabled(self.announceSpeechHookLoaded.GetValue())
 		_set_speech_hook_loaded_message(self.speechHookLoadedMessage.GetValue())
 		_set_speech_hook_enabled(self.speechHookEnabled.GetValue())
