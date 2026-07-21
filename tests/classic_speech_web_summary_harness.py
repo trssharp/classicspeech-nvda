@@ -968,5 +968,216 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.ui.messages, [])
 
 
+class _BusyDiagnosticState:
+    def __init__(self, name):
+        self.name = name
+
+
+class _BusyDiagnosticAppModule:
+    appName = "firefox"
+
+
+class Gecko_ia2:
+    def __init__(self, root, loading=True, ready=False, pass_through=False):
+        self.rootNVDAObject = root
+        self.isLoading = loading
+        self.isReady = ready
+        self.passThrough = pass_through
+        self.VBufHandle = object()
+
+
+class _BusyDiagnosticObject:
+    def __init__(self, states=(), parent=None):
+        self.states = set(states)
+        self.parent = parent
+        self.appModule = _BusyDiagnosticAppModule()
+        self.role = "document"
+        self.name = "private document title"
+        self._speakObjectPropertiesCache = {}
+
+
+class BusyDiagnosticRuntimeTests(unittest.TestCase):
+    """Debug-only provenance checks; they must not alter native event paths."""
+
+    def setUp(self):
+        import classic_speech_nvda_master_harness as nvda_harness
+
+        self.nvda_harness = nvda_harness
+        nvda_harness.ClassicSpeechNVDAConfigStartupTests().setUp()
+        self.module = nvda_harness._import_classic_speech_like_nvda()
+        import api
+        import logHandler
+        import speech.extensions
+        import ui
+        from globalPlugins._speech_core.settings.advanced_config import _set_debug_logging_enabled
+
+        self.api = api
+        self.log = logHandler.log
+        self.speech_extensions = speech.extensions
+        self.ui = ui
+        self._set_debug = _set_debug_logging_enabled
+        self._set_debug(False)
+        self.log.messages.clear()
+        self.ui.messages.clear()
+
+    def tearDown(self):
+        self._set_debug(False)
+        self.nvda_harness._reset_global_plugin_imports()
+
+    def _gecko_context(self, current=("BUSY",), cached=()):
+        root = _BusyDiagnosticObject(current)
+        document = Gecko_ia2(root)
+        root.treeInterceptor = document
+        root._speakObjectPropertiesCache["states"] = set(_BusyDiagnosticState(name) for name in cached)
+        self.api.getFocusObject = lambda: root
+        return root, document
+
+    def test_busy_diagnostic_record_includes_required_event_focus_buffer_and_state_fields(self):
+        root, document = self._gecko_context(current=("BUSY",), cached=())
+        plugin = object.__new__(self.module.GlobalPlugin)
+
+        record = plugin._busy_diagnostic_snapshot("stateChange", root)
+
+        self.assertEqual(
+            set(record),
+            {
+                "t_monotonic", "event", "obj_id", "obj_class", "app_name", "app_module_class",
+                "role", "name", "states", "busy_now", "focus_id", "is_focus",
+                "focus_ancestor_ids", "is_focus_ancestor", "focus_difference_level",
+                "tree_interceptor_id", "tree_interceptor_class", "backend", "root_id", "is_root",
+                "vbuf_handle_id", "is_loading", "is_ready", "pass_through", "cached_states_present",
+                "cached_states", "current_states", "state_symmetric_difference", "busy_only_delta",
+                "strict_candidate", "automatic_summary_pending", "automatic_summary_reported",
+            },
+        )
+        self.assertEqual(record["event"], "stateChange")
+        self.assertEqual(record["backend"], "gecko")
+        self.assertTrue(record["is_focus"])
+        self.assertTrue(record["is_root"])
+        self.assertEqual(record["name"], "<redacted>")
+        self.assertEqual(record["tree_interceptor_id"], id(document))
+
+    def test_busy_diagnostic_marks_root_focused_gecko_loading_busy_only_candidate(self):
+        root, _document = self._gecko_context(current=("BUSY",), cached=())
+        plugin = object.__new__(self.module.GlobalPlugin)
+
+        record = plugin._busy_diagnostic_snapshot("stateChange", root)
+
+        self.assertTrue(record["busy_now"])
+        self.assertEqual(record["state_symmetric_difference"], ["BUSY"])
+        self.assertTrue(record["busy_only_delta"])
+        self.assertTrue(record["strict_candidate"])
+
+    def test_busy_diagnostic_marks_focus_ancestor_and_busy_plus_other_delta_non_candidates(self):
+        ancestor = _BusyDiagnosticObject((_BusyDiagnosticState("BUSY"), _BusyDiagnosticState("SELECTED")))
+        root = _BusyDiagnosticObject((_BusyDiagnosticState("BUSY"), _BusyDiagnosticState("SELECTED")), parent=ancestor)
+        document = Gecko_ia2(root)
+        root.treeInterceptor = document
+        ancestor.treeInterceptor = document
+        ancestor._speakObjectPropertiesCache["states"] = set()
+        self.api.getFocusObject = lambda: root
+        plugin = object.__new__(self.module.GlobalPlugin)
+
+        record = plugin._busy_diagnostic_snapshot("stateChange", ancestor)
+
+        self.assertTrue(record["is_focus_ancestor"])
+        self.assertFalse(record["is_focus"])
+        self.assertEqual(record["state_symmetric_difference"], ["BUSY", "SELECTED"])
+        self.assertFalse(record["strict_candidate"])
+
+    def test_busy_diagnostic_does_not_call_speech_filter_or_mutate_focus_caret_selection_or_cache(self):
+        root, document = self._gecko_context(current=("BUSY",), cached=("SELECTED",))
+        plugin = object.__new__(self.module.GlobalPlugin)
+        cache_before = set(root._speakObjectPropertiesCache["states"])
+        callbacks_before = list(self.speech_extensions.filter_speechSequence.callbacks)
+        focus_before = self.api.getFocusObject()
+        handle_before = document.VBufHandle
+
+        plugin._busy_diagnostic_snapshot("stateChange", root)
+
+        self.assertEqual(root._speakObjectPropertiesCache["states"], cache_before)
+        self.assertEqual(self.speech_extensions.filter_speechSequence.callbacks, callbacks_before)
+        self.assertIs(self.api.getFocusObject(), focus_before)
+        self.assertIs(document.VBufHandle, handle_before)
+        self.assertEqual(self.ui.messages, [])
+
+    def test_busy_diagnostic_is_silent_when_classicspeech_debug_logging_is_off(self):
+        root, _document = self._gecko_context(current=("BUSY",), cached=())
+        plugin = object.__new__(self.module.GlobalPlugin)
+
+        plugin._log_busy_diagnostic("stateChange", root)
+
+        self.assertEqual(self.log.messages, [])
+
+    def test_busy_diagnostic_enabled_emits_one_structured_redacted_record(self):
+        import json
+
+        root, _document = self._gecko_context(current=("BUSY",), cached=())
+        plugin = object.__new__(self.module.GlobalPlugin)
+        calls = []
+        original_debug = self.module.log.debug
+        self.module.log.debug = lambda *args, **kwargs: calls.append((args, kwargs))
+        self._set_debug(True)
+        try:
+            plugin._log_busy_diagnostic("stateChange", root)
+        finally:
+            self.module.log.debug = original_debug
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0][0], "ClassicSpeech debug: %s")
+        record = json.loads(calls[0][0][1])
+        self.assertEqual(record["event"], "stateChange")
+        self.assertEqual(record["name"], "<redacted>")
+        self.assertTrue(record["strict_candidate"])
+
+    def test_busy_diagnostic_missing_or_stale_fields_fail_closed_without_raising(self):
+        class StaleObject:
+            @property
+            def appModule(self):
+                raise RuntimeError("stale object")
+
+        plugin = object.__new__(self.module.GlobalPlugin)
+
+        record = plugin._busy_diagnostic_snapshot("stateChange", StaleObject())
+
+        self.assertEqual(record["event"], "stateChange")
+        self.assertFalse(record["strict_candidate"])
+        self.assertEqual(record["name"], "<redacted>")
+
+    def test_busy_diagnostic_event_handlers_call_next_handler_once_before_logging(self):
+        root, document = self._gecko_context(current=("BUSY",), cached=())
+        plugin = object.__new__(self.module.GlobalPlugin)
+        self._set_debug(True)
+        order = []
+        plugin._log_busy_diagnostic = lambda event, obj: order.append(("log", event, obj))
+
+        plugin.event_gainFocus(root, lambda: order.append(("native", "gainFocus")))
+        plugin.event_stateChange(root, lambda: order.append(("native", "stateChange")))
+        plugin.event_documentLoadComplete(document, lambda: order.append(("native", "documentLoadComplete")))
+
+        self.assertEqual(
+            order,
+            [
+                ("native", "gainFocus"), ("log", "gainFocus", root),
+                ("native", "stateChange"), ("log", "stateChange", root),
+                ("native", "documentLoadComplete"), ("log", "documentLoadComplete", document),
+            ],
+        )
+
+    def test_busy_diagnostic_off_leaves_all_three_events_observationally_inert(self):
+        root, document = self._gecko_context(current=("BUSY",), cached=())
+        plugin = object.__new__(self.module.GlobalPlugin)
+        observed = []
+        plugin._log_busy_diagnostic = lambda *args: observed.append(args)
+        calls = []
+
+        plugin.event_gainFocus(root, lambda: calls.append("gainFocus"))
+        plugin.event_stateChange(root, lambda: calls.append("stateChange"))
+        plugin.event_documentLoadComplete(document, lambda: calls.append("documentLoadComplete"))
+
+        self.assertEqual(calls, ["gainFocus", "stateChange", "documentLoadComplete"])
+        self.assertEqual(observed, [])
+
+
 if __name__ == "__main__":
     unittest.main()
