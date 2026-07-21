@@ -243,9 +243,12 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		from globalPlugins._speech_core.web_summary import SUMMARY_ITEM_TYPES
 		dialog._pageSummaryElements = list(SUMMARY_ITEM_TYPES)
 		dialog.pageSummaryTitleCheckBox = ValueControl(True)
+		# The initial automatic-reporting choice is independently false.
+		dialog.pageSummaryAutomaticReportingCheckBox = ValueControl(False)
 		dialog.pageSummaryElementList = CheckListControl()
 		dialog._originalPageSummaryTypes = ("heading", "landmark", "link", "formField", "button", "table")
 		dialog._originalPageSummaryTitle = False
+		dialog._originalPageSummaryAutomaticReporting = False
 		dialog.applyBtn = ApplyButton()
 		dialog.layoutCalls = 0
 		dialog.Layout = lambda: setattr(dialog, "layoutCalls", dialog.layoutCalls + 1)
@@ -262,6 +265,9 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			["annotation", "comboBox"],
 		)
 		self.assertTrue(config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includeDocumentTitle"])
+		self.assertFalse(
+			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["automaticReportOnPageLoad"]
+		)
 		self.assertEqual(config.conf["virtualBuffers"]["browseModeTouchNavigationElements"], ["heading", "table"])
 		self.assertEqual(config.conf["virtualBuffers"]["loadChromiumVBufOnBusyState"], "DISABLED")
 		self.assertTrue(config.conf["annotations"]["reportDetails"])
@@ -271,9 +277,17 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		self.assertTrue(dialog.applyBtn.enabled)
 		self.assertGreaterEqual(dialog.layoutCalls, 1)
 
-		# Apply makes the current Page Summary selection the new Cancel baseline.
+		# A checkbox change writes through immediately and makes Apply available.
+		dialog.pageSummaryAutomaticReportingCheckBox.value = True
+		dialog.onChanged()
+		self.assertTrue(
+			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["automaticReportOnPageLoad"]
+		)
+
+		# Apply makes the current Page Summary choices the new Cancel baseline.
 		dialog.onApply(None)
 		dialog.pageSummaryTitleCheckBox.value = False
+		dialog.pageSummaryAutomaticReportingCheckBox.value = False
 		dialog.pageSummaryElementList.checked = [7]
 		dialog.onChanged()
 		self.assertEqual(
@@ -281,6 +295,9 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			["heading"],
 		)
 		self.assertFalse(config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includeDocumentTitle"])
+		self.assertFalse(
+			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["automaticReportOnPageLoad"]
+		)
 		dialog.onCancel(None)
 		self.assertTrue(dialog.destroyed)
 		self.assertEqual(
@@ -288,6 +305,9 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			["annotation", "comboBox"],
 		)
 		self.assertTrue(config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["includeDocumentTitle"])
+		self.assertTrue(
+			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["automaticReportOnPageLoad"]
+		)
 		self.assertEqual(config.conf["virtualBuffers"]["maxLineLength"], 120)
 		self.assertEqual(config.conf["virtualBuffers"]["loadChromiumVBufOnBusyState"], "DISABLED")
 		self.assertTrue(config.conf["annotations"]["reportDetails"])
@@ -341,8 +361,29 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
 		self.assertIn("choices=[item.plural_label for item in self._pageSummaryElements]", dialog_source)
 		self.assertIn('wx.CheckBox(_box, label="Title")', dialog_source)
+		automatic_checkbox = (
+			'self.pageSummaryAutomaticReportingCheckBox = group.addItem(\n'
+			'			wx.CheckBox(\n'
+			'				_box,\n'
+			'				label="Automatically report summary when a Browse Mode page is ready",\n'
+			'			)\n'
+			'		)'
+		)
+		self.assertIn(automatic_checkbox, dialog_source)
+		self.assertIn(
+			"self.pageSummaryAutomaticReportingCheckBox.SetValue(get_automatic_reporting_enabled())",
+			dialog_source,
+		)
+		self.assertIn(
+			"self.pageSummaryAutomaticReportingCheckBox.Bind(wx.EVT_CHECKBOX, self.onChanged)",
+			dialog_source,
+		)
 		self.assertLess(
 			dialog_source.index('wx.CheckBox(_box, label="Title")'),
+			dialog_source.index("self.pageSummaryAutomaticReportingCheckBox"),
+		)
+		self.assertLess(
+			dialog_source.index("self.pageSummaryAutomaticReportingCheckBox"),
 			dialog_source.index('"Page Summary choices:"'),
 		)
 		self.assertNotIn('Shift+{item.key}', dialog_source)
@@ -358,6 +399,9 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			"Choose the Browse Mode element types included when you press NVDA+Shift+U.",
 			"get_included_element_types",
 			"set_included_element_types",
+			"get_automatic_reporting_enabled",
+			"set_automatic_reporting_enabled",
+			"_originalPageSummaryAutomaticReporting",
 		):
 			self.assertIn(expected, dialog_source)
 
