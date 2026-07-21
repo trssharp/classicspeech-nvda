@@ -38,6 +38,16 @@ class FakeBrowseDocument:
         return iter(self.items_by_type.get(item_type, ()))
 
 
+class RootAccessRaisesBrowseDocument(FakeBrowseDocument):
+    @property
+    def rootNVDAObject(self):
+        raise RuntimeError("stale tree interceptor")
+
+    @rootNVDAObject.setter
+    def rootNVDAObject(self, value):
+        pass
+
+
 class WebSummaryModelTests(unittest.TestCase):
     def setUp(self):
         from _speech_core import web_summary
@@ -116,6 +126,10 @@ class WebSummaryModelTests(unittest.TestCase):
         summary = "1 heading, 2 links."
         self.assertEqual(
             self.summary.format_summary_with_document_title("Example page", summary),
+            "Title: Example page. 1 heading, 2 links.",
+        )
+        self.assertEqual(
+            self.summary.format_summary_with_document_title("Example page.", summary),
             "Title: Example page. 1 heading, 2 links.",
         )
         self.assertEqual(
@@ -346,6 +360,8 @@ class WebSummaryCommandTests(unittest.TestCase):
         self.assertEqual(link.move_calls, 0)
 
     def test_page_summary_uses_count_only_output_when_document_title_access_raises(self):
+        import logHandler
+
         class BrokenRoot:
             @property
             def name(self):
@@ -359,12 +375,43 @@ class WebSummaryCommandTests(unittest.TestCase):
         self.api.getFocusObject = lambda: focus
         from globalPlugins._speech_core.settings.web_summary_config import set_include_document_title
 
+        logHandler.log.messages.clear()
         set_include_document_title(True)
         plugin = object.__new__(self.module.GlobalPlugin)
 
         plugin.script_pageSummary(None)
 
         self.assertEqual(self.ui.messages, ["1 heading, 1 link."])
+        self.assertIn(
+            ("debug", "ClassicSpeech: failed to read page summary document title"),
+            logHandler.log.messages,
+        )
+        self.assertIs(self.api.getFocusObject(), focus)
+        self.assertEqual(heading.report_calls, 0)
+        self.assertEqual(heading.move_calls, 0)
+        self.assertEqual(link.report_calls, 0)
+        self.assertEqual(link.move_calls, 0)
+
+    def test_page_summary_uses_count_only_output_when_document_root_access_raises(self):
+        import logHandler
+        from globalPlugins._speech_core.settings.web_summary_config import set_include_document_title
+
+        heading = FakeQuickNavItem()
+        link = FakeQuickNavItem()
+        document = RootAccessRaisesBrowseDocument({"heading": [heading], "link": [link]})
+        focus = type("Focus", (), {"treeInterceptor": document})()
+        self.api.getFocusObject = lambda: focus
+        logHandler.log.messages.clear()
+        set_include_document_title(True)
+        plugin = object.__new__(self.module.GlobalPlugin)
+
+        plugin.script_pageSummary(None)
+
+        self.assertEqual(self.ui.messages, ["1 heading, 1 link."])
+        self.assertIn(
+            ("debug", "ClassicSpeech: failed to read page summary document title"),
+            logHandler.log.messages,
+        )
         self.assertIs(self.api.getFocusObject(), focus)
         self.assertEqual(heading.report_calls, 0)
         self.assertEqual(heading.move_calls, 0)
