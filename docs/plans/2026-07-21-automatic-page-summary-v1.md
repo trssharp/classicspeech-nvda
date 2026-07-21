@@ -23,6 +23,7 @@
 - It never calls `QuickNavItem.report()` or `moveTo()` and never moves focus, system caret, browse cursor, selection, or document mode.
 - It must not change normal page-load speech, Say All, browser semantics, or ClassicSpeech's speech filter.
 - If the focus/document changes before readiness, the pending report is silently discarded.
+- At most one automatic-summary callback may be pending globally: it belongs only to the current focused Browse Mode document. A new document/load cancels and replaces any older pending callback rather than retaining a multi-document queue.
 - A browser-specific count difference is valid because Firefox and Chromium build separate NVDA virtual-buffer backends. The feature must never normalize or compare counts across browsers.
 
 ## NVDA API facts this plan relies on
