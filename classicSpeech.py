@@ -1285,9 +1285,37 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             setattr(self, name, state)
         return state
 
-    def _trim_automatic_summary_state(self, state):
-        while len(state) > self._AUTOMATIC_PAGE_SUMMARY_STATE_LIMIT:
-            state.pop(next(iter(state)), None)
+    def _automatic_summary_load_cycle_marker(self, document, event_obj=None):
+        """Return the NVDA virtual-buffer generation for one document load.
+
+        A VirtualBuffer can keep its Python identity across a refresh, while
+        ``loadBuffer`` replaces ``VBufHandle`` for the newly loaded buffer.
+        NVDA also exposes ``isLoading`` while that replacement is in progress.
+        Together these form the cycle boundary: repeated events for one ready
+        handle dedupe, while a replacement handle (or an in-progress reload)
+        remains eligible. The event object is only a fallback for lightweight
+        non-VirtualBuffer test doubles without a handle.
+        """
+        try:
+            handle = getattr(document, "VBufHandle", None)
+            if handle is not None:
+                return ("buffer", id(handle))
+        except Exception:
+            pass
+        return ("event", id(event_obj)) if event_obj is not None else None
+
+    def _trim_automatic_summary_pending(self, pending):
+        while len(pending) > self._AUTOMATIC_PAGE_SUMMARY_STATE_LIMIT:
+            _key = next(iter(pending))
+            _document, callback, _attempt = pending.pop(_key)
+            try:
+                callback.Stop()
+            except Exception:
+                pass
+
+    def _trim_automatic_summary_reported(self, reported):
+        while len(reported) > self._AUTOMATIC_PAGE_SUMMARY_STATE_LIMIT:
+            reported.pop(next(iter(reported)))
 
     def _cancel_automatic_page_summaries(self):
         self._automaticSummaryTerminated = True
@@ -1311,7 +1339,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             log.debug("ClassicSpeech: failed to defer automatic page summary", exc_info=True)
             return
         pending[key] = (document, later, attempt)
-        self._trim_automatic_summary_state(pending)
+        self._trim_automatic_summary_pending(pending)
 
     def _run_automatic_page_summary(self, document, attempt):
         key = id(document)
@@ -1325,16 +1353,19 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         try:
             if not get_automatic_reporting_enabled() or self._automatic_summary_document_for_event(document) is not document:
                 return
+            if not callable(getattr(document, "_iterNodesByType", None)):
+                return
             if getattr(document, "isReady", False) is not True:
                 if attempt < self._AUTOMATIC_PAGE_SUMMARY_MAX_RETRIES:
                     self._queue_automatic_page_summary(document, attempt + 1)
                 return
             reported = self._automatic_summary_state("_automaticSummaryReported")
-            if reported.get(key) is document:
+            cycle_marker = self._automatic_summary_load_cycle_marker(document)
+            if reported.get(key) == (document, cycle_marker):
                 return
             self._report_page_summary_for_document(document)
-            reported[key] = document
-            self._trim_automatic_summary_state(reported)
+            reported[key] = (document, cycle_marker)
+            self._trim_automatic_summary_reported(reported)
         except Exception:
             # Automatic failures are silent; the manual command remains explicit.
             log.debug("ClassicSpeech: automatic page summary failed", exc_info=True)
@@ -1351,7 +1382,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             key = id(document)
             pending = self._automatic_summary_state("_automaticSummaryPending")
             reported = self._automatic_summary_state("_automaticSummaryReported")
-            if (pending.get(key) and pending[key][0] is document) or reported.get(key) is document:
+            if pending.get(key) and pending[key][0] is document:
+                return
+            cycle_marker = self._automatic_summary_load_cycle_marker(document, obj)
+            was_reported = reported.get(key)
+            if was_reported == (document, cycle_marker) and not getattr(document, "isLoading", False):
                 return
             self._queue_automatic_page_summary(document)
         except Exception:
