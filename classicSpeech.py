@@ -58,6 +58,7 @@ from ._speech_core.history_viewer import show_history_dialog, is_history_list_fo
 from ._speech_core.interrupt_control import SpeechInterruptController
 from ._speech_core.web_summary import build_summary, format_summary_with_document_title
 from ._speech_core.settings.web_summary_config import (
+    get_automatic_reporting_enabled,
     get_include_document_title,
     get_included_element_types,
 )
@@ -73,6 +74,13 @@ from ._speech_core.plugin_config import (
 
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
+
+    # ``documentLoadComplete`` can precede a usable virtual buffer, notably for
+    # early Chromium focus. These retries are wake-ups only: readiness remains
+    # the sole authorization to speak.
+    _AUTOMATIC_PAGE_SUMMARY_RETRY_DELAY_MS = 50
+    _AUTOMATIC_PAGE_SUMMARY_MAX_RETRIES = 8
+    _AUTOMATIC_PAGE_SUMMARY_STATE_LIMIT = 32
 
     __gestures = {
         "kb:NVDA+Shift+C": "openClassicSpeechSettings",
@@ -613,6 +621,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._pendingContainerFlush = None
         self._flushingPendingContainer = False
         self._speechHookRegistered = False
+        self._automaticSummaryPending = {}
+        self._automaticSummaryReported = {}
+        self._automaticSummaryTerminated = False
 
         self._installClassicSpeechMenu()
         self.set_speech_hook_enabled(get_speech_hook_enabled())
@@ -620,6 +631,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         log.info(f"ClassicSpeech loaded (profile: {defaultProfile}, hook: {self._speechHookRegistered})")
 
     def terminate(self):
+        self._cancel_automatic_page_summaries()
         self._unregister_speech_hook()
         self._restore_remote_speech_compatibility()
         self._restore_windows_toast_system_route()
@@ -1249,6 +1261,102 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             log.debug("ClassicSpeech: failed to read page summary document title", exc_info=True)
             return None
 
+    def _report_page_summary_for_document(self, document):
+        """Use the manual Page Summary formatting and one native UI message."""
+        summary = build_summary(document, get_included_element_types())
+        document_title = self._get_page_summary_document_title(document) if get_include_document_title() else None
+        ui.message(format_summary_with_document_title(document_title, summary))
+
+    def _automatic_summary_document_for_event(self, obj):
+        try:
+            focus = api.getFocusObject()
+            document = getattr(focus, "treeInterceptor", None)
+            event_document = obj if hasattr(obj, "_iterNodesByType") else getattr(obj, "treeInterceptor", None)
+            if document is None or document is not event_document:
+                return None
+            return document if hasattr(document, "_iterNodesByType") else None
+        except Exception:
+            return None
+
+    def _automatic_summary_state(self, name):
+        state = getattr(self, name, None)
+        if not isinstance(state, dict):
+            state = {}
+            setattr(self, name, state)
+        return state
+
+    def _trim_automatic_summary_state(self, state):
+        while len(state) > self._AUTOMATIC_PAGE_SUMMARY_STATE_LIMIT:
+            state.pop(next(iter(state)), None)
+
+    def _cancel_automatic_page_summaries(self):
+        self._automaticSummaryTerminated = True
+        pending = self._automatic_summary_state("_automaticSummaryPending")
+        for _document, callback, _attempt in tuple(pending.values()):
+            try:
+                callback.Stop()
+            except Exception:
+                pass
+        pending.clear()
+        self._automatic_summary_state("_automaticSummaryReported").clear()
+
+    def _queue_automatic_page_summary(self, document, attempt=0):
+        pending = self._automatic_summary_state("_automaticSummaryPending")
+        key = id(document)
+        def callback():
+            self._run_automatic_page_summary(document, attempt)
+        try:
+            later = wx.CallLater(self._AUTOMATIC_PAGE_SUMMARY_RETRY_DELAY_MS, callback)
+        except Exception:
+            log.debug("ClassicSpeech: failed to defer automatic page summary", exc_info=True)
+            return
+        pending[key] = (document, later, attempt)
+        self._trim_automatic_summary_state(pending)
+
+    def _run_automatic_page_summary(self, document, attempt):
+        key = id(document)
+        pending = self._automatic_summary_state("_automaticSummaryPending")
+        entry = pending.get(key)
+        if entry is None or entry[0] is not document or entry[2] != attempt:
+            return
+        pending.pop(key, None)
+        if getattr(self, "_automaticSummaryTerminated", False):
+            return
+        try:
+            if not get_automatic_reporting_enabled() or self._automatic_summary_document_for_event(document) is not document:
+                return
+            if getattr(document, "isReady", False) is not True:
+                if attempt < self._AUTOMATIC_PAGE_SUMMARY_MAX_RETRIES:
+                    self._queue_automatic_page_summary(document, attempt + 1)
+                return
+            reported = self._automatic_summary_state("_automaticSummaryReported")
+            if reported.get(key) is document:
+                return
+            self._report_page_summary_for_document(document)
+            reported[key] = document
+            self._trim_automatic_summary_state(reported)
+        except Exception:
+            # Automatic failures are silent; the manual command remains explicit.
+            log.debug("ClassicSpeech: automatic page summary failed", exc_info=True)
+
+    def event_documentLoadComplete(self, obj, nextHandler):
+        """Report only one ready current Browse Mode summary after NVDA handles loading."""
+        nextHandler()
+        try:
+            if getattr(self, "_automaticSummaryTerminated", False) or not get_automatic_reporting_enabled():
+                return
+            document = self._automatic_summary_document_for_event(obj)
+            if document is None:
+                return
+            key = id(document)
+            pending = self._automatic_summary_state("_automaticSummaryPending")
+            reported = self._automatic_summary_state("_automaticSummaryReported")
+            if (pending.get(key) and pending[key][0] is document) or reported.get(key) is document:
+                return
+            self._queue_automatic_page_summary(document)
+        except Exception:
+            log.debug("ClassicSpeech: automatic page summary event handling failed", exc_info=True)
+
     @scriptHandler.script(
         description="Reports selected Browse Mode element counts for the current page",
         category="ClassicSpeech",
@@ -1260,11 +1368,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if document is None or not hasattr(document, "_iterNodesByType"):
                 ui.message("Page summary is not available here.")
                 return
-            summary = build_summary(document, get_included_element_types())
-            document_title = None
-            if get_include_document_title():
-                document_title = self._get_page_summary_document_title(document)
-            ui.message(format_summary_with_document_title(document_title, summary))
+            self._report_page_summary_for_document(document)
         except Exception:
             log.exception("ClassicSpeech page summary failed")
             ui.message("Page summary is not available here.")

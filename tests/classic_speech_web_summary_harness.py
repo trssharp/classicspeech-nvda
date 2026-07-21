@@ -23,12 +23,13 @@ class FakeQuickNavItem:
 
 
 class FakeBrowseDocument:
-    def __init__(self, items_by_type=None, unsupported_types=(), root_name=None):
+    def __init__(self, items_by_type=None, unsupported_types=(), root_name=None, is_ready=True):
         self.items_by_type = dict(items_by_type or {})
         self.unsupported_types = set(unsupported_types)
         self.iterator_calls = []
         self.focus_marker = object()
         self.cursor_marker = object()
+        self.isReady = is_ready
         self.rootNVDAObject = type("Root", (), {"name": root_name})()
 
     def _iterNodesByType(self, item_type, direction="next", pos=None):
@@ -473,6 +474,190 @@ class WebSummaryCommandTests(unittest.TestCase):
 
         self.assertEqual(speech.extensions.filter_speechSequence.callbacks, callbacks_before)
         self.assertEqual(self.ui.messages, ["Page summary is not available here."])
+
+
+class _ControlledLater:
+    def __init__(self, delay, callback, *args, **kwargs):
+        self.delay = delay
+        self.callback = callback
+        self.args = args
+        self.kwargs = kwargs
+        self.stopped = False
+
+    def Stop(self):
+        self.stopped = True
+
+    def run(self):
+        if not self.stopped:
+            self.callback(*self.args, **self.kwargs)
+
+
+class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
+    """Focused event-loop tests for the opt-in, ready-only runtime path."""
+
+    def setUp(self):
+        import classic_speech_nvda_master_harness as nvda_harness
+
+        self.nvda_harness = nvda_harness
+        nvda_harness.ClassicSpeechNVDAConfigStartupTests().setUp()
+        self.module = nvda_harness._import_classic_speech_like_nvda()
+        import api
+        import speech.extensions
+        import ui
+        from globalPlugins._speech_core.settings.web_summary_config import (
+            set_automatic_reporting_enabled,
+            set_include_document_title,
+            set_included_element_types,
+        )
+
+        self.api = api
+        self.ui = ui
+        self.speech_extensions = speech.extensions
+        self.ui.messages.clear()
+        self.laters = []
+        self.original_call_later = self.module.wx.CallLater
+        self.module.wx.CallLater = self._call_later
+        set_automatic_reporting_enabled(False)
+        set_include_document_title(False)
+        set_included_element_types(["heading", "link"])
+
+    def tearDown(self):
+        self.module.wx.CallLater = self.original_call_later
+        self.nvda_harness._reset_global_plugin_imports()
+
+    def _call_later(self, delay, callback, *args, **kwargs):
+        later = _ControlledLater(delay, callback, *args, **kwargs)
+        self.laters.append(later)
+        return later
+
+    def _start_event(self, document):
+        focus = type("Focus", (), {"treeInterceptor": document})()
+        target = type("DocumentTarget", (), {"treeInterceptor": document})()
+        self.api.getFocusObject = lambda: focus
+        plugin = object.__new__(self.module.GlobalPlugin)
+        next_calls = []
+        plugin.event_documentLoadComplete(target, lambda: next_calls.append("native"))
+        self.assertEqual(next_calls, ["native"])
+        return plugin, focus, target
+
+    def test_disabled_auto_reporting_only_preserves_native_load_handling(self):
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        plugin, _focus, _target = self._start_event(document)
+
+        self.assertEqual(self.laters, [])
+        self.assertEqual(self.ui.messages, [])
+        self.assertFalse(getattr(plugin, "_automaticSummaryPending", {}))
+
+    def test_ready_current_document_reports_once_with_one_native_message_and_no_mutation(self):
+        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+
+        heading = FakeQuickNavItem()
+        link = FakeQuickNavItem()
+        document = FakeBrowseDocument({"heading": [heading], "link": [link, FakeQuickNavItem()]})
+        set_automatic_reporting_enabled(True)
+        callbacks_before = list(self.speech_extensions.filter_speechSequence.callbacks)
+        plugin, focus, _target = self._start_event(document)
+        focus_before = document.focus_marker
+        cursor_before = document.cursor_marker
+
+        self.assertEqual(len(self.laters), 1)
+        self.laters.pop(0).run()
+
+        self.assertEqual(self.ui.messages, ["1 heading, 2 links."])
+        self.assertIs(self.api.getFocusObject(), focus)
+        self.assertIs(document.focus_marker, focus_before)
+        self.assertIs(document.cursor_marker, cursor_before)
+        self.assertEqual(heading.report_calls, 0)
+        self.assertEqual(heading.move_calls, 0)
+        self.assertEqual(link.report_calls, 0)
+        self.assertEqual(link.move_calls, 0)
+        self.assertEqual(self.speech_extensions.filter_speechSequence.callbacks, callbacks_before)
+        self.assertEqual(len(getattr(plugin, "_automaticSummaryPending", {})), 0)
+
+    def test_loading_document_never_speaks_early_then_reports_once_when_ready(self):
+        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]}, is_ready=False)
+        set_automatic_reporting_enabled(True)
+        _plugin, _focus, _target = self._start_event(document)
+
+        self.laters.pop(0).run()
+        self.assertEqual(self.ui.messages, [])
+        self.assertEqual(len(self.laters), 1)
+        document.isReady = True
+        self.laters.pop(0).run()
+
+        self.assertEqual(self.ui.messages, ["1 heading."])
+        self.assertEqual(self.laters, [])
+
+    def test_focus_change_discards_pending_work_silently(self):
+        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        set_automatic_reporting_enabled(True)
+        _plugin, _focus, _target = self._start_event(document)
+        self.api.getFocusObject = lambda: type("Focus", (), {"treeInterceptor": FakeBrowseDocument()})()
+
+        self.laters.pop(0).run()
+
+        self.assertEqual(self.ui.messages, [])
+        self.assertEqual(self.laters, [])
+
+    def test_repeated_document_load_events_dedupe_pending_and_reported_cycles(self):
+        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        set_automatic_reporting_enabled(True)
+        plugin, _focus, target = self._start_event(document)
+        plugin.event_documentLoadComplete(target, lambda: None)
+        self.assertEqual(len(self.laters), 1)
+
+        self.laters.pop(0).run()
+        plugin.event_documentLoadComplete(target, lambda: None)
+
+        self.assertEqual(self.ui.messages, ["1 heading."])
+        self.assertEqual(self.laters, [])
+
+    def test_automatic_report_includes_enabled_best_effort_title(self):
+        from globalPlugins._speech_core.settings.web_summary_config import (
+            set_automatic_reporting_enabled,
+            set_include_document_title,
+        )
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]}, root_name="Ready page")
+        set_automatic_reporting_enabled(True)
+        set_include_document_title(True)
+        _plugin, _focus, _target = self._start_event(document)
+
+        self.laters.pop(0).run()
+
+        self.assertEqual(self.ui.messages, ["Title: Ready page. 1 heading."])
+
+    def test_terminate_cancels_and_clears_pending_callbacks(self):
+        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]}, is_ready=False)
+        set_automatic_reporting_enabled(True)
+        plugin, _focus, _target = self._start_event(document)
+        pending = self.laters[0]
+        plugin._unregister_speech_hook = lambda: None
+        plugin._restore_remote_speech_compatibility = lambda: None
+        plugin._restore_windows_toast_system_route = lambda: None
+        plugin._restore_system_notification_profile_routes = lambda: None
+        plugin._restore_configuration_save_revert_system_routes = lambda: None
+        plugin._restore_mouse_pointer_profile_route = lambda: None
+        plugin._restore_keyboard_entry_profile_route = lambda: None
+        plugin._restore_shortcut_speaker_bypass = lambda: None
+        plugin._interruptController = type("Interrupt", (), {"uninstall": lambda self: None})()
+        plugin._keyLabelRuntime = type("Labels", (), {"terminate": lambda self: None})()
+        plugin._removeClassicSpeechMenu = lambda: None
+
+        plugin.terminate()
+        pending.run()
+
+        self.assertTrue(pending.stopped)
+        self.assertEqual(getattr(plugin, "_automaticSummaryPending", {}), {})
+        self.assertEqual(self.ui.messages, [])
 
 
 if __name__ == "__main__":
