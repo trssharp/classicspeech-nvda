@@ -121,6 +121,17 @@ def format_summary_counts(counts: Iterable[tuple[SummaryItemType, int]]) -> str:
     return f"{', '.join(phrases)}."
 
 
+def format_summary_with_document_title(document_title: object, summary: str) -> str:
+    """Prefix a nonblank document title without changing the count model."""
+
+    if not isinstance(document_title, str):
+        return summary
+    title = " ".join(document_title.split())
+    if not title:
+        return summary
+    return f"{title}. {summary}"
+
+
 def build_summary(
     document: BrowseSummaryDocument,
     selected_item_types: Iterable[object] | None,

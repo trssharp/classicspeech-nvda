@@ -56,10 +56,13 @@ from ._speech_core.settings.voice_profiles_dialog import VoiceProfilesDialog
 from ._speech_core.history import SpeechHistoryBuffer, consume_history_native_passthrough
 from ._speech_core.history_viewer import show_history_dialog, is_history_list_focus
 from ._speech_core.interrupt_control import SpeechInterruptController
-from ._speech_core.web_summary import build_summary
+from ._speech_core.web_summary import build_summary, format_summary_with_document_title
+from .page_orientation_runtime import install as install_page_orientation, restore as restore_page_orientation
 from ._speech_core.settings.web_summary_config import (
     get_automatic_reporting_enabled,
     get_included_element_types,
+    get_include_document_title,
+    get_page_orientation_enabled,
 )
 
 log = logHandler.log
@@ -622,6 +625,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._automaticSummaryPending = None
         self._automaticSummaryReported = None
         self._automaticSummaryTerminated = False
+        self._pageOrientationRoutes = install_page_orientation(self)
 
         self._installClassicSpeechMenu()
         self.set_speech_hook_enabled(get_speech_hook_enabled())
@@ -630,6 +634,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def terminate(self):
         self._cancel_automatic_page_summaries()
+        restore_page_orientation(self, getattr(self, "_pageOrientationRoutes", ()))
+        self._pageOrientationRoutes = []
         self._unregister_speech_hook()
         self._restore_remote_speech_compatibility()
         self._restore_windows_toast_system_route()
@@ -1247,8 +1253,34 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
 
     def _report_page_summary_for_document(self, document):
-        """Speak one count-only Page Summary with native UI messaging."""
-        ui.message(build_summary(document, get_included_element_types()))
+        """Speak one Page Summary, optionally prefixed by the document name."""
+        summary = build_summary(document, get_included_element_types())
+        document_title = None
+        if get_include_document_title():
+            try:
+                document_title = getattr(getattr(document, "rootNVDAObject", None), "name", None)
+            except Exception:
+                log.debugWarning("ClassicSpeech: unable to read Page Summary document title", exc_info=True)
+        ui.message(format_summary_with_document_title(document_title, summary))
+
+    def _report_page_orientation_for_document(self, document):
+        """Speak the ready current document's summary for Page Orientation.
+
+        Returns true only when the replacement was safely spoken. The runtime
+        wrapper falls back to NVDA's native presentation on every false result.
+        """
+        try:
+            if not get_page_orientation_enabled():
+                return False
+            if self._automatic_summary_document_for_event(document) is not document:
+                return False
+            if getattr(document, "isReady", False) is not True:
+                return False
+            self._report_page_summary_for_document(document)
+            return True
+        except Exception:
+            log.debug("ClassicSpeech: Page Orientation summary failed", exc_info=True)
+            return False
 
     def _automatic_summary_document_for_event(self, obj):
         try:
@@ -1372,6 +1404,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if pending is not None and (pending[0] is not document or pending[1] != cycle_marker):
                 self._stop_automatic_page_summary_pending()
                 pending = None
+            if get_page_orientation_enabled():
+                # Page Orientation owns the single automatic summary at initial
+                # ready-page presentation; never queue the older deferred path.
+                if pending is not None:
+                    self._stop_automatic_page_summary_pending()
+                return
             if not get_automatic_reporting_enabled():
                 if pending is not None:
                     self._stop_automatic_page_summary_pending()
