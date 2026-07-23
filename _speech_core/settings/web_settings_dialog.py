@@ -513,7 +513,9 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 			)
 		edgeEditor = self.__dict__.get("edgeNotificationsEditor")
 		if hasattr(self, "edgeNotificationsEditor") and edgeEditor is not None:
-			set_enabled_activity_ids(edgeEditor.getEnabledActivityIds())
+			# The registry setter deliberately accepts persisted-list shape only.
+			# The editor exposes its normalized IDs as a tuple, so serialize it.
+			set_enabled_activity_ids(list(edgeEditor.getEnabledActivityIds()))
 			set_custom_messages(edgeEditor.getCustomMessages())
 
 	def onCategoryChanged(self, evt):

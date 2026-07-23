@@ -46,6 +46,10 @@ class EdgeNotificationsPanel(RenameListPanel):
         )
 
     def loadData(self, enabledActivityIds, customMessages):
+        # Config getters expose normalized IDs as a tuple, while the persistence
+        # normalizer intentionally treats only lists as stored config values.
+        if isinstance(enabledActivityIds, tuple):
+            enabledActivityIds = list(enabledActivityIds)
         enabledIds = normalize_enabled_activity_ids(enabledActivityIds)
         customMessages = normalize_custom_messages(customMessages)
         mutedIds = [activityId for activityId in self._activityIds if activityId not in enabledIds]
