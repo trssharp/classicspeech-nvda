@@ -93,8 +93,18 @@ class EdgeNotificationConfigTests(unittest.TestCase):
         self.assertEqual(self.edge.get_enabled_activity_ids(), DEFAULT_ENABLED_IDS)
         section = config.conf.profiles[0]["classicSpeech"]
 
-        section["edgeNotificationData"] = {"enabledActivityIds": "not a list"}
-        self.assertEqual(self.edge.get_enabled_activity_ids(), DEFAULT_ENABLED_IDS)
+        malformed_values = (
+            "not a list",
+            {"PageZoom": True},
+            ("PageZoom",),
+            {"PageZoom"},
+            b"PageZoom",
+            iter(["PageZoom"]),
+        )
+        for value in malformed_values:
+            with self.subTest(value=type(value).__name__):
+                section["edgeNotificationData"] = {"enabledActivityIds": value}
+                self.assertEqual(self.edge.get_enabled_activity_ids(), DEFAULT_ENABLED_IDS)
 
         section["edgeNotificationData"] = {"enabledActivityIds": []}
         self.assertEqual(self.edge.get_enabled_activity_ids(), ())

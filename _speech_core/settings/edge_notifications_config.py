@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import copy
 from collections import namedtuple
-from collections.abc import Iterable
 
 from .config_core import _ensure_classic_speech_section
 
@@ -57,12 +56,10 @@ DEFAULT_ENABLED_ACTIVITY_IDS = tuple(
 def normalize_enabled_activity_ids(value: object, *, malformed_defaults: bool = True) -> tuple[str, ...]:
     """Return valid unique IDs in registry order.
 
-    A persisted empty sequence is meaningful. Missing or malformed persisted
-    data instead resolves to the installed add-on's effective defaults.
+    A persisted empty list is meaningful. Missing or malformed persisted data
+    instead resolves to the installed add-on's effective defaults.
     """
-    if value is None:
-        return DEFAULT_ENABLED_ACTIVITY_IDS if malformed_defaults else ()
-    if isinstance(value, str) or not isinstance(value, Iterable):
+    if not isinstance(value, list):
         return DEFAULT_ENABLED_ACTIVITY_IDS if malformed_defaults else ()
     try:
         selected = {item for item in value if isinstance(item, str) and item in _ACTIVITY_ID_SET}
