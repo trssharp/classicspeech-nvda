@@ -5,6 +5,8 @@ panel are owned here. Other UIA notifications retain NVDA's native handling.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import appModuleHandler
 import ui
 
@@ -36,18 +38,21 @@ class AppModule(appModuleHandler.AppModule):
         try:
             enabled_ids = edge_notifications_config.get_enabled_activity_ids()
             custom_messages = edge_notifications_config.get_custom_messages()
-        except Exception:
-            nextHandler()
-            return
-
-        if activityId not in enabled_ids:
-            return
-
-        try:
+            config_is_valid = (
+                isinstance(enabled_ids, (tuple, list, set, frozenset))
+                and all(isinstance(enabled_id, str) for enabled_id in enabled_ids)
+                and isinstance(custom_messages, Mapping)
+            )
+            if not config_is_valid:
+                nextHandler()
+                return
+            if activityId not in enabled_ids:
+                return
             custom_message = custom_messages.get(activityId)
         except Exception:
             nextHandler()
             return
+
         if isinstance(custom_message, str):
             custom_message = custom_message.strip()
             if custom_message:
