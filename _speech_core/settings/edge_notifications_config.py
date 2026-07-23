@@ -4,6 +4,8 @@ from __future__ import annotations
 import copy
 from collections import namedtuple
 
+import config
+
 from .config_core import _ensure_classic_speech_section
 
 
@@ -86,7 +88,31 @@ def normalize_custom_messages(value: object) -> dict[str, str]:
     return normalized
 
 
+def _get_persisted_edge_notification_data() -> tuple[bool, object]:
+    """Read persisted Edge data without creating ClassicSpeech config sections."""
+    try:
+        base_conf = config.conf.profiles[0]
+    except Exception:
+        base_conf = config.conf
+    try:
+        if "classicSpeech" not in base_conf:
+            return False, None
+        section = base_conf.get("classicSpeech")
+        if not hasattr(section, "get") or EDGE_NOTIFICATION_DATA_KEY not in section:
+            return False, None
+        return True, section.get(EDGE_NOTIFICATION_DATA_KEY)
+    except Exception:
+        return False, None
+
+
 def _get_edge_notification_data():
+    """Return persisted mapping data, if any, without materializing defaults."""
+    _exists, data = _get_persisted_edge_notification_data()
+    return data if hasattr(data, "get") else None
+
+
+def _ensure_edge_notification_data():
+    """Return writable Edge data, creating config only for a setter."""
     section = _ensure_classic_speech_section()
     data = section.get(EDGE_NOTIFICATION_DATA_KEY)
     if not hasattr(data, "get"):
@@ -97,24 +123,25 @@ def _get_edge_notification_data():
 
 def get_enabled_activity_ids() -> tuple[str, ...]:
     data = _get_edge_notification_data()
-    if ENABLED_ACTIVITY_IDS_KEY not in data:
+    if data is None or ENABLED_ACTIVITY_IDS_KEY not in data:
         return DEFAULT_ENABLED_ACTIVITY_IDS
     return normalize_enabled_activity_ids(data.get(ENABLED_ACTIVITY_IDS_KEY))
 
 
 def set_enabled_activity_ids(activity_ids: object) -> tuple[str, ...]:
     normalized = normalize_enabled_activity_ids(activity_ids, malformed_defaults=False)
-    _get_edge_notification_data()[ENABLED_ACTIVITY_IDS_KEY] = list(normalized)
+    _ensure_edge_notification_data()[ENABLED_ACTIVITY_IDS_KEY] = list(normalized)
     return normalized
 
 
 def get_custom_messages() -> dict[str, str]:
-    return normalize_custom_messages(_get_edge_notification_data().get(CUSTOM_MESSAGES_KEY))
+    data = _get_edge_notification_data()
+    return normalize_custom_messages(data.get(CUSTOM_MESSAGES_KEY) if data is not None else None)
 
 
 def set_custom_messages(messages: object) -> dict[str, str]:
     normalized = normalize_custom_messages(messages)
-    _get_edge_notification_data()[CUSTOM_MESSAGES_KEY] = dict(normalized)
+    _ensure_edge_notification_data()[CUSTOM_MESSAGES_KEY] = dict(normalized)
     return normalized
 
 
@@ -134,9 +161,12 @@ def set_custom_message(activity_id: object, message: object) -> str:
 
 def capture_edge_notification_state() -> dict[str, object]:
     """Capture plain, independent state suitable for settings-dialog Cancel."""
+    has_data, persisted_data = _get_persisted_edge_notification_data()
     return {
         ENABLED_ACTIVITY_IDS_KEY: list(get_enabled_activity_ids()),
         CUSTOM_MESSAGES_KEY: copy.deepcopy(get_custom_messages()),
+        "hasEdgeNotificationData": has_data,
+        "edgeNotificationData": copy.deepcopy(persisted_data),
     }
 
 
@@ -144,6 +174,24 @@ def restore_edge_notification_state(snapshot: object) -> None:
     """Restore a capture, treating malformed captures as safe defaults."""
     if not hasattr(snapshot, "get"):
         snapshot = {}
+    has_data = snapshot.get("hasEdgeNotificationData")
+    if isinstance(has_data, bool):
+        if has_data:
+            _ensure_classic_speech_section()[EDGE_NOTIFICATION_DATA_KEY] = copy.deepcopy(
+                snapshot.get("edgeNotificationData")
+            )
+        else:
+            try:
+                base_conf = config.conf.profiles[0]
+            except Exception:
+                base_conf = config.conf
+            try:
+                section = base_conf.get("classicSpeech")
+                if hasattr(section, "__delitem__") and EDGE_NOTIFICATION_DATA_KEY in section:
+                    del section[EDGE_NOTIFICATION_DATA_KEY]
+            except Exception:
+                pass
+        return
     enabled_ids = normalize_enabled_activity_ids(snapshot.get(ENABLED_ACTIVITY_IDS_KEY))
     set_enabled_activity_ids(list(enabled_ids))
     set_custom_messages(snapshot.get(CUSTOM_MESSAGES_KEY, {}))

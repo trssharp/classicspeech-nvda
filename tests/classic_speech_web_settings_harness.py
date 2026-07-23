@@ -631,6 +631,37 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		dialog.onClose(event)
 		self.assertEqual(edge_config.get_enabled_activity_ids(), ())
 		self.assertEqual(edge_config.get_custom_messages(), {})
+	def test_edge_cancel_and_close_remove_an_unpersisted_edge_baseline(self):
+		from globalPlugins._speech_core.settings import edge_notifications_config as edge_config
+		from globalPlugins._speech_core.settings import web_formatting_config
+		from globalPlugins._speech_core.settings import web_summary_config
+		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+
+		config.conf.profiles[0]["classicSpeech"] = {"unrelatedSetting": "keep me"}
+		section = config.conf.profiles[0]["classicSpeech"]
+		dialog = object.__new__(WebBrowseSettingsDialog)
+		dialog._originalWebBrowse = web_formatting_config.capture_web_browse_state()
+		dialog._originalPageSummaryTypes = web_summary_config.get_included_element_types()
+		dialog._originalPageSummaryTitle = web_summary_config.get_include_document_title()
+		dialog._originalPageLoadSummaryMode = web_summary_config.get_page_load_summary_mode()
+		dialog._originalNotifyWhenPageReady = web_summary_config.get_notify_when_page_ready()
+		dialog._originalPageReadyMessage = web_summary_config.get_page_ready_message()
+		dialog._originalEdgeNotifications = edge_config.capture_edge_notification_state()
+		dialog.Destroy = lambda: None
+
+		edge_config.set_enabled_activity_ids([])
+		edge_config.set_custom_messages({})
+		dialog.onCancel(None)
+		self.assertNotIn("edgeNotificationData", section)
+		self.assertEqual(section["unrelatedSetting"], "keep me")
+
+		edge_config.set_enabled_activity_ids(["PageZoom"])
+		edge_config.set_custom_messages({"PageZoom": "Zoomed"})
+		dialog._releasePopup = lambda: None
+		event = type("CloseEvent", (), {"Skip": lambda self: None})()
+		dialog.onClose(event)
+		self.assertNotIn("edgeNotificationData", section)
+		self.assertEqual(section["unrelatedSetting"], "keep me")
 
 
 if __name__ == "__main__":
