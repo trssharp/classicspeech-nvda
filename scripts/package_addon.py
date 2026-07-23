@@ -18,7 +18,7 @@ RUNTIME_FILES = (
     "page_orientation_runtime.py",
 )
 RUNTIME_DIRECTORIES = ("_speech_core",)
-RELEASE_NOTES = "VOICE-PROFILES-RC-V24.md"
+RELEASE_NOTES = "PAGE-ORIENTATION-RC-V25.md"
 
 
 def _parse_args() -> argparse.Namespace:
