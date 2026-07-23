@@ -18,6 +18,7 @@ RUNTIME_FILES = (
     "page_orientation_runtime.py",
 )
 RUNTIME_DIRECTORIES = ("_speech_core",)
+APP_MODULE_DIRECTORIES = ("appModules",)
 RELEASE_NOTES = "PAGE-ORIENTATION-RC-V25.md"
 
 
@@ -74,6 +75,11 @@ def main() -> None:
             if not source.is_dir():
                 raise SystemExit(f"Missing runtime directory: {source}")
             _add_tree(archive, source, Path("globalPlugins") / relative_path)
+        for relative_path in APP_MODULE_DIRECTORIES:
+            source = ROOT / relative_path
+            if not source.is_dir():
+                raise SystemExit(f"Missing app module directory: {source}")
+            _add_tree(archive, source, Path(relative_path))
 
         release_notes = ROOT / "docs" / RELEASE_NOTES
         if release_notes.is_file():
@@ -88,6 +94,7 @@ def main() -> None:
             "manifest.ini",
             "globalPlugins/classicSpeech.py",
             "globalPlugins/page_orientation_runtime.py",
+            "appModules/msedge.py",
         }
         if not required.issubset(members):
             raise SystemExit(f"Missing required package files: {sorted(required - members)}")

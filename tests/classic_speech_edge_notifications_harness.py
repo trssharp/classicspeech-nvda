@@ -2,8 +2,12 @@
 from __future__ import annotations
 
 import copy
+import importlib
+import subprocess
 import sys
+import types
 import unittest
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -449,6 +453,111 @@ class EdgeNotificationsPanelTests(unittest.TestCase):
         self.assertEqual(panel._displayTextFor("button"), "button, spoken, renamed to btn")
         panel._workingMuted.add("button")
         self.assertEqual(panel._displayTextFor("button"), "button, muted, renamed to btn")
+
+class EdgeNotificationRuntimeTests(unittest.TestCase):
+    """Exercise the root-level Edge app module with only small NVDA stubs."""
+    def setUp(self):
+        nvda_harness.ClassicSpeechNVDAConfigStartupTests().setUp()
+        nvda_harness._import_classic_speech_like_nvda()
+        from globalPlugins._speech_core import plugin_config
+        from globalPlugins._speech_core.settings import edge_notifications_config
+        plugin_config._initClassicSpeechConfig()
+        self.edge = edge_notifications_config
+        self.messages = []
+        app_module_handler = types.ModuleType("appModuleHandler")
+        app_module_handler.AppModule = type("AppModule", (), {})
+        sys.modules["appModuleHandler"] = app_module_handler
+        ui = types.ModuleType("ui")
+        ui.message = self.messages.append
+        sys.modules["ui"] = ui
+        app_modules = types.ModuleType("appModules")
+        app_modules.__path__ = [str(ROOT / "appModules")]
+        sys.modules["appModules"] = app_modules
+        sys.modules.pop("appModules.msedge", None)
+        self.module = importlib.import_module("appModules.msedge")
+        self.app = self.module.AppModule()
+
+    def tearDown(self):
+        sys.modules.pop("appModules.msedge", None)
+        sys.modules.pop("appModules", None)
+        sys.modules.pop("appModuleHandler", None)
+        nvda_harness._reset_global_plugin_imports()
+
+    def _event(self, activity_id, **kwargs):
+        native_calls = []
+        self.app.event_UIA_notification(object(), lambda: native_calls.append(True), activityId=activity_id, **kwargs)
+        return native_calls
+
+    def test_signature_is_resilient_to_current_nvda_notification_arguments(self):
+        self.edge.set_enabled_activity_ids(["PageZoom"])
+        self.assertEqual(self._event("PageZoom", notificationKind=1, notificationProcessing=2, displayString="native", extraFutureArgument=True), [True])
+
+    def test_unknown_none_and_non_string_ids_delegate_once_without_custom_message(self):
+        self.edge.set_enabled_activity_ids([])
+        self.edge.set_custom_messages({"PageZoom": "Custom zoom"})
+        for activity_id in (None, "NotClassicSpeechEdgeActivity", 1, object()):
+            with self.subTest(activity_id=repr(activity_id)):
+                self.assertEqual(self._event(activity_id), [True])
+        self.assertEqual(self.messages, [])
+
+    def test_recognized_suppressed_event_is_swallowed_without_native_or_message(self):
+        self.edge.set_enabled_activity_ids([])
+        self.edge.set_custom_messages({"PageLoading": "Custom loading"})
+        self.assertEqual(self._event("PageLoading"), [])
+        self.assertEqual(self.messages, [])
+
+    def test_recognized_enabled_custom_event_announces_trimmed_message_without_native(self):
+        self.edge.set_enabled_activity_ids(["PageLoading"])
+        self.edge.set_custom_messages({"PageLoading": "  Loading now  "})
+        self.assertEqual(self._event("PageLoading"), [])
+        self.assertEqual(self.messages, ["Loading now"])
+
+    def test_recognized_enabled_native_event_delegates_once(self):
+        self.edge.set_enabled_activity_ids(["PageLoading"])
+        self.edge.set_custom_messages({})
+        self.assertEqual(self._event("PageLoading"), [True])
+        self.assertEqual(self.messages, [])
+
+    def test_runtime_configuration_is_read_again_for_each_event(self):
+        self.edge.set_enabled_activity_ids([])
+        self.assertEqual(self._event("PageZoom"), [])
+        self.edge.set_enabled_activity_ids(["PageZoom"])
+        self.edge.set_custom_messages({"PageZoom": "  Zoom changed  "})
+        self.assertEqual(self._event("PageZoom"), [])
+        self.assertEqual(self.messages, ["Zoom changed"])
+        self.edge.set_custom_messages({})
+        self.assertEqual(self._event("PageZoom"), [True])
+
+    def test_malformed_config_access_fails_open_to_native_for_recognized_events(self):
+        original = self.module.edge_notifications_config.get_enabled_activity_ids
+        self.addCleanup(setattr, self.module.edge_notifications_config, "get_enabled_activity_ids", original)
+        self.module.edge_notifications_config.get_enabled_activity_ids = lambda: (_ for _ in ()).throw(RuntimeError("bad config"))
+        self.assertEqual(self._event("PageLoading"), [True])
+        self.assertEqual(self.messages, [])
+
+    def test_source_stays_a_narrow_uia_notification_policy(self):
+        source = (ROOT / "appModules" / "msedge.py").read_text(encoding="utf-8")
+        self.assertIn("def event_UIA_notification(", source)
+        self.assertIn("activityId=None", source)
+        self.assertNotIn("ShowSuggestions", source)
+        self.assertNotIn("comtypes", source)
+        self.assertNotIn("overlay", source.lower())
+        # Deliberately no HubDownloads foreground guard: no faithful outside-NVDA
+        # focus/tree contract exists in this harness, so generic heuristics are unsafe.
+        self.assertNotIn('"HubDownloads" in activityId', source)
+
+
+class EdgeNotificationPackageTests(unittest.TestCase):
+    def test_fixed_date_archive_contains_root_app_module(self):
+        build_date = "2001-02-03"
+        package = ROOT / "dist" / f"ClassicSpeech-{build_date}.nvda-addon"
+        checksum = package.with_suffix(package.suffix + ".sha256")
+        self.addCleanup(package.unlink, missing_ok=True)
+        self.addCleanup(checksum.unlink, missing_ok=True)
+        result = subprocess.run([sys.executable, "scripts/package_addon.py", "--date", build_date], cwd=ROOT, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        with zipfile.ZipFile(package) as archive:
+            self.assertIn("appModules/msedge.py", archive.namelist())
 
 
 if __name__ == "__main__":
