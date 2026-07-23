@@ -12,6 +12,11 @@ INCLUDE_DOCUMENT_TITLE_KEY = "includeDocumentTitle"
 # Legacy setting retained only for migration from the released Automatic Summary.
 AUTOMATIC_REPORT_ON_PAGE_LOAD_KEY = "automaticReportOnPageLoad"
 PAGE_LOAD_SUMMARY_MODE_KEY = "pageLoadSummaryMode"
+NOTIFY_WHEN_PAGE_READY_KEY = "notifyWhenPageReady"
+PAGE_READY_MESSAGE_KEY = "pageReadyMessage"
+
+DEFAULT_NOTIFY_WHEN_PAGE_READY = False
+DEFAULT_PAGE_READY_MESSAGE = "Page ready"
 
 PAGE_LOAD_SUMMARY_MODE_NATIVE = "native"
 PAGE_LOAD_SUMMARY_MODE_AFTER_READY = "afterReady"
@@ -70,6 +75,42 @@ def _normalize_explicit_boolean(value: object) -> bool:
         if normalized == "true": return True
         if normalized == "false": return False
     return False
+
+
+def _normalize_message(value: object, default: str) -> str:
+    if isinstance(value, str):
+        normalized = value.strip()
+        if normalized:
+            return normalized
+    return default
+
+
+def get_notify_when_page_ready() -> bool:
+    return _normalize_explicit_boolean(
+        _get_page_summary_data().get(
+            NOTIFY_WHEN_PAGE_READY_KEY,
+            DEFAULT_NOTIFY_WHEN_PAGE_READY,
+        )
+    )
+
+
+def set_notify_when_page_ready(enabled: object) -> bool:
+    normalized = _normalize_explicit_boolean(enabled)
+    _get_page_summary_data()[NOTIFY_WHEN_PAGE_READY_KEY] = normalized
+    return normalized
+
+
+def get_page_ready_message() -> str:
+    return _normalize_message(
+        _get_page_summary_data().get(PAGE_READY_MESSAGE_KEY),
+        DEFAULT_PAGE_READY_MESSAGE,
+    )
+
+
+def set_page_ready_message(message: object) -> str:
+    normalized = _normalize_message(message, DEFAULT_PAGE_READY_MESSAGE)
+    _get_page_summary_data()[PAGE_READY_MESSAGE_KEY] = normalized
+    return normalized
 
 
 def get_page_load_summary_mode() -> str:
