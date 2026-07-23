@@ -1,6 +1,7 @@
 """Focused outside-NVDA tests for ClassicSpeech Edge notification configuration."""
 from __future__ import annotations
 
+import copy
 import sys
 import unittest
 from pathlib import Path
@@ -172,6 +173,7 @@ class EdgeNotificationConfigTests(unittest.TestCase):
 
     def test_enabled_ids_use_defaults_for_missing_or_malformed_data_but_preserve_empty(self):
         self.assertEqual(self.edge.get_enabled_activity_ids(), DEFAULT_ENABLED_IDS)
+        config.conf.profiles[0]["classicSpeech"] = {}
         section = config.conf.profiles[0]["classicSpeech"]
 
         malformed_values = (
@@ -217,12 +219,53 @@ class EdgeNotificationConfigTests(unittest.TestCase):
 
     def test_missing_or_malformed_custom_messages_resolve_to_an_empty_mapping(self):
         self.assertEqual(self.edge.get_custom_messages(), {})
+        config.conf.profiles[0]["classicSpeech"] = {}
+        self.edge.set_custom_messages({})
         data = config.conf.profiles[0]["classicSpeech"]["edgeNotificationData"]
         data["customMessages"] = ["not", "a", "mapping"]
         self.assertEqual(self.edge.get_custom_messages(), {})
         self.assertEqual(self.edge.set_custom_message("PageZoom", "  Zoomed  "), "Zoomed")
         self.assertEqual(self.edge.set_custom_message("PageZoom", "  "), "")
         self.assertEqual(self.edge.get_custom_messages(), {})
+
+    def test_capture_and_load_effective_defaults_do_not_create_edge_data(self):
+        base_config = config.conf.profiles[0]
+        base_config.pop("classicSpeech", None)
+        snapshot = self.edge.capture_edge_notification_state()
+        self.assertEqual(self.edge.get_enabled_activity_ids(), DEFAULT_ENABLED_IDS)
+        self.assertEqual(self.edge.get_custom_messages(), {})
+        self.assertEqual(snapshot["enabledActivityIds"], list(DEFAULT_ENABLED_IDS))
+        self.assertEqual(snapshot["customMessages"], {})
+        self.assertNotIn("classicSpeech", base_config)
+
+        # The same no-data snapshot must remove only Edge data if an unrelated
+        # ClassicSpeech setting appears before the dialog is cancelled.
+        base_config["classicSpeech"] = {"unrelatedSetting": "keep me"}
+        section = base_config["classicSpeech"]
+        self.edge.set_enabled_activity_ids([])
+        self.edge.set_custom_messages({})
+        self.edge.restore_edge_notification_state(snapshot)
+        self.assertNotIn("edgeNotificationData", section)
+        self.assertEqual(section["unrelatedSetting"], "keep me")
+
+    def test_snapshot_restore_preserves_existing_edge_data_exactly_including_empty_enabled_list(self):
+        config.conf.profiles[0]["classicSpeech"] = {}
+        section = config.conf.profiles[0]["classicSpeech"]
+        expected_data = {
+            "enabledActivityIds": [],
+            "customMessages": {"PageLoading": "Original loading"},
+            "futureSetting": {"preserve": True},
+        }
+        section["edgeNotificationData"] = copy.deepcopy(expected_data)
+        snapshot = self.edge.capture_edge_notification_state()
+
+        self.edge.set_enabled_activity_ids(["PageZoom"])
+        self.edge.set_custom_messages({"PageZoom": "Custom zoom"})
+        self.edge.restore_edge_notification_state(snapshot)
+
+        self.assertEqual(section["edgeNotificationData"], expected_data)
+        self.assertEqual(self.edge.get_enabled_activity_ids(), ())
+        self.assertEqual(self.edge.get_custom_messages(), {"PageLoading": "Original loading"})
 
     def test_snapshot_restore_isolated_for_dialog_transactions(self):
         self.edge.set_enabled_activity_ids(["PageZoom", "PageLoading"])
