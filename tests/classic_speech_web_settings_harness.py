@@ -253,17 +253,23 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			for item in SUMMARY_ITEM_TYPES
 		]
 		# The initial page-load mode is native/no summary.
+		dialog.notifyWhenPageReadyCheckBox = ValueControl(True)
+		dialog.pageReadyMessageEdit = ValueControl("  Ready from dialog  ")
 		dialog.pageLoadSummaryMode = ChoiceControl(0)
 		dialog._pageLoadSummaryModes = ("native", "afterReady", "orientation")
 		dialog.pageSummaryElementList = CheckListControl((1, 3))
 		dialog._originalPageSummaryTypes = ("heading", "landmark", "link", "formField", "button", "table")
 		dialog._originalPageSummaryTitle = False
 		dialog._originalPageLoadSummaryMode = "native"
+		dialog._originalNotifyWhenPageReady = False
+		dialog._originalPageReadyMessage = "Page ready"
 		dialog.applyBtn = ApplyButton()
+
 		dialog.layoutCalls = 0
 		dialog.Layout = lambda: setattr(dialog, "layoutCalls", dialog.layoutCalls + 1)
 		dialog.Destroy = lambda: setattr(dialog, "destroyed", True)
 		dialog.destroyed = False
+
 
 		dialog._originalWebBrowse = __import__(
 			"globalPlugins._speech_core.settings.web_formatting_config", fromlist=["capture_web_browse_state"]
@@ -283,6 +289,11 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		self.assertTrue(config.conf["annotations"]["reportDetails"])
 		self.assertFalse(config.conf["annotations"]["reportAriaDescription"])
 		self.assertEqual(config.conf["braille"]["reportLiveRegions"], "ENABLED")
+		self.assertTrue(config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["notifyWhenPageReady"])
+		self.assertEqual(
+			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["pageReadyMessage"],
+			"Ready from dialog",
+		)
 		self.assertTrue(dialog.applyBtn.shown)
 		self.assertTrue(dialog.applyBtn.enabled)
 		self.assertGreaterEqual(dialog.layoutCalls, 1)
@@ -297,6 +308,8 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 
 		# Apply makes the current Page Summary choices the new Cancel baseline.
 		dialog.onApply(None)
+		dialog.notifyWhenPageReadyCheckBox.value = False
+		dialog.pageReadyMessageEdit.value = "Changed after apply"
 		dialog.pageLoadSummaryMode.selection = 0
 		dialog.pageSummaryElementList.checked = [8]
 		dialog.onChanged()
@@ -322,6 +335,11 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		self.assertEqual(config.conf["virtualBuffers"]["loadChromiumVBufOnBusyState"], "DISABLED")
 		self.assertTrue(config.conf["annotations"]["reportDetails"])
 		self.assertEqual(config.conf["braille"]["reportLiveRegions"], "ENABLED")
+		self.assertTrue(config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["notifyWhenPageReady"])
+		self.assertEqual(
+			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["pageReadyMessage"],
+			"Ready from dialog",
+		)
 
 	def test_touch_navigation_uses_checklist_event_and_propagating_handler(self):
 		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
@@ -402,6 +420,79 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			"_originalPageLoadSummaryMode",
 		):
 			self.assertIn(expected, dialog_source)
+
+	def test_page_ready_controls_are_hidden_as_one_native_row_and_refresh_scrolling(self):
+		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
+		self.assertIn('"Notify when page is ready"', dialog_source)
+		self.assertIn('"Page ready message:"', dialog_source)
+		self.assertIn("wx.TextCtrl", dialog_source)
+		self.assertIn("get_notify_when_page_ready", dialog_source)
+		self.assertIn("get_page_ready_message", dialog_source)
+		self.assertIn("self.pageReadyMessageRow.Hide()", dialog_source)
+		self.assertIn("self.pageReadyMessageRow.Show(", dialog_source)
+		self.assertIn("self.pageSummaryPanel.SetupScrolling(scroll_x=False)", dialog_source)
+		self.assertIn("self.pageReadyMessageEdit.Bind(wx.EVT_TEXT, self.onChanged)", dialog_source)
+		self.assertIn("self.notifyWhenPageReadyCheckBox.Bind(wx.EVT_CHECKBOX, self.onPageReadyChanged)", dialog_source)
+		self.assertLess(
+			dialog_source.index("self.notifyWhenPageReadyCheckBox"),
+			dialog_source.index('"Page-load summary:"'),
+		)
+		self.assertLess(
+			dialog_source.index("self.pageReadyMessageRow"),
+			dialog_source.index('"Page-load summary:"'),
+		)
+
+	def test_page_ready_handler_updates_visibility_then_live_applies(self):
+		nvda_harness._import_classic_speech_like_nvda()
+		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+
+		class CheckBox:
+			def IsChecked(self):
+				return True
+
+		class Row:
+			def __init__(self):
+				self.visible = None
+			def Show(self, visible=True):
+				self.visible = visible
+
+		dialog = object.__new__(WebBrowseSettingsDialog)
+		dialog.notifyWhenPageReadyCheckBox = CheckBox()
+		dialog.pageReadyMessageRow = Row()
+		dialog.pageSummaryPanel = type("Panel", (), {"Layout": lambda self: None, "SetupScrolling": lambda self, **kwargs: None})()
+		dialog.panelHost = type("Host", (), {"Layout": lambda self: None})()
+		dialog.Layout = lambda: None
+		calls = []
+		dialog.onChanged = lambda evt=None: calls.append(evt)
+
+		dialog.onPageReadyChanged()
+
+		self.assertTrue(dialog.pageReadyMessageRow.visible)
+		self.assertEqual(calls, [None])
+
+	def test_page_ready_close_restores_its_baseline(self):
+		nvda_harness._import_classic_speech_like_nvda()
+		from globalPlugins._speech_core.settings import web_formatting_config
+		from globalPlugins._speech_core.settings import web_summary_config
+		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+
+		dialog = object.__new__(WebBrowseSettingsDialog)
+		dialog._originalWebBrowse = web_formatting_config.capture_web_browse_state()
+		dialog._originalPageSummaryTypes = web_summary_config.get_included_element_types()
+		dialog._originalPageSummaryTitle = web_summary_config.get_include_document_title()
+		dialog._originalPageLoadSummaryMode = web_summary_config.get_page_load_summary_mode()
+		dialog._originalNotifyWhenPageReady = False
+		dialog._originalPageReadyMessage = "Page ready"
+		dialog._releasePopup = lambda: None
+		web_summary_config.set_notify_when_page_ready(True)
+		web_summary_config.set_page_ready_message("Changed before close")
+		event = type("CloseEvent", (), {"skipped": False, "Skip": lambda self: setattr(self, "skipped", True)})()
+
+		dialog.onClose(event)
+
+		self.assertTrue(event.skipped)
+		self.assertFalse(web_summary_config.get_notify_when_page_ready())
+		self.assertEqual(web_summary_config.get_page_ready_message(), "Page ready")
 
 	def test_page_summary_handler_propagates_and_marks_dialog_dirty(self):
 		nvda_harness._import_classic_speech_like_nvda()

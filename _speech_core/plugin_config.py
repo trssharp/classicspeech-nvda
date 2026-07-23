@@ -74,6 +74,8 @@ _CLASSIC_SPEECH_SPEC = {
         "includeDocumentTitle": "boolean(default=False)",
         "automaticReportOnPageLoad": "boolean(default=False)",
         "pageLoadSummaryMode": "string(default='native')",
+        "notifyWhenPageReady": "boolean(default=False)",
+        "pageReadyMessage": "string(default='Page ready')",
     },
     # Arbitrary synth setting types and nested baseline/override records are
     # serialized as JSON so ConfigObj validation cannot discard unknown keys.

@@ -11,9 +11,13 @@ from .web_summary_config import (
     PAGE_LOAD_SUMMARY_MODE_NATIVE,
     PAGE_LOAD_SUMMARY_MODE_ORIENTATION,
     get_page_load_summary_mode,
+    get_notify_when_page_ready,
+    get_page_ready_message,
     get_included_element_types,
     get_include_document_title,
     set_page_load_summary_mode,
+    set_notify_when_page_ready,
+    set_page_ready_message,
     set_included_element_types,
     set_include_document_title,
 )
@@ -72,6 +76,8 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		self._originalPageSummaryTypes = get_included_element_types()
 		self._originalPageSummaryTitle = get_include_document_title()
 		self._originalPageLoadSummaryMode = get_page_load_summary_mode()
+		self._originalNotifyWhenPageReady = get_notify_when_page_ready()
+		self._originalPageReadyMessage = get_page_ready_message()
 		self._browseModeElements = self._get_browse_mode_touch_elements()
 
 		outerSizer = wx.BoxSizer(wx.VERTICAL)
@@ -273,7 +279,35 @@ class WebBrowseSettingsDialog(wx.Dialog):
 			panel,
 			label="Choose the Browse Mode element types included when you press NVDA+Shift+U. Checked items are included.",
 		))
-		group, _box = self._add_static_box_group(panel, sHelper, "Page Summary")
+		group, box = self._add_static_box_group(panel, sHelper, "Page Summary")
+		self.notifyWhenPageReadyCheckBox = group.addItem(
+			wx.CheckBox(box, label="Notify when page is ready")
+		)
+		self.notifyWhenPageReadyCheckBox.SetValue(get_notify_when_page_ready())
+		self.notifyWhenPageReadyCheckBox.Bind(wx.EVT_CHECKBOX, self.onPageReadyChanged)
+		self.pageReadyMessageRow = wx.Panel(box, style=wx.TAB_TRAVERSAL)
+		pageReadyMessageSizer = wx.BoxSizer(wx.HORIZONTAL)
+		self.pageReadyMessageLabel = wx.StaticText(
+			self.pageReadyMessageRow,
+			label="Page ready message:",
+		)
+		self.pageReadyMessageEdit = wx.TextCtrl(
+			self.pageReadyMessageRow,
+			value=get_page_ready_message(),
+		)
+		self.pageReadyMessageEdit.SetName("Page ready message:")
+		pageReadyMessageSizer.Add(
+			self.pageReadyMessageLabel,
+			0,
+			wx.ALIGN_CENTER_VERTICAL | wx.RIGHT,
+			8,
+		)
+		pageReadyMessageSizer.Add(self.pageReadyMessageEdit, 1, wx.EXPAND)
+		self.pageReadyMessageRow.SetSizer(pageReadyMessageSizer)
+		group.addItem(self.pageReadyMessageRow, flag=wx.EXPAND)
+		if not _is_checked(self.notifyWhenPageReadyCheckBox):
+			self.pageReadyMessageRow.Hide()
+		self.pageReadyMessageEdit.Bind(wx.EVT_TEXT, self.onChanged)
 		self.pageLoadSummaryMode = group.addLabeledControl(
 		    "Page-load summary:",
 		    wx.Choice,
@@ -358,6 +392,13 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		self.Layout()
 		wx.CallAfter(self._setInitialFocus)
 
+	def _update_page_ready_message_row_visibility(self):
+		self.pageReadyMessageRow.Show(_is_checked(self.notifyWhenPageReadyCheckBox))
+		self.pageSummaryPanel.Layout()
+		self.pageSummaryPanel.SetupScrolling(scroll_x=False)
+		self.panelHost.Layout()
+		self.Layout()
+
 	def _releasePopup(self):
 		if self._popupReleased:
 			return
@@ -402,6 +443,10 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		set_web_document_formatting_setting("reportFigures", _is_checked(self.figuresCheckBox))
 		set_web_document_formatting_setting("reportClickable", _is_checked(self.clickableCheckBox))
 		self.brailleLiveRegionsCombo.saveCurrentValueToConf()
+		if hasattr(self, "notifyWhenPageReadyCheckBox"):
+			set_notify_when_page_ready(_is_checked(self.notifyWhenPageReadyCheckBox))
+		if hasattr(self, "pageReadyMessageEdit"):
+			set_page_ready_message(self.pageReadyMessageEdit.GetValue())
 		if hasattr(self, "pageLoadSummaryMode"):
 		    set_page_load_summary_mode(
 		        self._pageLoadSummaryModes[self.pageLoadSummaryMode.GetSelection()]
@@ -423,6 +468,10 @@ class WebBrowseSettingsDialog(wx.Dialog):
 	def onPageSummaryChanged(self, evt=None):
 		if evt is not None and hasattr(evt, "Skip"):
 			evt.Skip()
+		self.onChanged(evt)
+
+	def onPageReadyChanged(self, evt=None):
+		self._update_page_ready_message_row_visibility()
 		self.onChanged(evt)
 
 	def onTouchNavigationChanged(self, evt=None):
@@ -447,6 +496,8 @@ class WebBrowseSettingsDialog(wx.Dialog):
 			self._originalPageSummaryTypes = get_included_element_types()
 			self._originalPageSummaryTitle = get_include_document_title()
 			self._originalPageLoadSummaryMode = get_page_load_summary_mode()
+			self._originalNotifyWhenPageReady = get_notify_when_page_ready()
+			self._originalPageReadyMessage = get_page_ready_message()
 			self._committed = True
 			self._clearDirty()
 		except Exception:
@@ -461,6 +512,8 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		set_included_element_types(self._originalPageSummaryTypes)
 		set_include_document_title(self._originalPageSummaryTitle)
 		set_page_load_summary_mode(self._originalPageLoadSummaryMode)
+		set_notify_when_page_ready(self._originalNotifyWhenPageReady)
+		set_page_ready_message(self._originalPageReadyMessage)
 		self.Destroy()
 
 	def onClose(self, evt):
@@ -469,6 +522,8 @@ class WebBrowseSettingsDialog(wx.Dialog):
 			set_included_element_types(self._originalPageSummaryTypes)
 			set_include_document_title(self._originalPageSummaryTitle)
 			set_page_load_summary_mode(self._originalPageLoadSummaryMode)
+			set_notify_when_page_ready(self._originalNotifyWhenPageReady)
+			set_page_ready_message(self._originalPageReadyMessage)
 			evt.Skip()
 		finally:
 			self._releasePopup()
