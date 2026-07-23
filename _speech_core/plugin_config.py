@@ -3,7 +3,11 @@
 import config
 import logHandler
 
+from .settings.edge_notifications_config import DEFAULT_ENABLED_ACTIVITY_IDS
+
 log = logHandler.log
+
+_EDGE_NOTIFICATION_DEFAULT_IDS_SPEC = ", ".join(repr(activity_id) for activity_id in DEFAULT_ENABLED_ACTIVITY_IDS)
 
 _CLASSIC_SPEECH_SPEC = {
     "defaultProfile": "string(default='Beginner')",
@@ -77,6 +81,12 @@ _CLASSIC_SPEECH_SPEC = {
         "pageLoadSummaryMode": "string(default='native')",
         "notifyWhenPageReady": "boolean(default=False)",
         "pageReadyMessage": "string(default='Page ready')",
+    },
+    "edgeNotificationData": {
+        "enabledActivityIds": f"string_list(default=list({_EDGE_NOTIFICATION_DEFAULT_IDS_SPEC}))",
+        "customMessages": {
+            "__many__": "string(default='')",
+        },
     },
     # Arbitrary synth setting types and nested baseline/override records are
     # serialized as JSON so ConfigObj validation cannot discard unknown keys.
