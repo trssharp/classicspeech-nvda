@@ -654,6 +654,32 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 			set(initial_enabled_ids) | {"PageLoading"},
 		)
 
+		# A queued pre-flip callback belongs to the checklist generation that
+		# received the event. Repopulating/reloading before it runs must discard it
+		# rather than changing the new state or making the dialog dirty.
+		stalePanel = make_edge_panel()
+		staleChanges = []
+		stalePanel._onChange = lambda: staleChanges.append(True)
+		staleEvent = ChecklistEvent(stalePanel._labels.index("PageLoading"))
+		stalePanel.onChecklistToggled(staleEvent)
+		self.assertEqual(len(queued), 1)
+		stalePanel.listCtrl.checked[staleEvent.index] = True
+		stalePanel.loadData(initial_enabled_ids, {})
+		callback, args, kwargs = queued.pop()
+		callback(*args, **kwargs)
+		self.assertEqual(staleChanges, [])
+		self.assertEqual(stalePanel.getEnabledActivityIds(), initial_enabled_ids)
+
+		# Destruction also invalidates queued work. Running the previously queued
+		# callback must be harmless even though a real wx control is already gone.
+		stalePanel.onChecklistToggled(staleEvent)
+		self.assertEqual(len(queued), 1)
+		stalePanel._onChecklistDestroy(None)
+		callback, args, kwargs = queued.pop()
+		callback(*args, **kwargs)
+		self.assertEqual(staleChanges, [])
+		self.assertEqual(stalePanel.getEnabledActivityIds(), initial_enabled_ids)
+
 		dialog = object.__new__(WebBrowseSettingsDialog)
 		dialog.maxLengthEdit = ValueControl(80)
 		dialog.pageLinesEdit = ValueControl(40)
