@@ -253,6 +253,11 @@ class RenameListPanel(wx.Panel):
 		self._notifyChanged()
 
 	def onChecklistToggled(self, evt):
+		# CustomCheckListBox also handles this event to emit NVDA accessibility
+		# state-change notifications. Propagate it even while programmatic updates
+		# are suspended; suspension only suppresses ClassicSpeech state changes.
+		if evt is not None and hasattr(evt, "Skip"):
+			evt.Skip()
 		if self._suspendEvents:
 			return
 		idx = evt.GetInt() if evt else self._getSelectedIndex()

@@ -56,9 +56,13 @@ class _FakeCheckList:
 class _ChecklistEvent:
     def __init__(self, index):
         self.index = index
+        self.skipCount = 0
 
     def GetInt(self):
         return self.index
+
+    def Skip(self):
+        self.skipCount += 1
 
 
 class _KeyEvent:
@@ -404,6 +408,35 @@ class EdgeNotificationsPanelTests(unittest.TestCase):
         panel.onChecklistToggled(_ChecklistEvent(0))
         self.assertEqual(panel.getEnabledActivityIds(), ("PageLoading",))
         self.assertEqual(len(changes), 3)
+
+    def test_checklist_toggle_propagates_once_while_updating_edge_enabled_state_once(self):
+        panel = self._make_panel(enabled_ids=(), custom_messages={})
+        changes = []
+        panel._onChange = lambda: changes.append(True)
+        panel.listCtrl.checked[0] = True
+        event = _ChecklistEvent(0)
+
+        panel.onChecklistToggled(event)
+
+        self.assertEqual(event.skipCount, 1)
+        self.assertNotIn("PageLoading", panel._workingMuted)
+        self.assertEqual(panel.getEnabledActivityIds(), ("PageLoading",))
+        self.assertEqual(changes, [True])
+
+    def test_suspended_checklist_toggle_still_propagates_without_changing_state(self):
+        panel = self._make_panel(enabled_ids=(), custom_messages={})
+        changes = []
+        panel._onChange = lambda: changes.append(True)
+        panel._suspendEvents = True
+        panel.listCtrl.checked[0] = True
+        event = _ChecklistEvent(0)
+
+        panel.onChecklistToggled(event)
+
+        self.assertEqual(event.skipCount, 1)
+        self.assertIn("PageLoading", panel._workingMuted)
+        self.assertEqual(panel.getEnabledActivityIds(), ())
+        self.assertEqual(changes, [])
 
     def test_default_rename_list_wording_remains_the_token_editor_wording(self):
         panel = self.RenameListPanel.__new__(self.RenameListPanel)
