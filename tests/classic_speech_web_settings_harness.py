@@ -663,6 +663,76 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		self.assertNotIn("edgeNotificationData", section)
 		self.assertEqual(section["unrelatedSetting"], "keep me")
 
+	def test_edge_ok_close_keeps_accepted_state_while_apply_close_restores_its_rebased_state(self):
+		"""Destroy after OK raises EVT_CLOSE, unlike a normal later window close."""
+		from globalPlugins._speech_core.settings import edge_notifications_config as edge_config
+		from globalPlugins._speech_core.settings import web_formatting_config
+		from globalPlugins._speech_core.settings import web_summary_config
+		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+
+		class EdgePanel:
+			def __init__(self, enabled_ids, messages):
+				self.enabled_ids = enabled_ids
+				self.messages = messages
+			def getEnabledActivityIds(self):
+				return self.enabled_ids
+			def getCustomMessages(self):
+				return self.messages
+
+		def make_dialog(enabled_ids, messages):
+			dialog = object.__new__(WebBrowseSettingsDialog)
+			dialog._originalWebBrowse = web_formatting_config.capture_web_browse_state()
+			dialog._originalPageSummaryTypes = web_summary_config.get_included_element_types()
+			dialog._originalPageSummaryTitle = web_summary_config.get_include_document_title()
+			dialog._originalPageLoadSummaryMode = web_summary_config.get_page_load_summary_mode()
+			dialog._originalNotifyWhenPageReady = web_summary_config.get_notify_when_page_ready()
+			dialog._originalPageReadyMessage = web_summary_config.get_page_ready_message()
+			dialog._originalEdgeNotifications = edge_config.capture_edge_notification_state()
+			dialog.edgeNotificationsEditor = EdgePanel(enabled_ids, messages)
+			dialog._apply_to_config = lambda: (
+				edge_config.set_enabled_activity_ids(dialog.edgeNotificationsEditor.getEnabledActivityIds()),
+				edge_config.set_custom_messages(dialog.edgeNotificationsEditor.getCustomMessages()),
+			)
+			dialog._clearDirty = lambda: None
+			dialog.Destroy = lambda: setattr(dialog, "destroyed", True)
+			dialog._releasePopup = lambda: None
+			return dialog
+
+		def close_event():
+			return type("CloseEvent", (), {
+				"skipped": False,
+				"Skip": lambda self: setattr(self, "skipped", True),
+			})()
+
+		edge_config.set_enabled_activity_ids(["PageLoading"])
+		edge_config.set_custom_messages({"PageLoading": "Original"})
+		accepted = make_dialog(["PageZoom"], {"PageZoom": "Accepted zoom"})
+
+		# Exercise the actual onOK -> onApply -> Destroy lifecycle, followed by
+		# the EVT_CLOSE handler that Destroy causes in wx.
+		accepted.onOK(None)
+		self.assertIs(accepted.__dict__.get("_closeAfterOK"), True)
+		accepted_close = close_event()
+		accepted.onClose(accepted_close)
+
+		self.assertTrue(accepted.destroyed)
+		self.assertTrue(accepted_close.skipped)
+		self.assertEqual(edge_config.get_enabled_activity_ids(), ("PageZoom",))
+		self.assertEqual(edge_config.get_custom_messages(), {"PageZoom": "Accepted zoom"})
+
+		# Apply creates a new rollback baseline. A later ordinary window close
+		# must still restore that baseline after further live edits.
+		rebased = make_dialog(["PageLoading"], {"PageLoading": "Applied loading"})
+		rebased.onApply(None)
+		rebased.edgeNotificationsEditor = EdgePanel(["PageZoom"], {"PageZoom": "Later zoom"})
+		rebased._apply_to_config()
+		rebased_close = close_event()
+		rebased.onClose(rebased_close)
+
+		self.assertTrue(rebased_close.skipped)
+		self.assertEqual(edge_config.get_enabled_activity_ids(), ("PageLoading",))
+		self.assertEqual(edge_config.get_custom_messages(), {"PageLoading": "Applied loading"})
+
 
 if __name__ == "__main__":
 	unittest.main()

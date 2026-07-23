@@ -84,6 +84,7 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		self.SetName("ClassicSpeechWebBrowseSettingsDialog")
 		self._popupReleased = False
 		self._committed = False
+		self._closeAfterOK = False
 		self._originalWebBrowse = capture_web_browse_state()
 		self._originalPageSummary = capture_page_summary_state()
 		self._originalPageSummaryTypes = get_included_element_types()
@@ -541,6 +542,9 @@ class WebBrowseSettingsDialog(wx.Dialog):
 
 	def onOK(self, evt):
 		self.onApply(evt)
+		# wx.Destroy dispatches EVT_CLOSE. Keep that lifecycle close from
+		# rolling back the state just accepted by this OK transaction.
+		self._closeAfterOK = True
 		self.Destroy()
 
 	def onCancel(self, evt):
@@ -552,10 +556,11 @@ class WebBrowseSettingsDialog(wx.Dialog):
 
 	def onClose(self, evt):
 		try:
-			restore_web_browse_state(self._originalWebBrowse)
-			restore_page_summary_state(self._originalPageSummary)
-			if hasattr(self, "_originalEdgeNotifications"):
-				restore_edge_notification_state(self._originalEdgeNotifications)
+			if not self.__dict__.get("_closeAfterOK", False):
+				restore_web_browse_state(self._originalWebBrowse)
+				restore_page_summary_state(self._originalPageSummary)
+				if hasattr(self, "_originalEdgeNotifications"):
+					restore_edge_notification_state(self._originalEdgeNotifications)
 			evt.Skip()
 		finally:
 			self._releasePopup()
