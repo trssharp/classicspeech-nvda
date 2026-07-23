@@ -12,34 +12,34 @@ EdgeNotificationActivity = namedtuple("EdgeNotificationActivity", "activity_id l
 # This registry is the only supported Activity ID inventory. Its order controls
 # both persistence normalization and the eventual checklist presentation.
 EDGE_NOTIFICATION_ACTIVITIES = (
-    EdgeNotificationActivity("PageLoading", "Announce loading of pages", False),
-    EdgeNotificationActivity("RefreshingPage", "Announce page refresh", False),
-    EdgeNotificationActivity("ClosingTab", "Announce closing of tab", False),
-    EdgeNotificationActivity("OpeningNewTab", "Announce Opening of new tab", False),
-    EdgeNotificationActivity("OpeningWindow", "Announce window opening", False),
-    EdgeNotificationActivity("OpeningInPrivateWindow", "Announce opening of inprivate window", False),
-    EdgeNotificationActivity("GoingBack", "Announce navigating back", False),
-    EdgeNotificationActivity("GoingForward", "Announce navigating forward", False),
-    EdgeNotificationActivity("CantGoBack", "Announce if there is no previous page to navigate", False),
-    EdgeNotificationActivity("CantGoForward", "Announce if there is no next page to navigate", False),
-    EdgeNotificationActivity("HubDownloadsNewDownload", "Announce starting file download", True),
-    EdgeNotificationActivity("HubDownloadsCompleteState", "Announce download completion", True),
-    EdgeNotificationActivity("HubDownloadsInProgressState", "Announce progress state of current download", False),
-    EdgeNotificationActivity("HubDownloadsIndeterminateProgressState", "Announce indeterminate progress state of current download", False),
-    EdgeNotificationActivity("ToolbarButtonRemoved", "Announce removing toolbar buttons", False),
-    EdgeNotificationActivity("SearchMode", "Announce of search mode", False),
-    EdgeNotificationActivity("SearchModeAvailable", "Announce availability of search mode", False),
-    EdgeNotificationActivity("NotificationAppear", "Announce appearing of notifications", False),
+    EdgeNotificationActivity("PageLoading", "Page loading", False),
+    EdgeNotificationActivity("RefreshingPage", "Page refresh", False),
+    EdgeNotificationActivity("ClosingTab", "Close tab", False),
+    EdgeNotificationActivity("OpeningNewTab", "New tab", False),
+    EdgeNotificationActivity("OpeningWindow", "Open window", False),
+    EdgeNotificationActivity("OpeningInPrivateWindow", "Open InPrivate window", False),
+    EdgeNotificationActivity("GoingBack", "Back", False),
+    EdgeNotificationActivity("GoingForward", "Forward", False),
+    EdgeNotificationActivity("CantGoBack", "No previous page", False),
+    EdgeNotificationActivity("CantGoForward", "No next page", False),
+    EdgeNotificationActivity("HubDownloadsNewDownload", "Start download", True),
+    EdgeNotificationActivity("HubDownloadsCompleteState", "Download completed", True),
+    EdgeNotificationActivity("HubDownloadsInProgressState", "Download progress", False),
+    EdgeNotificationActivity("HubDownloadsIndeterminateProgressState", "Download progress unavailable", False),
+    EdgeNotificationActivity("ToolbarButtonRemoved", "Toolbar button removed", False),
+    EdgeNotificationActivity("SearchMode", "Search mode", False),
+    EdgeNotificationActivity("SearchModeAvailable", "Search mode available", False),
+    EdgeNotificationActivity("NotificationAppear", "General browser notification", False),
     # The installed add-on's later duplicate definition makes this enabled.
-    EdgeNotificationActivity("UpdateNotification", "Announce update notifications", True),
-    EdgeNotificationActivity("PageZoom", "Announce zoom changes", True),
-    EdgeNotificationActivity("Autofill option here", "Announce autofil suggestions", False),
-    EdgeNotificationActivity("AutofillSuggestionFilled", "Announce filling of autofill suggestions", False),
-    EdgeNotificationActivity("PopupClosed", "Announce Closing popups like hiding  suggestions of autofill", False),
-    EdgeNotificationActivity("AutofillSuggestionHideButton", "Announce hiding  autofill suggestions", False),
-    EdgeNotificationActivity("RemoveSuggestion", "Announce removing a suggestion", True),
-    EdgeNotificationActivity("ContentSettingNotification", "Announce content setting notifications", True),
-    EdgeNotificationActivity("ExcelAutofillSuggestionTriggered", "Announce triggerring of autofill suggestions", True),
+    EdgeNotificationActivity("UpdateNotification", "Edge update", True),
+    EdgeNotificationActivity("PageZoom", "Zoom changes", True),
+    EdgeNotificationActivity("Autofill option here", "Autofill option", False),
+    EdgeNotificationActivity("AutofillSuggestionFilled", "Autofill filled", False),
+    EdgeNotificationActivity("PopupClosed", "Autofill popup closed", False),
+    EdgeNotificationActivity("AutofillSuggestionHideButton", "Hide autofill suggestion", False),
+    EdgeNotificationActivity("RemoveSuggestion", "Remove suggestion", True),
+    EdgeNotificationActivity("ContentSettingNotification", "Site permission or content setting", True),
+    EdgeNotificationActivity("ExcelAutofillSuggestionTriggered", "Excel autofill suggestion", True),
 )
 
 EDGE_NOTIFICATION_DATA_KEY = "edgeNotificationData"
@@ -144,5 +144,6 @@ def restore_edge_notification_state(snapshot: object) -> None:
     """Restore a capture, treating malformed captures as safe defaults."""
     if not hasattr(snapshot, "get"):
         snapshot = {}
-    set_enabled_activity_ids(snapshot.get(ENABLED_ACTIVITY_IDS_KEY, DEFAULT_ENABLED_ACTIVITY_IDS))
+    enabled_ids = normalize_enabled_activity_ids(snapshot.get(ENABLED_ACTIVITY_IDS_KEY))
+    set_enabled_activity_ids(list(enabled_ids))
     set_custom_messages(snapshot.get(CUSTOM_MESSAGES_KEY, {}))

@@ -16,33 +16,33 @@ import config  # noqa: E402
 
 
 EXPECTED_ACTIVITIES = [
-    ("PageLoading", "Announce loading of pages"),
-    ("RefreshingPage", "Announce page refresh"),
-    ("ClosingTab", "Announce closing of tab"),
-    ("OpeningNewTab", "Announce Opening of new tab"),
-    ("OpeningWindow", "Announce window opening"),
-    ("OpeningInPrivateWindow", "Announce opening of inprivate window"),
-    ("GoingBack", "Announce navigating back"),
-    ("GoingForward", "Announce navigating forward"),
-    ("CantGoBack", "Announce if there is no previous page to navigate"),
-    ("CantGoForward", "Announce if there is no next page to navigate"),
-    ("HubDownloadsNewDownload", "Announce starting file download"),
-    ("HubDownloadsCompleteState", "Announce download completion"),
-    ("HubDownloadsInProgressState", "Announce progress state of current download"),
-    ("HubDownloadsIndeterminateProgressState", "Announce indeterminate progress state of current download"),
-    ("ToolbarButtonRemoved", "Announce removing toolbar buttons"),
-    ("SearchMode", "Announce of search mode"),
-    ("SearchModeAvailable", "Announce availability of search mode"),
-    ("NotificationAppear", "Announce appearing of notifications"),
-    ("UpdateNotification", "Announce update notifications"),
-    ("PageZoom", "Announce zoom changes"),
-    ("Autofill option here", "Announce autofil suggestions"),
-    ("AutofillSuggestionFilled", "Announce filling of autofill suggestions"),
-    ("PopupClosed", "Announce Closing popups like hiding  suggestions of autofill"),
-    ("AutofillSuggestionHideButton", "Announce hiding  autofill suggestions"),
-    ("RemoveSuggestion", "Announce removing a suggestion"),
-    ("ContentSettingNotification", "Announce content setting notifications"),
-    ("ExcelAutofillSuggestionTriggered", "Announce triggerring of autofill suggestions"),
+    ("PageLoading", "Page loading"),
+    ("RefreshingPage", "Page refresh"),
+    ("ClosingTab", "Close tab"),
+    ("OpeningNewTab", "New tab"),
+    ("OpeningWindow", "Open window"),
+    ("OpeningInPrivateWindow", "Open InPrivate window"),
+    ("GoingBack", "Back"),
+    ("GoingForward", "Forward"),
+    ("CantGoBack", "No previous page"),
+    ("CantGoForward", "No next page"),
+    ("HubDownloadsNewDownload", "Start download"),
+    ("HubDownloadsCompleteState", "Download completed"),
+    ("HubDownloadsInProgressState", "Download progress"),
+    ("HubDownloadsIndeterminateProgressState", "Download progress unavailable"),
+    ("ToolbarButtonRemoved", "Toolbar button removed"),
+    ("SearchMode", "Search mode"),
+    ("SearchModeAvailable", "Search mode available"),
+    ("NotificationAppear", "General browser notification"),
+    ("UpdateNotification", "Edge update"),
+    ("PageZoom", "Zoom changes"),
+    ("Autofill option here", "Autofill option"),
+    ("AutofillSuggestionFilled", "Autofill filled"),
+    ("PopupClosed", "Autofill popup closed"),
+    ("AutofillSuggestionHideButton", "Hide autofill suggestion"),
+    ("RemoveSuggestion", "Remove suggestion"),
+    ("ContentSettingNotification", "Site permission or content setting"),
+    ("ExcelAutofillSuggestionTriggered", "Excel autofill suggestion"),
 ]
 DEFAULT_ENABLED_IDS = (
     "HubDownloadsNewDownload",
@@ -76,7 +76,7 @@ class EdgeNotificationConfigTests(unittest.TestCase):
         self.assertEqual(actual, EXPECTED_ACTIVITIES)
         self.assertEqual(len(actual), 27)
         self.assertEqual(len({activity_id for activity_id, _label in actual}), 27)
-        self.assertEqual(actual.count(("UpdateNotification", "Announce update notifications")), 1)
+        self.assertEqual(actual.count(("UpdateNotification", "Edge update")), 1)
         self.assertNotIn("ShowSuggestions", [activity_id for activity_id, _label in actual])
         self.assertEqual(self.edge.DEFAULT_ENABLED_ACTIVITY_IDS, DEFAULT_ENABLED_IDS)
 
@@ -154,6 +154,18 @@ class EdgeNotificationConfigTests(unittest.TestCase):
 
         self.assertEqual(self.edge.get_enabled_activity_ids(), ("PageLoading", "PageZoom"))
         self.assertEqual(self.edge.get_custom_messages(), {"PageLoading": "Custom loading"})
+
+    def test_snapshot_restore_uses_defaults_for_malformed_enabled_ids(self):
+        self.edge.set_enabled_activity_ids([])
+        self.edge.set_custom_messages({"PageLoading": "Custom loading"})
+
+        self.edge.restore_edge_notification_state({
+            "enabledActivityIds": "bad",
+            "customMessages": {},
+        })
+
+        self.assertEqual(self.edge.get_enabled_activity_ids(), DEFAULT_ENABLED_IDS)
+        self.assertEqual(self.edge.get_custom_messages(), {})
 
 
 if __name__ == "__main__":
