@@ -8,7 +8,25 @@ except Exception:
 
 
 class RenameListPanel(wx.Panel):
-	def __init__(self, parent, title, labels, renames, mutedLabels=None, onChange=None, displayLabels=None, helpText=None):
+	def __init__(
+		self,
+		parent,
+		title,
+		labels,
+		renames,
+		mutedLabels=None,
+		onChange=None,
+		displayLabels=None,
+		helpText=None,
+		compactDisplay=False,
+		renamePromptTitle=None,
+		renamePromptMessage=None,
+		renameMenuLabel="Rename	F2",
+		clearRenameMenuLabel="Clear Rename	Delete",
+		checkedActionCaption="Unmute",
+		uncheckedActionCaption="Mute",
+		customDisplaySuffix="renamed to {text}",
+	):
 		super().__init__(parent)
 
 		self._labels = list(labels)
@@ -17,6 +35,14 @@ class RenameListPanel(wx.Panel):
 		self._displayLabels = dict(displayLabels or {})
 		self._onChange = onChange
 		self._suspendEvents = False
+		self._compactDisplay = bool(compactDisplay)
+		self._renamePromptTitle = renamePromptTitle
+		self._renamePromptMessage = renamePromptMessage
+		self._renameMenuLabel = renameMenuLabel
+		self._clearRenameMenuLabel = clearRenameMenuLabel
+		self._checkedActionCaption = checkedActionCaption
+		self._uncheckedActionCaption = uncheckedActionCaption
+		self._customDisplaySuffix = customDisplaySuffix
 
 		mainSizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -62,8 +88,12 @@ class RenameListPanel(wx.Panel):
 		status = self._statusFor(label).lower()
 		display = self._spokenBaseFor(label)
 		rename = self._workingRenames.get(label, "").strip()
+		if self._compactDisplay:
+			if rename:
+				return f"{display}, {self._customDisplaySuffix.format(text=rename)}"
+			return display
 		if rename:
-			return f"{display}, {status}, renamed to {rename}"
+			return f"{display}, {status}, {self._customDisplaySuffix.format(text=rename)}"
 		return f"{display}, {status}"
 
 	def populate(self):
@@ -110,10 +140,20 @@ class RenameListPanel(wx.Panel):
 	def _promptForRename(self, label):
 		current = self._workingRenames.get(label, "")
 		display = self._spokenBaseFor(label)
+		message = self._renamePromptMessage or "Rename the spoken label for '{display}'. Leave blank to clear the rename."
+		if callable(message):
+			message = message(display)
+		else:
+			message = message.format(display=display)
+		title = self._renamePromptTitle or f"Rename {display}"
+		if callable(title):
+			title = title(display)
+		else:
+			title = title.format(display=display)
 		dlg = wx.TextEntryDialog(
 			self,
-			f"Rename the spoken label for '{display}'. Leave blank to clear the rename.",
-			f"Rename {display}",
+			message,
+			title,
 			value=current,
 		)
 		try:
@@ -159,10 +199,10 @@ class RenameListPanel(wx.Panel):
 			return
 
 		menu = wx.Menu()
-		renameItem = menu.Append(wx.ID_ANY, "Rename	F2")
-		clearItem = menu.Append(wx.ID_ANY, "Clear Rename	Delete")
-		muteLabel = "Unmute" if label in self._workingMuted else "Mute"
-		muteItem = menu.Append(wx.ID_ANY, muteLabel)
+		renameItem = menu.Append(wx.ID_ANY, self._renameMenuLabel)
+		clearItem = menu.Append(wx.ID_ANY, self._clearRenameMenuLabel)
+		toggleLabel = self._checkedActionCaption if label in self._workingMuted else self._uncheckedActionCaption
+		muteItem = menu.Append(wx.ID_ANY, toggleLabel)
 
 		menu.Bind(wx.EVT_MENU, lambda e: self.onRenameFromList(None), renameItem)
 		menu.Bind(wx.EVT_MENU, lambda e: self.onClearRename(None), clearItem)
