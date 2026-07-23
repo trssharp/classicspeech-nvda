@@ -512,5 +512,126 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		self.assertEqual(calls, [event])
 
 
+class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
+	def setUp(self):
+		nvda_harness.ClassicSpeechNVDAConfigStartupTests().setUp()
+		nvda_harness._import_classic_speech_like_nvda()
+		from globalPlugins._speech_core import plugin_config
+		plugin_config._initClassicSpeechConfig()
+
+	def tearDown(self):
+		nvda_harness._reset_global_plugin_imports()
+
+	def test_edge_category_is_permanent_fourth_scrolled_panel_wired_to_live_apply(self):
+		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
+		self.assertIn("from .edge_notifications_config import (", dialog_source)
+		self.assertIn("from .edge_notifications_panel import EdgeNotificationsPanel", dialog_source)
+		self.assertIn('"Microsoft Edge Notifications",', dialog_source)
+		self.assertLess(
+			dialog_source.index('"Page Summary",'),
+			dialog_source.index('"Microsoft Edge Notifications",'),
+		)
+		self.assertIn("self.edgeNotificationsPanel = scrolledpanel.ScrolledPanel", dialog_source)
+		self.assertIn("self.edgeNotificationsEditor = EdgeNotificationsPanel(", dialog_source)
+		self.assertIn("onChange=self.onChanged", dialog_source)
+		self.assertIn("self.edgeNotificationsPanel.SetupScrolling(scroll_x=False)", dialog_source)
+		self.assertIn(
+			"self.dynamicPanels = [self.browseModePanel, self.webReportingPanel, self.pageSummaryPanel, self.edgeNotificationsPanel]",
+			dialog_source,
+		)
+		self.assertNotIn("msedge.exe", dialog_source)
+
+	def test_edge_apply_cancel_and_close_are_transactional_even_for_empty_values(self):
+		from globalPlugins._speech_core.settings import edge_notifications_config as edge_config
+		from globalPlugins._speech_core.settings import web_formatting_config
+		from globalPlugins._speech_core.settings import web_summary_config
+		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+
+		class ValueControl:
+			def __init__(self, value):
+				self.value = value
+			def GetValue(self):
+				return self.value
+			def IsChecked(self):
+				return bool(self.value)
+
+		class CheckListControl:
+			def GetCheckedItems(self):
+				return []
+
+		class ChoiceControl:
+			def GetSelection(self):
+				return 0
+
+		class FeatureControl:
+			def saveCurrentValueToConf(self):
+				pass
+
+		class EdgePanel:
+			def __init__(self, enabled_ids, messages):
+				self.enabled_ids = enabled_ids
+				self.messages = messages
+			def getEnabledActivityIds(self):
+				return self.enabled_ids
+			def getCustomMessages(self):
+				return self.messages
+
+		edge_config.set_enabled_activity_ids(["PageLoading"])
+		edge_config.set_custom_messages({"PageLoading": "Original"})
+		dialog = object.__new__(WebBrowseSettingsDialog)
+		dialog.maxLengthEdit = ValueControl(80)
+		dialog.pageLinesEdit = ValueControl(40)
+		for attr in (
+			"useScreenLayoutCheckBox", "enableOnPageLoadCheckBox", "autoSayAllCheckBox",
+			"autoPassThroughOnFocusChangeCheckBox", "autoPassThroughOnCaretMoveCheckBox",
+			"passThroughAudioIndicationCheckBox", "trapNonCommandGesturesCheckBox",
+			"annotationDetailsCheckBox", "ariaDescriptionCheckBox", "layoutTablesCheckBox",
+			"headingsCheckBox", "linksCheckBox", "linkTypeCheckBox", "graphicsCheckBox",
+			"listsCheckBox", "blockQuotesCheckBox", "groupingsCheckBox", "landmarksCheckBox",
+			"articlesCheckBox", "framesCheckBox", "figuresCheckBox", "clickableCheckBox",
+		):
+			setattr(dialog, attr, ValueControl(False))
+		dialog._browseModeElements = []
+		dialog.browseModeTouchNavigationList = CheckListControl()
+		dialog.loadChromiumBusyCombo = FeatureControl()
+		dialog.brailleLiveRegionsCombo = FeatureControl()
+		dialog.notifyWhenPageReadyCheckBox = ValueControl(False)
+		dialog.pageReadyMessageEdit = ValueControl("Page ready")
+		dialog.pageLoadSummaryMode = ChoiceControl()
+		dialog._pageLoadSummaryModes = ("native", "afterReady", "orientation")
+		dialog._pageSummaryElements = []
+		dialog.pageSummaryElementList = CheckListControl()
+		dialog.edgeNotificationsEditor = EdgePanel([], {})
+		dialog._originalWebBrowse = web_formatting_config.capture_web_browse_state()
+		dialog._originalPageSummaryTypes = web_summary_config.get_included_element_types()
+		dialog._originalPageSummaryTitle = web_summary_config.get_include_document_title()
+		dialog._originalPageLoadSummaryMode = web_summary_config.get_page_load_summary_mode()
+		dialog._originalNotifyWhenPageReady = web_summary_config.get_notify_when_page_ready()
+		dialog._originalPageReadyMessage = web_summary_config.get_page_ready_message()
+		dialog._originalEdgeNotifications = edge_config.capture_edge_notification_state()
+		dialog.Destroy = lambda: setattr(dialog, "destroyed", True)
+		dialog._apply_to_config()
+		self.assertEqual(edge_config.get_enabled_activity_ids(), ())
+		self.assertEqual(edge_config.get_custom_messages(), {})
+
+		# Apply moves the cancel baseline to the intentionally empty state.
+		dialog._clearDirty = lambda: None
+		dialog.onApply(None)
+		dialog.edgeNotificationsEditor = EdgePanel(["PageZoom"], {"PageZoom": "Zoomed"})
+		dialog._apply_to_config()
+		dialog.onCancel(None)
+		self.assertEqual(edge_config.get_enabled_activity_ids(), ())
+		self.assertEqual(edge_config.get_custom_messages(), {})
+
+		# Close likewise restores a captured empty baseline.
+		edge_config.set_enabled_activity_ids(["PageZoom"])
+		edge_config.set_custom_messages({"PageZoom": "Zoomed"})
+		dialog._releasePopup = lambda: None
+		event = type("CloseEvent", (), {"Skip": lambda self: None})()
+		dialog.onClose(event)
+		self.assertEqual(edge_config.get_enabled_activity_ids(), ())
+		self.assertEqual(edge_config.get_custom_messages(), {})
+
+
 if __name__ == "__main__":
 	unittest.main()
