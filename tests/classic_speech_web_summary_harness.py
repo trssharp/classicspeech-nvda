@@ -179,7 +179,10 @@ class WebSummaryConfigTests(unittest.TestCase):
         spec = self.config.conf.spec["classicSpeech"]
         self.assertIn("pageSummaryData", spec)
         self.assertIn("includedElementTypes", spec["pageSummaryData"])
-        self.assertNotIn("includeDocumentTitle", spec["pageSummaryData"])
+        self.assertEqual(
+            spec["pageSummaryData"]["includeDocumentTitle"],
+            "boolean(default=False)",
+        )
         self.assertIn("automaticReportOnPageLoad", spec["pageSummaryData"])
         self.assertEqual(
             spec["pageSummaryData"]["automaticReportOnPageLoad"],
@@ -203,19 +206,20 @@ class WebSummaryConfigTests(unittest.TestCase):
             ["heading", "link", "table"],
         )
 
-    def test_title_feature_has_no_config_or_formatter_surface(self):
-        config_source = (ROOT / "_speech_core" / "settings" / "web_summary_config.py").read_text(encoding="utf-8")
-        model_source = (ROOT / "_speech_core" / "web_summary.py").read_text(encoding="utf-8")
-        plugin_source = (ROOT / "classicSpeech.py").read_text(encoding="utf-8")
-        for obsolete in (
-            "includeDocumentTitle",
-            "get_include_document_title",
-            "set_include_document_title",
-        ):
-            self.assertNotIn(obsolete, config_source)
-            self.assertNotIn(obsolete, plugin_source)
-        self.assertNotIn("format_summary_with_document_title", model_source)
-        self.assertNotIn("_get_page_summary_document_title", plugin_source)
+    def test_title_option_is_configured_and_uses_natural_no_prefix_formatting(self):
+        self.assertFalse(self.summary_config.get_include_document_title())
+        self.assertTrue(self.summary_config.set_include_document_title(" true "))
+        self.assertTrue(self.summary_config.get_include_document_title())
+        self.assertFalse(self.summary_config.set_include_document_title("unexpected"))
+        from _speech_core.web_summary import format_summary_with_document_title
+        self.assertEqual(
+            format_summary_with_document_title("  Example\npage  ", "1 heading."),
+            "Example page. 1 heading.",
+        )
+        self.assertEqual(
+            format_summary_with_document_title("", "1 heading."),
+            "1 heading.",
+        )
 
 
     def test_automatic_reporting_parses_only_explicit_boolean_values(self):

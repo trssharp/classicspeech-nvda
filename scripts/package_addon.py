@@ -13,7 +13,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
-RUNTIME_FILES = ("classicSpeech.py",)
+RUNTIME_FILES = (
+    "classicSpeech.py",
+    "page_orientation_runtime.py",
+)
 RUNTIME_DIRECTORIES = ("_speech_core",)
 RELEASE_NOTES = "VOICE-PROFILES-RC-V24.md"
 
@@ -81,7 +84,11 @@ def main() -> None:
         if invalid_member:
             raise SystemExit(f"Corrupt ZIP member: {invalid_member}")
         members = set(archive.namelist())
-        required = {"manifest.ini", "globalPlugins/classicSpeech.py"}
+        required = {
+            "manifest.ini",
+            "globalPlugins/classicSpeech.py",
+            "globalPlugins/page_orientation_runtime.py",
+        }
         if not required.issubset(members):
             raise SystemExit(f"Missing required package files: {sorted(required - members)}")
         if any("__pycache__" in name or name.endswith((".pyc", ".pyo")) for name in members):
