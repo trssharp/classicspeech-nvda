@@ -188,6 +188,14 @@ class WebSummaryConfigTests(unittest.TestCase):
             spec["pageSummaryData"]["automaticReportOnPageLoad"],
             "boolean(default=False)",
         )
+        self.assertEqual(
+            spec["pageSummaryData"]["notifyWhenPageReady"],
+            "boolean(default=False)",
+        )
+        self.assertEqual(
+            spec["pageSummaryData"]["pageReadyMessage"],
+            "string(default='Page ready')",
+        )
         self.assertFalse(self.summary_config.get_automatic_reporting_enabled())
         self.assertEqual(
             self.summary_config.get_included_element_types(),
@@ -253,6 +261,41 @@ class WebSummaryConfigTests(unittest.TestCase):
             self.assertFalse(self.summary_config.set_automatic_reporting_enabled(invalid_value))
             self.assertIs(data["automaticReportOnPageLoad"], False)
             self.assertFalse(self.summary_config.get_automatic_reporting_enabled())
+
+    def test_page_ready_notification_defaults_are_off_with_the_default_message(self):
+        self.assertFalse(self.summary_config.get_notify_when_page_ready())
+        self.assertEqual(self.summary_config.get_page_ready_message(), "Page ready")
+
+    def test_page_ready_notification_stored_values_are_normalized_and_trimmed(self):
+        data = self.config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]
+        data.update(
+            {
+                "notifyWhenPageReady": " true ",
+                "pageReadyMessage": "  Finished loading  ",
+            }
+        )
+
+        self.assertTrue(self.summary_config.get_notify_when_page_ready())
+        self.assertEqual(self.summary_config.get_page_ready_message(), "Finished loading")
+
+    def test_page_ready_notification_malformed_values_fail_safe_and_blank_messages_use_defaults(self):
+        data = self.config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]
+        for saved_value in ("unexpected", 1, None, object()):
+            data["notifyWhenPageReady"] = saved_value
+            self.assertFalse(self.summary_config.get_notify_when_page_ready())
+        for saved_value in (None, 1, "  "):
+            data["pageReadyMessage"] = saved_value
+            self.assertEqual(self.summary_config.get_page_ready_message(), "Page ready")
+
+    def test_page_ready_notification_setters_persist_independently(self):
+        data = self.config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]
+        self.assertTrue(self.summary_config.set_notify_when_page_ready(" true "))
+        self.assertEqual(self.summary_config.set_page_ready_message("  Ready custom  "), "Ready custom")
+        self.assertEqual(data["notifyWhenPageReady"], True)
+        self.assertEqual(data["pageReadyMessage"], "Ready custom")
+
+        self.assertFalse(self.summary_config.set_notify_when_page_ready(None))
+        self.assertEqual(data["pageReadyMessage"], "Ready custom")
 
     def test_invalid_saved_choices_are_dropped_without_losing_valid_choices(self):
         self.config.conf.profiles[0]["classicSpeech"] = {}
@@ -366,6 +409,9 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         from globalPlugins._speech_core.settings.web_summary_config import (
             set_automatic_reporting_enabled,
             set_included_element_types,
+            set_notify_when_page_ready,
+            set_page_ready_message,
+            set_page_orientation_enabled,
         )
 
         self.api = api
@@ -376,6 +422,9 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.original_call_later = self.module.wx.CallLater
         self.module.wx.CallLater = self._call_later
         set_automatic_reporting_enabled(False)
+        set_page_orientation_enabled(False)
+        set_notify_when_page_ready(False)
+        set_page_ready_message("Page ready")
         set_included_element_types(["heading", "link"])
 
     def tearDown(self):
@@ -404,6 +453,187 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.laters, [])
         self.assertEqual(self.ui.messages, [])
         self.assertFalse(getattr(plugin, "_automaticSummaryPending", {}))
+
+    def test_ready_default_disabled_in_native_summary_mode_preserves_native_load_handling(self):
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        plugin, _focus, _target = self._start_event(document)
+
+        self.assertEqual(self.laters, [])
+        self.assertEqual(self.ui.messages, [])
+        self.assertFalse(getattr(plugin, "_automaticSummaryPending", {}))
+
+    def test_ready_only_native_mode_speaks_the_normalized_custom_message_once(self):
+        from globalPlugins._speech_core.settings.web_summary_config import (
+            set_notify_when_page_ready,
+            set_page_ready_message,
+        )
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        set_notify_when_page_ready(True)
+        self.assertEqual(set_page_ready_message("  Finished loading  "), "Finished loading")
+        _plugin, _focus, _target = self._start_event(document)
+
+        self.assertEqual(len(self.laters), 1)
+        self.laters.pop(0).run()
+        self.assertEqual(self.ui.messages, ["Finished loading"])
+
+    def test_ready_message_precedes_automatic_summary_for_the_same_ready_cycle(self):
+        from globalPlugins._speech_core.settings.web_summary_config import (
+            set_automatic_reporting_enabled,
+            set_notify_when_page_ready,
+        )
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        set_automatic_reporting_enabled(True)
+        set_notify_when_page_ready(True)
+        _plugin, _focus, _target = self._start_event(document)
+
+        self.laters.pop(0).run()
+        self.assertEqual(self.ui.messages, ["Page ready", "1 heading."])
+
+    def test_ready_message_precedes_page_orientation_summary_without_a_duplicate_callback(self):
+        from globalPlugins._speech_core.settings.web_summary_config import (
+            set_notify_when_page_ready,
+            set_page_orientation_enabled,
+        )
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        focus = type("Focus", (), {"treeInterceptor": document})()
+        target = type("DocumentTarget", (), {"treeInterceptor": document})()
+        self.api.getFocusObject = lambda: focus
+        set_page_orientation_enabled(True)
+        set_notify_when_page_ready(True)
+        plugin = object.__new__(self.module.GlobalPlugin)
+
+        self.assertTrue(plugin._report_page_orientation_for_document(document))
+        self.assertEqual(self.ui.messages, ["Page ready", "1 heading."])
+        plugin.event_documentLoadComplete(target, lambda: None)
+        self.assertEqual(self.laters, [])
+        self.assertEqual(self.ui.messages, ["Page ready", "1 heading."])
+
+    def test_orientation_mode_owns_ready_presentation_even_when_document_load_completes_first(self):
+        from globalPlugins._speech_core.settings.web_summary_config import (
+            set_notify_when_page_ready,
+            set_page_orientation_enabled,
+        )
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        focus = type("Focus", (), {"treeInterceptor": document})()
+        target = type("DocumentTarget", (), {"treeInterceptor": document})()
+        self.api.getFocusObject = lambda: focus
+        set_page_orientation_enabled(True)
+        set_notify_when_page_ready(True)
+        plugin = object.__new__(self.module.GlobalPlugin)
+
+        plugin.event_documentLoadComplete(target, lambda: None)
+        self.assertEqual(self.laters, [])
+        self.assertEqual(self.ui.messages, [])
+        self.assertTrue(plugin._report_page_orientation_for_document(document))
+        self.assertEqual(self.ui.messages, ["Page ready", "1 heading."])
+
+    def test_loading_ready_only_document_never_speaks_early_then_reports_once_when_ready(self):
+        from globalPlugins._speech_core.settings.web_summary_config import set_notify_when_page_ready
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]}, is_ready=False)
+        set_notify_when_page_ready(True)
+        _plugin, _focus, _target = self._start_event(document)
+
+        self.laters.pop(0).run()
+        self.assertEqual(self.ui.messages, [])
+        self.assertEqual(len(self.laters), 1)
+        document.isReady = True
+        self.laters.pop(0).run()
+        self.assertEqual(self.ui.messages, ["Page ready"])
+
+    def test_replaced_buffer_handle_during_pending_ready_retry_is_discarded(self):
+        from globalPlugins._speech_core.settings.web_summary_config import set_notify_when_page_ready
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]}, is_ready=False)
+        set_notify_when_page_ready(True)
+        _plugin, _focus, _target = self._start_event(document)
+
+        self.laters.pop(0).run()
+        self.assertEqual(len(self.laters), 1)
+        document.VBufHandle = object()
+        document.isReady = True
+        self.laters.pop(0).run()
+
+        self.assertEqual(self.ui.messages, [])
+        self.assertEqual(self.laters, [])
+
+    def test_initially_unavailable_buffer_handle_can_report_when_it_arrives(self):
+        from globalPlugins._speech_core.settings.web_summary_config import set_notify_when_page_ready
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]}, is_ready=False)
+        document.VBufHandle = None
+        set_notify_when_page_ready(True)
+        _plugin, _focus, _target = self._start_event(document)
+
+        self.laters.pop(0).run()
+        self.assertEqual(len(self.laters), 1)
+        document.VBufHandle = object()
+        document.isReady = True
+        self.laters.pop(0).run()
+
+        self.assertEqual(self.ui.messages, ["Page ready"])
+        self.assertEqual(self.laters, [])
+
+    def test_repeated_load_events_dedupe_ready_only_notifications(self):
+        from globalPlugins._speech_core.settings.web_summary_config import set_notify_when_page_ready
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        set_notify_when_page_ready(True)
+        plugin, _focus, target = self._start_event(document)
+        plugin.event_documentLoadComplete(target, lambda: None)
+        self.assertEqual(len(self.laters), 1)
+
+        self.laters.pop(0).run()
+        plugin.event_documentLoadComplete(target, lambda: None)
+        self.assertEqual(self.ui.messages, ["Page ready"])
+        self.assertEqual(self.laters, [])
+
+    def test_disabling_ready_after_schedule_preserves_enabled_summary(self):
+        from globalPlugins._speech_core.settings.web_summary_config import (
+            set_automatic_reporting_enabled,
+            set_notify_when_page_ready,
+        )
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        set_automatic_reporting_enabled(True)
+        set_notify_when_page_ready(True)
+        _plugin, _focus, _target = self._start_event(document)
+        set_notify_when_page_ready(False)
+        self.laters.pop(0).run()
+
+        self.assertEqual(self.ui.messages, ["1 heading."])
+
+    def test_disabling_summary_after_schedule_preserves_enabled_ready_notification(self):
+        from globalPlugins._speech_core.settings.web_summary_config import (
+            set_automatic_reporting_enabled,
+            set_notify_when_page_ready,
+        )
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        set_automatic_reporting_enabled(True)
+        set_notify_when_page_ready(True)
+        _plugin, _focus, _target = self._start_event(document)
+        set_automatic_reporting_enabled(False)
+        self.laters.pop(0).run()
+
+        self.assertEqual(self.ui.messages, ["Page ready"])
+
+    def test_next_handler_runs_first_before_ready_setting_is_observed(self):
+        from globalPlugins._speech_core.settings.web_summary_config import set_notify_when_page_ready
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        focus = type("Focus", (), {"treeInterceptor": document})()
+        target = type("DocumentTarget", (), {"treeInterceptor": document})()
+        self.api.getFocusObject = lambda: focus
+        plugin = object.__new__(self.module.GlobalPlugin)
+        set_notify_when_page_ready(False)
+        plugin.event_documentLoadComplete(target, lambda: set_notify_when_page_ready(True))
+
+        self.assertEqual(len(self.laters), 1)
 
     def test_ready_current_document_reports_once_with_one_native_message_and_no_mutation(self):
         from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
@@ -457,6 +687,18 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
 
         self.laters.pop(0).run()
 
+        self.assertEqual(self.ui.messages, [])
+        self.assertEqual(self.laters, [])
+
+    def test_focus_change_discards_pending_ready_notification_silently(self):
+        from globalPlugins._speech_core.settings.web_summary_config import set_notify_when_page_ready
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        set_notify_when_page_ready(True)
+        _plugin, _focus, _target = self._start_event(document)
+        self.api.getFocusObject = lambda: type("Focus", (), {"treeInterceptor": FakeBrowseDocument()})()
+
+        self.laters.pop(0).run()
         self.assertEqual(self.ui.messages, [])
         self.assertEqual(self.laters, [])
 
@@ -650,6 +892,31 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         plugin.terminate()
         pending.run()
 
+        self.assertTrue(pending.stopped)
+        self.assertIsNone(getattr(plugin, "_automaticSummaryPending", None))
+        self.assertEqual(self.ui.messages, [])
+
+    def test_terminate_cancels_pending_ready_notification(self):
+        from globalPlugins._speech_core.settings.web_summary_config import set_notify_when_page_ready
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]}, is_ready=False)
+        set_notify_when_page_ready(True)
+        plugin, _focus, _target = self._start_event(document)
+        pending = self.laters[0]
+        plugin._unregister_speech_hook = lambda: None
+        plugin._restore_remote_speech_compatibility = lambda: None
+        plugin._restore_windows_toast_system_route = lambda: None
+        plugin._restore_system_notification_profile_routes = lambda: None
+        plugin._restore_configuration_save_revert_system_routes = lambda: None
+        plugin._restore_mouse_pointer_profile_route = lambda: None
+        plugin._restore_keyboard_entry_profile_route = lambda: None
+        plugin._restore_shortcut_speaker_bypass = lambda: None
+        plugin._interruptController = type("Interrupt", (), {"uninstall": lambda self: None})()
+        plugin._keyLabelRuntime = type("Labels", (), {"terminate": lambda self: None})()
+        plugin._removeClassicSpeechMenu = lambda: None
+
+        plugin.terminate()
+        pending.run()
         self.assertTrue(pending.stopped)
         self.assertIsNone(getattr(plugin, "_automaticSummaryPending", None))
         self.assertEqual(self.ui.messages, [])
