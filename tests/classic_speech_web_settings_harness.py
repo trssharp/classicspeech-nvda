@@ -714,15 +714,25 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		dialog._originalPageReadyMessage = web_summary_config.get_page_ready_message()
 		dialog._originalEdgeNotifications = edge_config.capture_edge_notification_state()
 
+		# Make the complete registry checked before the real Web dialog's Apply / OK
+		# lifecycle serializes it. The deferred-row coverage above has already
+		# proven the pre-native-flip route; this is the aggregate persistence gate
+		# that catches a dialog-level truncation or tuple/list serialization error.
+		all_activity_ids = tuple(activity.activity_id for activity in edge_config.EDGE_NOTIFICATION_ACTIVITIES)
+		for index in range(len(all_activity_ids)):
+			panel.listCtrl.checked[index] = True
+		panel._workingMuted.clear()
+
 		# The real Web dialog's Apply and OK handlers both save the now-current
-		# panel state; reopening reads the persisted PageLoading selection.
+		# complete panel state; reopening reads every persisted selection.
 		self.assertTrue(dialog.onApply(None))
 		dialog.onOK(None)
 		self.assertTrue(dialog.destroyed)
-		self.assertIn("PageLoading", edge_config.get_enabled_activity_ids())
+		self.assertEqual(edge_config.get_enabled_activity_ids(), all_activity_ids)
 
 		reopened = make_edge_panel(edge_config.get_enabled_activity_ids())
-		self.assertTrue(reopened.listCtrl.checked[reopened._labels.index("PageLoading")])
+		self.assertEqual(reopened.getEnabledActivityIds(), all_activity_ids)
+		self.assertTrue(all(reopened.listCtrl.checked))
 
 	def test_edge_apply_cancel_and_close_are_transactional_even_for_empty_values(self):
 		from globalPlugins._speech_core.settings import edge_notifications_config as edge_config

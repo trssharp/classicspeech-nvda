@@ -427,6 +427,55 @@ class EdgeNotificationsPanelTests(unittest.TestCase):
         self.assertEqual(panel.getEnabledActivityIds(), ("PageLoading",))
         self.assertEqual(changes, [True])
 
+    def test_every_activity_toggle_uses_deferred_native_state_and_changes_only_that_id_once(self):
+        """Exercise every real checklist row through RenameListPanel's queue.
+
+        CustomCheckListBox emits before it flips its native check state.  This
+        deliberately queues the real callback for each canonical Edge ID, then
+        applies the native flip before draining it.  Both directions prove a
+        row cannot accidentally add/remove a neighboring activity.
+        """
+        wx = sys.modules["wx"]
+        queued = []
+        original_call_after = wx.CallAfter
+        wx.CallAfter = lambda callback, *args, **kwargs: queued.append((callback, args, kwargs))
+        self.addCleanup(setattr, wx, "CallAfter", original_call_after)
+        all_ids = tuple(activity.activity_id for activity in self.edge.EDGE_NOTIFICATION_ACTIVITIES)
+
+        for index, activity_id in enumerate(all_ids):
+            with self.subTest(activity_id=activity_id, transition="add"):
+                panel = self._make_panel(enabled_ids=(), custom_messages={})
+                changes = []
+                panel._onChange = lambda: changes.append(True)
+                event = _ChecklistEvent(index)
+                panel.onChecklistToggled(event)
+                self.assertEqual(event.skipCount, 1)
+                self.assertEqual(changes, [])
+                self.assertEqual(len(queued), 1)
+                panel.listCtrl.checked[index] = True
+                callback, args, kwargs = queued.pop()
+                callback(*args, **kwargs)
+                self.assertEqual(panel.getEnabledActivityIds(), (activity_id,))
+                self.assertEqual(changes, [True])
+
+            with self.subTest(activity_id=activity_id, transition="remove"):
+                panel = self._make_panel(enabled_ids=all_ids, custom_messages={})
+                changes = []
+                panel._onChange = lambda: changes.append(True)
+                event = _ChecklistEvent(index)
+                panel.onChecklistToggled(event)
+                self.assertEqual(event.skipCount, 1)
+                self.assertEqual(changes, [])
+                self.assertEqual(len(queued), 1)
+                panel.listCtrl.checked[index] = False
+                callback, args, kwargs = queued.pop()
+                callback(*args, **kwargs)
+                self.assertEqual(
+                    panel.getEnabledActivityIds(),
+                    tuple(candidate for candidate in all_ids if candidate != activity_id),
+                )
+                self.assertEqual(changes, [True])
+
     def test_suspended_checklist_toggle_still_propagates_without_changing_state(self):
         panel = self._make_panel(enabled_ids=(), custom_messages={})
         changes = []
@@ -517,6 +566,32 @@ class EdgeNotificationRuntimeTests(unittest.TestCase):
         self.edge.set_custom_messages({})
         self.assertEqual(self._event("PageLoading"), [True])
         self.assertEqual(self.messages, [])
+
+    def test_every_canonical_activity_has_suppressed_native_and_custom_runtime_paths(self):
+        """Prove all 27 registry-owned IDs take exactly the documented route."""
+        for index, activity in enumerate(self.edge.EDGE_NOTIFICATION_ACTIVITIES):
+            activity_id = activity.activity_id
+            with self.subTest(activity_id=activity_id, configuration="suppressed"):
+                self.messages.clear()
+                self.edge.set_enabled_activity_ids([])
+                self.edge.set_custom_messages({activity_id: f"suppressed {index}"})
+                self.assertEqual(self._event(activity_id), [])
+                self.assertEqual(self.messages, [])
+
+            with self.subTest(activity_id=activity_id, configuration="enabled-native"):
+                self.messages.clear()
+                self.edge.set_enabled_activity_ids([activity_id])
+                self.edge.set_custom_messages({})
+                self.assertEqual(self._event(activity_id), [True])
+                self.assertEqual(self.messages, [])
+
+            with self.subTest(activity_id=activity_id, configuration="enabled-custom"):
+                custom_message = f"Custom Edge activity {index}: {activity_id}"
+                self.messages.clear()
+                self.edge.set_enabled_activity_ids([activity_id])
+                self.edge.set_custom_messages({activity_id: f"  {custom_message}  "})
+                self.assertEqual(self._event(activity_id), [])
+                self.assertEqual(self.messages, [custom_message])
 
     def test_runtime_configuration_is_read_again_for_each_event(self):
         self.edge.set_enabled_activity_ids([])
