@@ -720,6 +720,27 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		self.assertEqual(edge_config.get_enabled_activity_ids(), ("PageZoom",))
 		self.assertEqual(edge_config.get_custom_messages(), {"PageZoom": "Accepted zoom"})
 
+		# A caught Apply failure must not turn OK into an accepted close. The
+		# ordinary close that follows must still roll back the earlier live edit.
+		edge_config.set_enabled_activity_ids(["PageLoading"])
+		edge_config.set_custom_messages({"PageLoading": "Original"})
+		failed = make_dialog(["PageZoom"], {"PageZoom": "Live zoom"})
+		failed._apply_to_config()
+
+		def fail_apply():
+			raise RuntimeError("simulated Apply failure")
+
+		failed._apply_to_config = fail_apply
+		failed.onOK(None)
+		self.assertFalse(failed.__dict__.get("_closeAfterOK", False))
+		self.assertFalse(failed.__dict__.get("destroyed", False))
+		failed_close = close_event()
+		failed.onClose(failed_close)
+
+		self.assertTrue(failed_close.skipped)
+		self.assertEqual(edge_config.get_enabled_activity_ids(), ("PageLoading",))
+		self.assertEqual(edge_config.get_custom_messages(), {"PageLoading": "Original"})
+
 		# Apply creates a new rollback baseline. A later ordinary window close
 		# must still restore that baseline after further live edits.
 		rebased = make_dialog(["PageLoading"], {"PageLoading": "Applied loading"})
