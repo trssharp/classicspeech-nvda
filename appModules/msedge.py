@@ -40,7 +40,11 @@ class AppModule(appModuleHandler.AppModule):
             custom_messages = edge_notifications_config.get_custom_messages()
             config_is_valid = (
                 isinstance(enabled_ids, (tuple, list, set, frozenset))
-                and all(isinstance(enabled_id, str) for enabled_id in enabled_ids)
+                and all(
+                    isinstance(enabled_id, str)
+                    and enabled_id in edge_notifications_config.ACTIVITY_IDS
+                    for enabled_id in enabled_ids
+                )
                 and isinstance(custom_messages, Mapping)
             )
             if not config_is_valid:
