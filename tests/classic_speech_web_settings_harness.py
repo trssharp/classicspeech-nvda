@@ -483,7 +483,7 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		dialog._originalPageLoadSummaryMode = web_summary_config.get_page_load_summary_mode()
 		dialog._originalNotifyWhenPageReady = False
 		dialog._originalPageReadyMessage = "Page ready"
-		dialog._releasePopup = lambda: None
+		dialog._releaseTransactionPopup = lambda: None
 		web_summary_config.set_notify_when_page_ready(True)
 		web_summary_config.set_page_ready_message("Changed before close")
 		event = type("CloseEvent", (), {"skipped": False, "Skip": lambda self: setattr(self, "skipped", True)})()
@@ -610,7 +610,7 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		dialog._originalPageReadyMessage = web_summary_config.get_page_ready_message()
 		dialog._originalEdgeNotifications = edge_config.capture_edge_notification_state()
 		dialog.Destroy = lambda: setattr(dialog, "destroyed", True)
-		dialog._apply_to_config()
+		dialog._saveTransaction()
 		self.assertEqual(edge_config.get_enabled_activity_ids(), ())
 		self.assertEqual(edge_config.get_custom_messages(), {})
 
@@ -618,7 +618,7 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		dialog._clearDirty = lambda: None
 		dialog.onApply(None)
 		dialog.edgeNotificationsEditor = EdgePanel(["PageZoom"], {"PageZoom": "Zoomed"})
-		dialog._apply_to_config()
+		dialog._saveTransaction()
 		dialog.onCancel(None)
 		self.assertEqual(edge_config.get_enabled_activity_ids(), ())
 		self.assertEqual(edge_config.get_custom_messages(), {})
@@ -626,7 +626,7 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		# Close likewise restores a captured empty baseline.
 		edge_config.set_enabled_activity_ids(["PageZoom"])
 		edge_config.set_custom_messages({"PageZoom": "Zoomed"})
-		dialog._releasePopup = lambda: None
+		dialog._releaseTransactionPopup = lambda: None
 		event = type("CloseEvent", (), {"Skip": lambda self: None})()
 		dialog.onClose(event)
 		self.assertEqual(edge_config.get_enabled_activity_ids(), ())
@@ -657,7 +657,7 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 
 		edge_config.set_enabled_activity_ids(["PageZoom"])
 		edge_config.set_custom_messages({"PageZoom": "Zoomed"})
-		dialog._releasePopup = lambda: None
+		dialog._releaseTransactionPopup = lambda: None
 		event = type("CloseEvent", (), {"Skip": lambda self: None})()
 		dialog.onClose(event)
 		self.assertNotIn("edgeNotificationData", section)
@@ -681,14 +681,14 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		def make_dialog(enabled_ids, messages):
 			dialog = object.__new__(WebBrowseSettingsDialog)
 			dialog.edgeNotificationsEditor = EdgePanel(enabled_ids, messages)
-			dialog._apply_to_config = lambda: (
+			dialog._saveTransaction = lambda: (
 				edge_config.set_enabled_activity_ids(dialog.edgeNotificationsEditor.getEnabledActivityIds()),
 				edge_config.set_custom_messages(dialog.edgeNotificationsEditor.getCustomMessages()),
 			)
 			dialog._clearDirty = lambda: None
 			dialog.Destroy = lambda: setattr(dialog, "destroyed", True)
-			dialog._releasePopup = lambda: None
-			dialog._captureOriginalState()
+			dialog._releaseTransactionPopup = lambda: None
+			dialog._captureTransactionBaseline()
 			return dialog
 
 		def close_event():
@@ -715,8 +715,8 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		edge_config.set_enabled_activity_ids(["PageLoading"])
 		edge_config.set_custom_messages({"PageLoading": "Original"})
 		failed = make_dialog(["PageZoom"], {"PageZoom": "Live zoom"})
-		failed._apply_to_config()
-		failed._apply_to_config = lambda: (_ for _ in ()).throw(RuntimeError("simulated Apply failure"))
+		failed._saveTransaction()
+		failed._saveTransaction = lambda: (_ for _ in ()).throw(RuntimeError("simulated Apply failure"))
 		failed.onOK(None)
 		self.assertFalse(failed.__dict__.get("destroyed", False))
 		failed_close = close_event()
@@ -730,7 +730,7 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		rebased = make_dialog(["PageLoading"], {"PageLoading": "Applied loading"})
 		self.assertTrue(rebased.onApply(None))
 		rebased.edgeNotificationsEditor = EdgePanel(["PageZoom"], {"PageZoom": "Later zoom"})
-		rebased._apply_to_config()
+		rebased._saveTransaction()
 		rebased_close = close_event()
 		rebased.onClose(rebased_close)
 		self.assertTrue(rebased_close.skipped)
@@ -739,7 +739,7 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 
 		# Cancel and its ensuing EVT_CLOSE both restore the same baseline.
 		cancelled = make_dialog(["PageZoom"], {"PageZoom": "Cancelled zoom"})
-		cancelled._apply_to_config()
+		cancelled._saveTransaction()
 		cancelled.onCancel(None)
 		cancelled_close = close_event()
 		cancelled.onClose(cancelled_close)
@@ -748,14 +748,13 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		self.assertEqual(edge_config.get_enabled_activity_ids(), ("PageLoading",))
 		self.assertEqual(edge_config.get_custom_messages(), {"PageLoading": "Applied loading"})
 
-	def test_web_dialog_source_uses_general_dialog_baseline_lifecycle_without_close_flag(self):
+	def test_web_dialog_delegates_lifecycle_handlers_to_the_shared_transaction_mixin(self):
 		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
-		self.assertIn("def _captureOriginalState(self):", dialog_source)
-		self.assertIn("def _restoreOriginalState(self):", dialog_source)
-		self.assertIn("self._captureOriginalState()", dialog_source)
-		self.assertIn("self._restoreOriginalState()", dialog_source)
-		forbidden = "_close" + "AfterOK"
-		self.assertNotIn(forbidden, dialog_source)
+		self.assertIn("SettingsDialogTransactionMixin", dialog_source)
+		self.assertIn("_initializeDialogTransaction()", dialog_source)
+		for handler in ("onApply", "onOK", "onCancel", "onClose"):
+			self.assertNotIn(f"def {handler}(self", dialog_source)
+		self.assertNotIn("_closeAfterOK", dialog_source)
 
 
 if __name__ == "__main__":

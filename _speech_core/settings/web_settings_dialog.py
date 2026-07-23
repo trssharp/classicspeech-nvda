@@ -43,6 +43,7 @@ from .edge_notifications_config import (
 	set_enabled_activity_ids,
 )
 from .edge_notifications_panel import EdgeNotificationsPanel
+from .dialog_transactions import SettingsDialogTransactionMixin
 
 log = logHandler.log
 
@@ -65,7 +66,7 @@ def _checked_items(control):
 	]
 
 
-class WebBrowseSettingsDialog(wx.Dialog):
+class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 	"""ClassicSpeech dialog for native NVDA web and browse-mode settings."""
 
 	CATEGORY_NAMES = [
@@ -84,8 +85,7 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		self.SetName("ClassicSpeechWebBrowseSettingsDialog")
 		self._popupReleased = False
 		self._committed = False
-		self._closeAfterOK = False
-		self._captureOriginalState()
+		self._initializeDialogTransaction()
 		self._browseModeElements = self._get_browse_mode_touch_elements()
 
 		outerSizer = wx.BoxSizer(wx.VERTICAL)
@@ -423,7 +423,7 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		self.panelHost.Layout()
 		self.Layout()
 
-	def _releasePopup(self):
+	def _releaseTransactionPopup(self):
 		if self._popupReleased:
 			return
 		self._popupReleased = True
@@ -432,33 +432,33 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		except Exception:
 			log.exception("ClassicSpeech: postPopup failed during web/browse dialog close")
 
-		def _captureOriginalState(self):
-			self._originalWebBrowse = capture_web_browse_state()
-			self._originalPageSummary = capture_page_summary_state()
-			self._originalPageSummaryTypes = get_included_element_types()
-			self._originalPageSummaryTitle = get_include_document_title()
-			self._originalPageLoadSummaryMode = get_page_load_summary_mode()
-			self._originalNotifyWhenPageReady = get_notify_when_page_ready()
-			self._originalPageReadyMessage = get_page_ready_message()
-			self._originalEdgeNotifications = capture_edge_notification_state()
+	def _captureTransactionBaseline(self):
+		self._originalWebBrowse = capture_web_browse_state()
+		self._originalPageSummary = capture_page_summary_state()
+		self._originalPageSummaryTypes = get_included_element_types()
+		self._originalPageSummaryTitle = get_include_document_title()
+		self._originalPageLoadSummaryMode = get_page_load_summary_mode()
+		self._originalNotifyWhenPageReady = get_notify_when_page_ready()
+		self._originalPageReadyMessage = get_page_ready_message()
+		self._originalEdgeNotifications = capture_edge_notification_state()
 
-		def _restoreOriginalState(self):
-			try:
-				restore_web_browse_state(self._originalWebBrowse)
-				if hasattr(self, "_originalPageSummary"):
-					restore_page_summary_state(self._originalPageSummary)
-				else:
-					set_included_element_types(self._originalPageSummaryTypes)
-					set_include_document_title(self._originalPageSummaryTitle)
-					set_page_load_summary_mode(self._originalPageLoadSummaryMode)
-					set_notify_when_page_ready(self._originalNotifyWhenPageReady)
-					set_page_ready_message(self._originalPageReadyMessage)
-				if hasattr(self, "_originalEdgeNotifications"):
-					restore_edge_notification_state(self._originalEdgeNotifications)
-			except Exception:
-				log.exception("ClassicSpeech: failed to restore original web/browse dialog state")
+	def _restoreTransactionBaseline(self):
+		try:
+			restore_web_browse_state(self._originalWebBrowse)
+			if hasattr(self, "_originalPageSummary"):
+				restore_page_summary_state(self._originalPageSummary)
+			else:
+				set_included_element_types(self._originalPageSummaryTypes)
+				set_include_document_title(self._originalPageSummaryTitle)
+				set_page_load_summary_mode(self._originalPageLoadSummaryMode)
+				set_notify_when_page_ready(self._originalNotifyWhenPageReady)
+				set_page_ready_message(self._originalPageReadyMessage)
+			if hasattr(self, "_originalEdgeNotifications"):
+				restore_edge_notification_state(self._originalEdgeNotifications)
+		except Exception:
+			log.exception("ClassicSpeech: failed to restore original web/browse dialog state")
 
-	def _apply_to_config(self):
+	def _saveTransaction(self):
 		set_virtual_buffer_setting("maxLineLength", self.maxLengthEdit.GetValue())
 		set_virtual_buffer_setting("linesPerPage", self.pageLinesEdit.GetValue())
 		set_virtual_buffer_setting("useScreenLayout", _is_checked(self.useScreenLayoutCheckBox))
@@ -538,39 +538,11 @@ class WebBrowseSettingsDialog(wx.Dialog):
 
 	def onChanged(self, evt=None):
 		try:
-			self._apply_to_config()
+			self._saveTransaction()
 			self._markDirty()
 		except Exception:
 			log.exception("ClassicSpeech web/browse settings live apply failed")
 
-	def onApply(self, evt):
-		try:
-			self._apply_to_config()
-			self._captureOriginalState()
-			self._committed = True
-			self._clearDirty()
-			return True
-		except Exception:
-			log.exception("ClassicSpeech web/browse settings apply failed")
-			return False
-
-	def onOK(self, evt):
-		if not self.onApply(evt):
-			return
-		self._closeAfterOK = True
-		self.Destroy()
-
-	def onCancel(self, evt):
-		self._restoreOriginalState()
-		self.Destroy()
-
-	def onClose(self, evt):
-		try:
-			if not self.__dict__.get("_closeAfterOK", False):
-				self._restoreOriginalState()
-			evt.Skip()
-		finally:
-			self._releasePopup()
 
 
 # Backward-compatible name used by early v3/v02 work-in-progress notes.

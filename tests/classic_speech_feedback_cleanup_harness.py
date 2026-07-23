@@ -99,7 +99,7 @@ class FeedbackCancelRestoreTests(unittest.TestCase):
             from globalPlugins._speech_core.settings.config_core import _set_nvda_setting
 
             dialog = object.__new__(ClassicSpeechDialog)
-            dialog._captureOriginalState()
+            dialog._captureTransactionBaseline()
 
             _set_speech_hook_enabled(False)
             _set_default_button_enabled(False)
@@ -109,7 +109,7 @@ class FeedbackCancelRestoreTests(unittest.TestCase):
             self.assertFalse(plugin.processor.verbosity.announce_default_button)
             self.assertTrue(config.conf["presentation"]["guessObjectPositionInformationWhenUnavailable"])
 
-            dialog._restoreOriginalState()
+            dialog._restoreTransactionBaseline()
 
             self.assertIn(plugin._filterSpeechSequence, speech.extensions.filter_speechSequence.callbacks)
             self.assertTrue(plugin.processor.verbosity.announce_default_button)
