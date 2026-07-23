@@ -34,6 +34,15 @@ from .web_formatting_config import (
 	set_virtual_buffer_setting,
 	set_web_document_formatting_setting,
 )
+from .edge_notifications_config import (
+	capture_edge_notification_state,
+	get_custom_messages,
+	get_enabled_activity_ids,
+	restore_edge_notification_state,
+	set_custom_messages,
+	set_enabled_activity_ids,
+)
+from .edge_notifications_panel import EdgeNotificationsPanel
 
 log = logHandler.log
 
@@ -63,6 +72,7 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		"Browse Mode",
 		"Web Element Reporting",
 		"Page Summary",
+		"Microsoft Edge Notifications",
 	]
 
 	def __init__(self, parent):
@@ -81,6 +91,7 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		self._originalPageLoadSummaryMode = get_page_load_summary_mode()
 		self._originalNotifyWhenPageReady = get_notify_when_page_ready()
 		self._originalPageReadyMessage = get_page_ready_message()
+		self._originalEdgeNotifications = capture_edge_notification_state()
 		self._browseModeElements = self._get_browse_mode_touch_elements()
 
 		outerSizer = wx.BoxSizer(wx.VERTICAL)
@@ -112,10 +123,12 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		self.browseModePanel = scrolledpanel.ScrolledPanel(self.panelHost, style=wx.TAB_TRAVERSAL)
 		self.webReportingPanel = scrolledpanel.ScrolledPanel(self.panelHost, style=wx.TAB_TRAVERSAL)
 		self.pageSummaryPanel = scrolledpanel.ScrolledPanel(self.panelHost, style=wx.TAB_TRAVERSAL)
+		self.edgeNotificationsPanel = scrolledpanel.ScrolledPanel(self.panelHost, style=wx.TAB_TRAVERSAL)
 		self._make_browse_mode_panel(self.browseModePanel)
 		self._make_web_reporting_panel(self.webReportingPanel)
 		self._make_page_summary_panel(self.pageSummaryPanel)
-		self.dynamicPanels = [self.browseModePanel, self.webReportingPanel, self.pageSummaryPanel]
+		self._make_edge_notifications_panel(self.edgeNotificationsPanel)
+		self.dynamicPanels = [self.browseModePanel, self.webReportingPanel, self.pageSummaryPanel, self.edgeNotificationsPanel]
 
 		for panel in self.dynamicPanels:
 			self.panelHostSizer.Add(panel, 1, wx.EXPAND)
@@ -348,6 +361,20 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		panel.SetSizer(mainSizer)
 		panel.SetupScrolling(scroll_x=False)
 
+	def _make_edge_notifications_panel(self, panel):
+		mainSizer = wx.BoxSizer(wx.VERTICAL)
+		self.edgeNotificationsEditor = EdgeNotificationsPanel(
+			panel,
+			onChange=self.onChanged,
+		)
+		self.edgeNotificationsEditor.loadData(
+			get_enabled_activity_ids(),
+			get_custom_messages(),
+		)
+		mainSizer.Add(self.edgeNotificationsEditor, 1, wx.EXPAND)
+		panel.SetSizer(mainSizer)
+		self.edgeNotificationsPanel.SetupScrolling(scroll_x=False)
+
 	def _add_browse_checkbox(self, group, parent, label, key):
 		control = group.addItem(wx.CheckBox(parent, label=label))
 		control.SetValue(get_virtual_buffer_setting(key))
@@ -464,6 +491,10 @@ class WebBrowseSettingsDialog(wx.Dialog):
 			set_included_element_types(
 				itemType for itemType in selectedTypes if itemType != "documentTitle"
 			)
+		edgeEditor = self.__dict__.get("edgeNotificationsEditor")
+		if hasattr(self, "edgeNotificationsEditor") and edgeEditor is not None:
+			set_enabled_activity_ids(edgeEditor.getEnabledActivityIds())
+			set_custom_messages(edgeEditor.getCustomMessages())
 
 	def onCategoryChanged(self, evt):
 		self._showPanelByIndex(evt.GetIndex())
@@ -502,6 +533,7 @@ class WebBrowseSettingsDialog(wx.Dialog):
 			self._originalPageLoadSummaryMode = get_page_load_summary_mode()
 			self._originalNotifyWhenPageReady = get_notify_when_page_ready()
 			self._originalPageReadyMessage = get_page_ready_message()
+			self._originalEdgeNotifications = capture_edge_notification_state()
 			self._committed = True
 			self._clearDirty()
 		except Exception:
@@ -514,12 +546,16 @@ class WebBrowseSettingsDialog(wx.Dialog):
 	def onCancel(self, evt):
 		restore_web_browse_state(self._originalWebBrowse)
 		restore_page_summary_state(self._originalPageSummary)
+		if hasattr(self, "_originalEdgeNotifications"):
+			restore_edge_notification_state(self._originalEdgeNotifications)
 		self.Destroy()
 
 	def onClose(self, evt):
 		try:
 			restore_web_browse_state(self._originalWebBrowse)
 			restore_page_summary_state(self._originalPageSummary)
+			if hasattr(self, "_originalEdgeNotifications"):
+				restore_edge_notification_state(self._originalEdgeNotifications)
 			evt.Skip()
 		finally:
 			self._releasePopup()
