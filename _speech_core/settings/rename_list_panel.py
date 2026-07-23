@@ -261,6 +261,15 @@ class RenameListPanel(wx.Panel):
 		if self._suspendEvents:
 			return
 		idx = evt.GetInt() if evt else self._getSelectedIndex()
+		# NVDA's CustomCheckListBox receives this event before its native checked
+		# state has flipped. Reading IsChecked here loses a just-checked item when
+		# the parent dialog saves its live transaction. Let the native handler run
+		# first, then synchronize ClassicSpeech state and notify exactly once.
+		wx.CallAfter(self._syncChecklistToggled, idx)
+
+	def _syncChecklistToggled(self, idx):
+		if self._suspendEvents:
+			return
 		if idx == -1 or idx >= len(self._labels):
 			return
 		label = self._labels[idx]

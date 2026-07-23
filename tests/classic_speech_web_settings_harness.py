@@ -541,6 +541,163 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		)
 		self.assertNotIn("msedge.exe", dialog_source)
 
+	def test_edge_checklist_defers_native_state_read_then_persists_pageloading_through_ok_and_reopen(self):
+		"""A CustomCheckListBox event precedes its checked-state mutation in Edge.
+
+		The callback must therefore wait until wx has finished native event handling
+		before Web dialog Apply/OK reads the panel's enabled Activity IDs.
+		"""
+		from globalPlugins._speech_core.settings import edge_notifications_config as edge_config
+		from globalPlugins._speech_core.settings import web_formatting_config
+		from globalPlugins._speech_core.settings import web_summary_config
+		from globalPlugins._speech_core.settings.edge_notifications_panel import EdgeNotificationsPanel
+		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+
+		class ValueControl:
+			def __init__(self, value):
+				self.value = value
+			def GetValue(self):
+				return self.value
+			def IsChecked(self):
+				return bool(self.value)
+
+		class CheckListControl:
+			def GetCheckedItems(self):
+				return []
+
+		class ChoiceControl:
+			def GetSelection(self):
+				return 0
+
+		class FeatureControl:
+			def saveCurrentValueToConf(self):
+				pass
+
+		class NativeOrderCheckList:
+			def __init__(self):
+				self.items = []
+				self.checked = []
+				self.selection = 0
+			def GetSelection(self):
+				return self.selection
+			def Clear(self):
+				self.items = []
+				self.checked = []
+			def Append(self, text):
+				self.items.append(text)
+			def Check(self, index, check=True):
+				while len(self.checked) <= index:
+					self.checked.append(False)
+				self.checked[index] = bool(check)
+			def SetString(self, index, text):
+				self.items[index] = text
+			def SetSelection(self, index):
+				self.selection = index
+			def SetFocus(self):
+				pass
+			def IsChecked(self, index):
+				return self.checked[index]
+
+		class ChecklistEvent:
+			def __init__(self, index):
+				self.index = index
+				self.skipCount = 0
+			def GetInt(self):
+				return self.index
+			def Skip(self):
+				self.skipCount += 1
+
+		def make_edge_panel(enabled_ids=()):
+			panel = EdgeNotificationsPanel.__new__(EdgeNotificationsPanel)
+			panel._activityIds = [activity.activity_id for activity in edge_config.EDGE_NOTIFICATION_ACTIVITIES]
+			panel._labels = list(panel._activityIds)
+			panel._workingRenames = {}
+			panel._workingMuted = set()
+			panel._displayLabels = {
+				activity.activity_id: activity.label
+				for activity in edge_config.EDGE_NOTIFICATION_ACTIVITIES
+			}
+			panel._onChange = None
+			panel._suspendEvents = False
+			panel._compactDisplay = True
+			panel._customDisplaySuffix = "custom message: {text}"
+			panel.listCtrl = NativeOrderCheckList()
+			panel.loadData(enabled_ids, {})
+			return panel
+
+		edge_config.set_enabled_activity_ids([])
+		edge_config.set_custom_messages({})
+		panel = make_edge_panel()
+		initial_enabled_ids = panel.getEnabledActivityIds()
+		self.assertNotIn("PageLoading", initial_enabled_ids)
+		changes = []
+		panel._onChange = lambda: changes.append(True)
+		wx = sys.modules["wx"]
+		queued = []
+		original_call_after = wx.CallAfter
+		wx.CallAfter = lambda callback, *args, **kwargs: queued.append((callback, args, kwargs))
+		self.addCleanup(setattr, wx, "CallAfter", original_call_after)
+		event = ChecklistEvent(panel._labels.index("PageLoading"))
+
+		# EVT_CHECKLISTBOX is delivered before native CustomCheckListBox flips.
+		panel.onChecklistToggled(event)
+		self.assertEqual(event.skipCount, 1)
+		self.assertEqual(changes, [])
+		self.assertEqual(panel.getEnabledActivityIds(), initial_enabled_ids)
+		self.assertEqual(len(queued), 1)
+		panel.listCtrl.checked[event.index] = True
+		callback, args, kwargs = queued.pop()
+		callback(*args, **kwargs)
+		self.assertEqual(changes, [True])
+		self.assertEqual(
+			set(panel.getEnabledActivityIds()),
+			set(initial_enabled_ids) | {"PageLoading"},
+		)
+
+		dialog = object.__new__(WebBrowseSettingsDialog)
+		dialog.maxLengthEdit = ValueControl(80)
+		dialog.pageLinesEdit = ValueControl(40)
+		for attr in (
+			"useScreenLayoutCheckBox", "enableOnPageLoadCheckBox", "autoSayAllCheckBox",
+			"autoPassThroughOnFocusChangeCheckBox", "autoPassThroughOnCaretMoveCheckBox",
+			"passThroughAudioIndicationCheckBox", "trapNonCommandGesturesCheckBox",
+			"annotationDetailsCheckBox", "ariaDescriptionCheckBox", "layoutTablesCheckBox",
+			"headingsCheckBox", "linksCheckBox", "linkTypeCheckBox", "graphicsCheckBox",
+			"listsCheckBox", "blockQuotesCheckBox", "groupingsCheckBox", "landmarksCheckBox",
+			"articlesCheckBox", "framesCheckBox", "figuresCheckBox", "clickableCheckBox",
+		):
+			setattr(dialog, attr, ValueControl(False))
+		dialog._browseModeElements = []
+		dialog.browseModeTouchNavigationList = CheckListControl()
+		dialog.loadChromiumBusyCombo = FeatureControl()
+		dialog.brailleLiveRegionsCombo = FeatureControl()
+		dialog.notifyWhenPageReadyCheckBox = ValueControl(False)
+		dialog.pageReadyMessageEdit = ValueControl("Page ready")
+		dialog.pageLoadSummaryMode = ChoiceControl()
+		dialog._pageLoadSummaryModes = ("native", "afterReady", "orientation")
+		dialog._pageSummaryElements = []
+		dialog.pageSummaryElementList = CheckListControl()
+		dialog.edgeNotificationsEditor = panel
+		dialog._clearDirty = lambda: None
+		dialog.Destroy = lambda: setattr(dialog, "destroyed", True)
+		dialog._originalWebBrowse = web_formatting_config.capture_web_browse_state()
+		dialog._originalPageSummaryTypes = web_summary_config.get_included_element_types()
+		dialog._originalPageSummaryTitle = web_summary_config.get_include_document_title()
+		dialog._originalPageLoadSummaryMode = web_summary_config.get_page_load_summary_mode()
+		dialog._originalNotifyWhenPageReady = web_summary_config.get_notify_when_page_ready()
+		dialog._originalPageReadyMessage = web_summary_config.get_page_ready_message()
+		dialog._originalEdgeNotifications = edge_config.capture_edge_notification_state()
+
+		# The real Web dialog's Apply and OK handlers both save the now-current
+		# panel state; reopening reads the persisted PageLoading selection.
+		self.assertTrue(dialog.onApply(None))
+		dialog.onOK(None)
+		self.assertTrue(dialog.destroyed)
+		self.assertIn("PageLoading", edge_config.get_enabled_activity_ids())
+
+		reopened = make_edge_panel(edge_config.get_enabled_activity_ids())
+		self.assertTrue(reopened.listCtrl.checked[reopened._labels.index("PageLoading")])
+
 	def test_edge_apply_cancel_and_close_are_transactional_even_for_empty_values(self):
 		from globalPlugins._speech_core.settings import edge_notifications_config as edge_config
 		from globalPlugins._speech_core.settings import web_formatting_config
