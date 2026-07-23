@@ -555,6 +555,19 @@ class EdgeNotificationRuntimeTests(unittest.TestCase):
                 self.assertEqual(self._event("PageLoading"), [True])
                 self.assertEqual(self.messages, [])
 
+    def test_unknown_enabled_id_getter_results_fail_open_to_native_for_recognized_events(self):
+        enabled_getter = self.module.edge_notifications_config.get_enabled_activity_ids
+        custom_messages_getter = self.module.edge_notifications_config.get_custom_messages
+        self.addCleanup(setattr, self.module.edge_notifications_config, "get_enabled_activity_ids", enabled_getter)
+        self.addCleanup(setattr, self.module.edge_notifications_config, "get_custom_messages", custom_messages_getter)
+        self.module.edge_notifications_config.get_custom_messages = lambda: {}
+
+        for malformed_enabled_ids in (("unknown",), ["unknown"], ("PageLoading", "unknown")):
+            with self.subTest(enabled_ids=repr(malformed_enabled_ids)):
+                self.module.edge_notifications_config.get_enabled_activity_ids = lambda value=malformed_enabled_ids: value
+                self.assertEqual(self._event("PageLoading"), [True])
+                self.assertEqual(self.messages, [])
+
     def test_source_stays_a_narrow_uia_notification_policy(self):
         source = (ROOT / "appModules" / "msedge.py").read_text(encoding="utf-8")
         self.assertIn("def event_UIA_notification(", source)
