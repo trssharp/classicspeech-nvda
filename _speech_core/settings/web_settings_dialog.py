@@ -82,6 +82,7 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		self.SetName("ClassicSpeechWebBrowseSettingsDialog")
 		self._popupReleased = False
 		self._committed = False
+		self._closeAfterOK = False
 		self._originalWebBrowse = capture_web_browse_state()
 		self._originalPageSummaryTypes = get_included_element_types()
 		self._originalPageSummaryTitle = get_include_document_title()
@@ -537,6 +538,9 @@ class WebBrowseSettingsDialog(wx.Dialog):
 
 	def onOK(self, evt):
 		self.onApply(evt)
+		# wx.Destroy dispatches EVT_CLOSE. Keep that lifecycle close from
+		# rolling back the state just accepted by this OK transaction.
+		self._closeAfterOK = True
 		self.Destroy()
 
 	def onCancel(self, evt):
@@ -552,14 +556,15 @@ class WebBrowseSettingsDialog(wx.Dialog):
 
 	def onClose(self, evt):
 		try:
-			restore_web_browse_state(self._originalWebBrowse)
-			set_included_element_types(self._originalPageSummaryTypes)
-			set_include_document_title(self._originalPageSummaryTitle)
-			set_page_load_summary_mode(self._originalPageLoadSummaryMode)
-			set_notify_when_page_ready(self._originalNotifyWhenPageReady)
-			set_page_ready_message(self._originalPageReadyMessage)
-			if hasattr(self, "_originalEdgeNotifications") and "_originalEdgeNotifications" in self.__dict__:
-				restore_edge_notification_state(self._originalEdgeNotifications)
+			if not self.__dict__.get("_closeAfterOK", False):
+				restore_web_browse_state(self._originalWebBrowse)
+				set_included_element_types(self._originalPageSummaryTypes)
+				set_include_document_title(self._originalPageSummaryTitle)
+				set_page_load_summary_mode(self._originalPageLoadSummaryMode)
+				set_notify_when_page_ready(self._originalNotifyWhenPageReady)
+				set_page_ready_message(self._originalPageReadyMessage)
+				if hasattr(self, "_originalEdgeNotifications") and "_originalEdgeNotifications" in self.__dict__:
+					restore_edge_notification_state(self._originalEdgeNotifications)
 			evt.Skip()
 		finally:
 			self._releasePopup()
