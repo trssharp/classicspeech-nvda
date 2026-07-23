@@ -37,6 +37,7 @@ from .config import (
 	_to_plain_data,
 )
 from .constants import PAUSE_MODE_GLOBAL, PAUSE_PLACEMENT_BEFORE
+from .dialog_transactions import SettingsDialogTransactionMixin
 from .advanced_panel import AdvancedPanel
 from .document_formatting_config import (
 	_capture_document_formatting_state,
@@ -56,7 +57,7 @@ from .verbosity_panel import VerbosityPanel
 
 log = logHandler.log
 
-class ClassicSpeechDialog(wx.Dialog):
+class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 	"""Main ClassicSpeech settings dialog with category list and dynamic panel area."""
 
 	CATEGORY_NAMES = [
@@ -84,7 +85,7 @@ class ClassicSpeechDialog(wx.Dialog):
 		self._popupReleased = False
 		self._committed = False
 
-		self._captureOriginalState()
+		self._initializeDialogTransaction()
 
 		outerSizer = wx.BoxSizer(wx.VERTICAL)
 		contentSizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -190,7 +191,7 @@ class ClassicSpeechDialog(wx.Dialog):
 
 		wx.CallAfter(self._setInitialFocus)
 
-	def _captureOriginalState(self):
+	def _captureTransactionBaseline(self):
 		conf = _ensure_classic_speech_section()
 		self._originalClassicSpeech = _to_plain_data(conf)
 		self._originalDocumentFormatting = _capture_document_formatting_state()
@@ -212,7 +213,7 @@ class ClassicSpeechDialog(wx.Dialog):
 			),
 		}
 
-	def _restoreOriginalState(self):
+	def _restoreTransactionBaseline(self):
 		try:
 			conf = _ensure_classic_speech_section()
 			_replace_section_contents(conf, self._originalClassicSpeech)
@@ -309,7 +310,7 @@ class ClassicSpeechDialog(wx.Dialog):
 		# Token editor is global now; keep method as a harmless compatibility stub.
 		return
 
-	def _releasePopup(self):
+	def _releaseTransactionPopup(self):
 		if self._popupReleased:
 			return
 		self._popupReleased = True
@@ -318,7 +319,7 @@ class ClassicSpeechDialog(wx.Dialog):
 		except Exception:
 			log.exception("ClassicSpeech: postPopup failed during dialog close")
 
-	def _save_all(self):
+	def _saveTransaction(self):
 		profile_name = self.verbosityPanel.get_working_profile_name()
 
 		profile_config = self.verbosityPanel.get_working_profile_config()
@@ -384,9 +385,6 @@ class ClassicSpeechDialog(wx.Dialog):
 		self.hotkeysPanel.dialogAccessKeyOnly = hotkey_config["dialogAccessKeyOnly"]
 		self.hotkeysPanel._loadControlsFromConfig()
 
-		self._committed = True
-		self._captureOriginalState()
-
 	def _getSelectedCategoryIndex(self):
 		try:
 			index = self.categoryList.GetFirstSelected()
@@ -401,32 +399,10 @@ class ClassicSpeechDialog(wx.Dialog):
 		index = self._getSelectedCategoryIndex()
 		if index == 0:
 			self.verbosityPanel.reset_current_profile()
-			self._captureOriginalState()
+			self._captureTransactionBaseline()
 		elif index == 1:
 			self.tokenEditorPanel.reset_tokens_to_defaults()
-			self._captureOriginalState()
+			self._captureTransactionBaseline()
 		elif index == 7:
 			self.keyLabelsPanel.reset_key_labels_to_defaults()
-			self._captureOriginalState()
-
-	def onApply(self, evt):
-		try:
-			self._save_all()
-			self._clearDirty()
-		except Exception:
-			log.exception("ClassicSpeech settings apply failed")
-
-	def onOK(self, evt):
-		self.onApply(evt)
-		self.Destroy()
-
-	def onCancel(self, evt):
-		self._restoreOriginalState()
-		self.Destroy()
-
-	def onClose(self, evt):
-		try:
-			self._restoreOriginalState()
-			evt.Skip()
-		finally:
-			self._releasePopup()
+			self._captureTransactionBaseline()

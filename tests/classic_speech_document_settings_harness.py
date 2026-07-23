@@ -289,13 +289,13 @@ class DocumentReadingProofingPanelSourceTests(unittest.TestCase):
             "reportLinks": True,
         }
         dialog = object.__new__(ClassicSpeechDialog)
-        dialog._captureOriginalState()
+        dialog._captureTransactionBaseline()
         config.conf["documentFormatting"]["reportFontName"] = True
         config.conf["documentFormatting"]["reportLineIndentation"] = 2
         config.conf["documentFormatting"]["ignoreBlankLinesForRLI"] = False
         config.conf["documentFormatting"]["reportLinks"] = False
 
-        dialog._restoreOriginalState()
+        dialog._restoreTransactionBaseline()
         self.assertFalse(config.conf["documentFormatting"]["reportFontName"])
         self.assertEqual(config.conf["documentFormatting"]["reportLineIndentation"], 0)
         self.assertTrue(config.conf["documentFormatting"]["ignoreBlankLinesForRLI"])
@@ -311,14 +311,14 @@ class DocumentReadingProofingPanelSourceTests(unittest.TestCase):
             "ignoreBlankLinesForRLI": True,
         }
         dialog = object.__new__(ClassicSpeechDialog)
-        dialog._captureOriginalState()
+        dialog._captureTransactionBaseline()
         config.conf["documentFormatting"]["reportFontName"] = True
         config.conf["documentFormatting"]["reportLineIndentation"] = 1
-        dialog._captureOriginalState()  # mirrors Apply recapturing committed state.
+        dialog._captureTransactionBaseline()  # mirrors Apply recapturing committed state.
         config.conf["documentFormatting"]["reportFontName"] = False
         config.conf["documentFormatting"]["reportLineIndentation"] = 0
 
-        dialog._restoreOriginalState()
+        dialog._restoreTransactionBaseline()
         self.assertTrue(config.conf["documentFormatting"]["reportFontName"])
         self.assertEqual(config.conf["documentFormatting"]["reportLineIndentation"], 1)
         self.assertTrue(config.conf["documentFormatting"]["ignoreBlankLinesForRLI"])
