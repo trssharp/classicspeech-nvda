@@ -537,11 +537,14 @@ class WebBrowseSettingsDialog(wx.Dialog):
 			self._originalEdgeNotifications = capture_edge_notification_state()
 			self._committed = True
 			self._clearDirty()
+			return True
 		except Exception:
 			log.exception("ClassicSpeech web/browse settings apply failed")
+			return False
 
 	def onOK(self, evt):
-		self.onApply(evt)
+		if not self.onApply(evt):
+			return
 		# wx.Destroy dispatches EVT_CLOSE. Keep that lifecycle close from
 		# rolling back the state just accepted by this OK transaction.
 		self._closeAfterOK = True
