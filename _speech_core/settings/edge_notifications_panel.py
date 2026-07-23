@@ -33,9 +33,10 @@ class EdgeNotificationsPanel(RenameListPanel):
             displayLabels=displayLabels,
             helpText=self._DESCRIPTION,
             compactDisplay=True,
-            renamePromptTitle="Set custom message for {display}",
+            renamePromptTitle="Custom notification message: {display}",
             renamePromptMessage=(
-                "Set the announcement for '{display}'. Leave blank to restore the native Edge announcement."
+                "Enter a custom notification message for '{display}'. "
+                "Leave blank to restore the native Edge announcement."
             ),
             renameMenuLabel="Set custom message\tF2",
             clearRenameMenuLabel="Restore native message\tDelete",

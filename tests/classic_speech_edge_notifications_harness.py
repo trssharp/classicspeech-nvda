@@ -72,6 +72,30 @@ class _KeyEvent:
         self.skipped = True
 
 
+class _FakeTextEntryDialog:
+    """Captures the real RenameListPanel prompt without creating native wx UI."""
+
+    instances = []
+    response = ""
+
+    def __init__(self, parent, message, title, value=""):
+        self.parent = parent
+        self.message = message
+        self.title = title
+        self.value = value
+        self.destroyed = False
+        self.__class__.instances.append(self)
+
+    def ShowModal(self):
+        return sys.modules["wx"].ID_OK
+
+    def GetValue(self):
+        return self.__class__.response
+
+    def Destroy(self):
+        self.destroyed = True
+
+
 EXPECTED_ACTIVITIES = [
     ("PageLoading", "Page loading"),
     ("RefreshingPage", "Page refresh"),
@@ -255,6 +279,11 @@ class EdgeNotificationsPanelTests(unittest.TestCase):
         panel._suspendEvents = False
         panel._compactDisplay = True
         panel._customDisplaySuffix = "custom message: {text}"
+        panel._renamePromptTitle = "Custom notification message: {display}"
+        panel._renamePromptMessage = (
+            "Enter a custom notification message for '{display}'. "
+            "Leave blank to restore the native Edge announcement."
+        )
         panel.listCtrl = _FakeCheckList()
         panel.loadData(list(enabled_ids), custom_messages or {})
         return panel
@@ -269,6 +298,8 @@ class EdgeNotificationsPanelTests(unittest.TestCase):
         self.assertIn("Delete: restore the native Edge announcement. Shift+F10: menu.", source)
         self.assertIn('renameMenuLabel="Set custom message\\tF2"', source)
         self.assertIn('clearRenameMenuLabel="Restore native message\\tDelete"', source)
+        self.assertIn('renamePromptTitle="Custom notification message: {display}"', source)
+        self.assertIn("Enter a custom notification message for '{display}'.", source)
         self.assertIn('checkedActionCaption="Announce"', source)
         self.assertIn('uncheckedActionCaption="Suppress"', source)
         self.assertNotIn("Announce,", source)
@@ -298,22 +329,38 @@ class EdgeNotificationsPanelTests(unittest.TestCase):
         changes = []
         panel._onChange = lambda: changes.append(True)
 
-        prompted = []
-        panel._promptForRename = lambda activity_id: prompted.append(activity_id) or True
-        panel.onListKeyDown(_KeyEvent(sys.modules["wx"].WXK_F2))
-        self.assertEqual(prompted, ["PageLoading"])
-        self.assertFalse(panel.listCtrl.checked[0])
+        wx = sys.modules["wx"]
+        original_dialog = wx.TextEntryDialog
+        wx.TextEntryDialog = _FakeTextEntryDialog
+        self.addCleanup(setattr, wx, "TextEntryDialog", original_dialog)
+        _FakeTextEntryDialog.instances = []
+        _FakeTextEntryDialog.response = "  Loading now  "
 
-        panel._workingRenames["PageLoading"] = "Loading now"
-        panel._refreshSingleRow(0)
-        panel.onListKeyDown(_KeyEvent(sys.modules["wx"].WXK_DELETE))
+        panel.onListKeyDown(_KeyEvent(wx.WXK_F2))
+        self.assertEqual(len(_FakeTextEntryDialog.instances), 1)
+        dialog = _FakeTextEntryDialog.instances[0]
+        self.assertEqual(dialog.title, "Custom notification message: Page loading")
+        self.assertEqual(
+            dialog.message,
+            "Enter a custom notification message for 'Page loading'. "
+            "Leave blank to restore the native Edge announcement.",
+        )
+        self.assertTrue(dialog.destroyed)
+        self.assertEqual(panel.getCustomMessages(), {"PageLoading": "Loading now"})
+        self.assertFalse(panel.listCtrl.checked[0])
+        self.assertEqual(panel.listCtrl.items[0], "Page loading, custom message: Loading now")
+        self.assertEqual(len(changes), 1)
+
+        panel.onListKeyDown(_KeyEvent(wx.WXK_DELETE))
         self.assertEqual(panel.getCustomMessages(), {})
         self.assertFalse(panel.listCtrl.checked[0])
+        self.assertEqual(panel.listCtrl.items[0], "Page loading")
+        self.assertEqual(len(changes), 2)
 
         panel.listCtrl.checked[0] = True
         panel.onChecklistToggled(_ChecklistEvent(0))
         self.assertEqual(panel.getEnabledActivityIds(), ("PageLoading",))
-        self.assertGreaterEqual(len(changes), 2)
+        self.assertEqual(len(changes), 3)
 
     def test_default_rename_list_wording_remains_the_token_editor_wording(self):
         panel = self.RenameListPanel.__new__(self.RenameListPanel)
