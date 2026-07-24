@@ -1,14 +1,11 @@
-"""Build a clean, date-named ClassicSpeech NVDA add-on archive.
-
-The public filename is based on the UTC build date, while manifest.ini retains
-NVDA's technical add-on version for update compatibility.
-"""
+"""Build a clean ClassicSpeech NVDA add-on with a generated numeric build version."""
 from __future__ import annotations
 
 import argparse
 import hashlib
+import re
 import zipfile
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,25 +15,53 @@ RUNTIME_FILES = (
     "page_orientation_runtime.py",
 )
 RUNTIME_DIRECTORIES = ("_speech_core",)
+APP_MODULE_DIRECTORIES = ()
 RELEASE_NOTES = "PAGE-ORIENTATION-RC-V25.md"
+_NUMERIC_VERSION = re.compile(r"^\d+\.\d+(?:\.\d+)?$")
+_SAFE_LABEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--version", required=True, help="Numeric package version, e.g. 20260724.16.")
     parser.add_argument(
-        "--date",
-        dest="build_date",
-        default=datetime.now(UTC).date().isoformat(),
-        help="UTC creation date in YYYY-MM-DD format (defaults to today).",
+        "--label",
+        default="",
+        help="Optional safe build label, normally g followed by the commit short SHA.",
     )
     return parser.parse_args()
 
 
-def _validate_date(value: str) -> str:
+def build_version(utc_date: str, run_number: str) -> str:
+    """Return an NVDA-comparable, chronological CI version from UTC date and run."""
     try:
-        return datetime.strptime(value, "%Y-%m-%d").date().isoformat()
+        day = datetime.strptime(utc_date, "%Y-%m-%d").strftime("%Y%m%d")
     except ValueError as error:
-        raise SystemExit(f"Invalid --date {value!r}; use YYYY-MM-DD.") from error
+        raise ValueError(f"Date must use YYYY-MM-DD: {utc_date!r}") from error
+    if not run_number.isdecimal() or int(run_number) < 1:
+        raise ValueError(f"Run number must be a positive integer: {run_number!r}")
+    return f"{day}.{int(run_number)}"
+
+
+def package_filename(version: str, label: str = "") -> str:
+    """Build the public package filename from generated version and commit label."""
+    if not _NUMERIC_VERSION.fullmatch(version):
+        raise ValueError(f"Version must use numeric components: {version!r}")
+    if label and not _SAFE_LABEL.fullmatch(label):
+        raise ValueError(f"Label is not safe for an artifact filename: {label!r}")
+    suffix = f"-{label}" if label else ""
+    return f"ClassicSpeech-{version}{suffix}.nvda-addon"
+
+
+def manifest_with_version(manifest: Path, version: str) -> str:
+    """Produce the package-only manifest; source stays on its neutral placeholder."""
+    if not _NUMERIC_VERSION.fullmatch(version):
+        raise ValueError(f"Version must use numeric components: {version!r}")
+    source = manifest.read_text(encoding="utf-8")
+    packaged, replacements = re.subn(r"(?m)^(\s*version\s*=\s*).*$", rf"\g<1>{version}", source)
+    if replacements != 1:
+        raise ValueError("manifest.ini must contain exactly one version entry")
+    return packaged
 
 
 def _add_tree(archive: zipfile.ZipFile, source: Path, prefix: Path) -> None:
@@ -49,21 +74,21 @@ def _add_tree(archive: zipfile.ZipFile, source: Path, prefix: Path) -> None:
 
 
 def main() -> None:
-    build_date = _validate_date(_parse_args().build_date)
-    package_name = f"ClassicSpeech-{build_date}.nvda-addon"
-    package_path = DIST / package_name
-    checksum_path = package_path.with_suffix(package_path.suffix + ".sha256")
-
+    args = _parse_args()
     manifest = ROOT / "manifest.ini"
     if not manifest.is_file():
         raise SystemExit(f"Missing manifest: {manifest}")
+    version = args.version
+    package_name = package_filename(version, args.label)
+    package_path = DIST / package_name
+    checksum_path = package_path.with_suffix(package_path.suffix + ".sha256")
 
     DIST.mkdir(exist_ok=True)
     package_path.unlink(missing_ok=True)
     checksum_path.unlink(missing_ok=True)
 
     with zipfile.ZipFile(package_path, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.write(manifest, "manifest.ini")
+        archive.writestr("manifest.ini", manifest_with_version(manifest, version))
         for relative_path in RUNTIME_FILES:
             source = ROOT / relative_path
             if not source.is_file():
@@ -74,6 +99,11 @@ def main() -> None:
             if not source.is_dir():
                 raise SystemExit(f"Missing runtime directory: {source}")
             _add_tree(archive, source, Path("globalPlugins") / relative_path)
+        for relative_path in APP_MODULE_DIRECTORIES:
+            source = ROOT / relative_path
+            if not source.is_dir():
+                raise SystemExit(f"Missing app module directory: {source}")
+            _add_tree(archive, source, Path(relative_path))
 
         release_notes = ROOT / "docs" / RELEASE_NOTES
         if release_notes.is_file():
@@ -96,6 +126,8 @@ def main() -> None:
 
     checksum = hashlib.sha256(package_path.read_bytes()).hexdigest()
     checksum_path.write_text(f"{checksum}  {package_name}\n", encoding="ascii")
+    print(f"PACKAGE_VERSION={version}")
+    print(f"PACKAGE_NAME={package_name}")
     print(f"PACKAGE={package_path}")
     print(f"SHA256={checksum}")
 
