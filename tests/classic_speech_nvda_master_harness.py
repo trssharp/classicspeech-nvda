@@ -760,6 +760,36 @@ class ClassicSpeechNVDAConfigStartupTests(unittest.TestCase):
 		plugin.set_speech_hook_enabled(True)
 		self.assertEqual(calls, ["install", "install", "register"])
 
+	def test_advanced_panel_round_trips_every_control_through_live_config(self):
+		module = _import_classic_speech_like_nvda()
+		plugin = module.GlobalPlugin()
+		globalPluginHandler.runningPlugins.append(plugin)
+		try:
+			from globalPlugins._speech_core.settings.advanced_panel import AdvancedPanel
+
+			class Control:
+				def __init__(self, value):
+					self.value = value
+				def GetValue(self):
+					return self.value
+
+			panel = types.SimpleNamespace(
+				debugLogging=Control(True),
+				speechHookEnabled=Control(False),
+				announceSpeechHookLoaded=Control(True),
+				speechHookLoadedMessage=Control("Ready for testing"),
+			)
+			AdvancedPanel.apply_live(panel, save=True)
+
+			section = config.conf.profiles[0]["classicSpeech"]
+			self.assertTrue(section["debugLogging"])
+			self.assertFalse(section["speechHookEnabled"])
+			self.assertTrue(section["announceSpeechHookLoaded"])
+			self.assertEqual(section["speechHookLoadedMessage"], "Ready for testing")
+			self.assertFalse(plugin._speechHookRegistered)
+		finally:
+			plugin.terminate()
+
 	def test_nvda_control_c_save_route_calls_real_save_and_preserves_confirmation(self):
 		import queueHandler
 		import ui
