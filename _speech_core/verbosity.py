@@ -172,9 +172,16 @@ class VerbosityManager:
         self.load_from_config()
 
     def _config_section(self):
-        if "classicSpeech" not in config.conf:
-            config.conf["classicSpeech"] = {}
-        conf = config.conf["classicSpeech"]
+        # ClassicSpeech is registered as a base-only NVDA section. Writing
+        # through config.conf can target the active profile overlay, which
+        # makes a live setting appear to work yet disappear after reload.
+        try:
+            baseConf = config.conf.profiles[0]
+        except Exception:
+            baseConf = config.conf
+        if "classicSpeech" not in baseConf:
+            baseConf["classicSpeech"] = {}
+        conf = baseConf["classicSpeech"]
 
         if "profileData" not in conf:
             conf["profileData"] = {}
@@ -448,6 +455,7 @@ class VerbosityManager:
             "mutedLabels": [],
             "pauses": DEFAULT_PAUSES,
             "pauseAfterFinalToken": DEFAULT_PAUSE_AFTER_FINAL_TOKEN,
+            "pausePlacement": DEFAULT_PAUSE_PLACEMENT,
         }
 
         if "pauseMode" in shapeSection:
@@ -464,6 +472,8 @@ class VerbosityManager:
             override["pauses"] = dict(shapeSection["pauses"])
         if "pauseAfterFinalToken" in shapeSection:
             override["pauseAfterFinalToken"] = bool(shapeSection["pauseAfterFinalToken"])
+        if "pausePlacement" in shapeSection:
+            override["pausePlacement"] = str(shapeSection["pausePlacement"])
 
         return self._normalize_shape(override)
 
@@ -482,6 +492,9 @@ class VerbosityManager:
                 "pauseAfterFinalToken",
                 DEFAULT_PAUSE_AFTER_FINAL_TOKEN,
             )
+        )
+        shapeSection["pausePlacement"] = str(
+            normalized.get("pausePlacement", DEFAULT_PAUSE_PLACEMENT)
         )
 
         # Important: clear nested subsections before rewriting them.
@@ -536,6 +549,10 @@ class VerbosityManager:
                         "pauseAfterFinalToken",
                         DEFAULT_PAUSE_AFTER_FINAL_TOKEN,
                     )
+                )
+            if "pausePlacement" in override:
+                merged["pausePlacement"] = str(
+                    override.get("pausePlacement", DEFAULT_PAUSE_PLACEMENT)
                 )
             base = merged
 
