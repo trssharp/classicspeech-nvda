@@ -189,6 +189,49 @@ class GeneralPanelContractTests(unittest.TestCase):
         self.assertTrue(config.conf["presentation"]["guessObjectPositionInformationWhenUnavailable"])
         self.assertFalse(config.conf["keyboard"]["speechInterruptForCharacters"])
         self.assertTrue(config.conf["keyboard"]["speechInterruptForEnter"])
+    def test_speech_timing_panel_persists_global_and_per_token_timing(self):
+        from globalPlugins._speech_core.settings.speech_timing_panel import SpeechTimingPanel
+        from globalPlugins._speech_core.settings.constants import TOKEN_ORDER_KINDS
+
+        panel = types.SimpleNamespace(
+            shapeConfig={"renames": {}, "mutedLabels": [], "order": list(TOKEN_ORDER_KINDS)},
+            globalPauseChoice=Control(1),
+            pausePlacementChoice=Control(1),
+            pauseAfterFinalToken=Control(False),
+            tokenPauseChoices={kind: Control(0) for kind in TOKEN_ORDER_KINDS},
+        )
+        panel._getPauseValueFromChoice = lambda: SpeechTimingPanel._getPauseValueFromChoice(panel)
+        panel._getPausePlacementFromChoice = lambda: SpeechTimingPanel._getPausePlacementFromChoice(panel)
+        panel._getTokenPauseValueFromChoice = lambda control: SpeechTimingPanel._getTokenPauseValueFromChoice(panel, control)
+        panel._refreshShapeFromControls = lambda: SpeechTimingPanel._refreshShapeFromControls(panel)
+
+        shape = SpeechTimingPanel.get_working_shape_config(panel)
+        SpeechTimingPanel.apply_live(panel, save=True)
+
+        self.assertEqual(shape["pauseMode"], "global")
+        self.assertEqual(shape["globalPause"], 80)
+        self.assertEqual(shape["pausePlacement"], "after")
+        self.assertFalse(shape["pauseAfterFinalToken"])
+        self.assertEqual(shape["pauses"], {kind: -1 for kind in TOKEN_ORDER_KINDS})
+        self.assertEqual(self._section()["shapeData"]["pausePlacement"], "after")
+
+    def test_key_labels_panel_persists_renames_and_muted_labels(self):
+        from globalPlugins._speech_core.settings.key_labels_panel import KeyLabelsPanel
+
+        panel = types.SimpleNamespace(
+            keyLabelConfig={},
+            keyPanel=types.SimpleNamespace(
+                getRenames=lambda: {"f1": "Help"},
+                getMutedLabels=lambda: ["tab"],
+            ),
+        )
+        panel._refreshWorkingConfigFromControls = lambda: KeyLabelsPanel._refreshWorkingConfigFromControls(panel)
+        KeyLabelsPanel.apply_live(panel, save=True)
+
+        self.assertEqual(
+            self._section()["keyLabelData"],
+            {"renames": {"f1": "Help"}, "mutedLabels": ["tab"]},
+        )
 
 
 if __name__ == "__main__":
