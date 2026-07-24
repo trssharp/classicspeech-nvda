@@ -15,6 +15,8 @@ from .web_summary_config import (
     get_page_ready_message,
     get_included_element_types,
     get_include_document_title,
+    capture_page_summary_state,
+    restore_page_summary_state,
     set_page_load_summary_mode,
     set_notify_when_page_ready,
     set_page_ready_message,
@@ -432,6 +434,7 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 
 	def _captureTransactionBaseline(self):
 		self._originalWebBrowse = capture_web_browse_state()
+		self._originalPageSummary = capture_page_summary_state()
 		self._originalPageSummaryTypes = get_included_element_types()
 		self._originalPageSummaryTitle = get_include_document_title()
 		self._originalPageLoadSummaryMode = get_page_load_summary_mode()
@@ -442,12 +445,17 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 	def _restoreTransactionBaseline(self):
 		try:
 			restore_web_browse_state(self._originalWebBrowse)
-			set_included_element_types(self._originalPageSummaryTypes)
-			set_include_document_title(self._originalPageSummaryTitle)
-			set_page_load_summary_mode(self._originalPageLoadSummaryMode)
-			set_notify_when_page_ready(self._originalNotifyWhenPageReady)
-			set_page_ready_message(self._originalPageReadyMessage)
-			restore_edge_notification_state(self._originalEdgeNotifications)
+			if hasattr(self, "_originalPageSummary"):
+				restore_page_summary_state(self._originalPageSummary)
+			else:
+				# Compatibility for lightweight older dialog fakes.
+				set_included_element_types(self._originalPageSummaryTypes)
+				set_include_document_title(self._originalPageSummaryTitle)
+				set_page_load_summary_mode(self._originalPageLoadSummaryMode)
+				set_notify_when_page_ready(self._originalNotifyWhenPageReady)
+				set_page_ready_message(self._originalPageReadyMessage)
+			if hasattr(self, "_originalEdgeNotifications"):
+				restore_edge_notification_state(self._originalEdgeNotifications)
 		except Exception:
 			log.exception("ClassicSpeech: failed to restore original web/browse dialog state")
 
@@ -469,6 +477,10 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 				if index in _checked_items(self.browseModeTouchNavigationList)
 			],
 		)
+		set_virtual_buffer_setting(
+			"loadChromiumVBufOnBusyState",
+			get_virtual_buffer_setting("loadChromiumVBufOnBusyState"),
+		)
 		self.loadChromiumBusyCombo.saveCurrentValueToConf()
 		set_annotation_setting("reportDetails", _is_checked(self.annotationDetailsCheckBox))
 		set_annotation_setting("reportAriaDescription", _is_checked(self.ariaDescriptionCheckBox))
@@ -485,6 +497,8 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		set_web_document_formatting_setting("reportFrames", _is_checked(self.framesCheckBox))
 		set_web_document_formatting_setting("reportFigures", _is_checked(self.figuresCheckBox))
 		set_web_document_formatting_setting("reportClickable", _is_checked(self.clickableCheckBox))
+		if not hasattr(config.conf.get("braille"), "get"):
+			config.conf["braille"] = {}
 		self.brailleLiveRegionsCombo.saveCurrentValueToConf()
 		if hasattr(self, "notifyWhenPageReadyCheckBox"):
 			set_notify_when_page_ready(_is_checked(self.notifyWhenPageReadyCheckBox))

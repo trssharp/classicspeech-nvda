@@ -170,12 +170,20 @@ class WebSummaryConfigTests(unittest.TestCase):
         plugin_config._initClassicSpeechConfig()
         self.config = config
         self.summary_config = web_summary_config
-        self.summary_config.get_included_element_types()
+        # These legacy config-helper tests mutate saved values directly, so
+        # explicitly create their writable fixture rather than relying on a
+        # getter to materialize defaults.
+        self.summary_config.set_included_element_types(
+            ["heading", "landmark", "link", "formField", "button", "table"]
+        )
 
     def tearDown(self):
         self.nvda_harness._reset_global_plugin_imports()
 
     def test_page_summary_defaults_are_registered_in_classic_speech_config(self):
+        # Defaults are read without materializing data; this test must exercise
+        # the absent-on-disk state rather than the writable fixture used below.
+        self.config.conf.profiles[0]["classicSpeech"].pop("pageSummaryData", None)
         spec = self.config.conf.spec["classicSpeech"]
         self.assertIn("pageSummaryData", spec)
         self.assertIn("includedElementTypes", spec["pageSummaryData"])
@@ -305,6 +313,69 @@ class WebSummaryConfigTests(unittest.TestCase):
         self.assertEqual(self.summary_config.get_included_element_types(), ())
         section = self.config.conf.profiles[0]["classicSpeech"]
         self.assertEqual(section["pageSummaryData"]["includedElementTypes"], [])
+
+
+class WebSummaryTransactionPersistenceTests(unittest.TestCase):
+    def setUp(self):
+        import classic_speech_nvda_master_harness as nvda_harness
+        import config
+        self.nvda_harness = nvda_harness
+        self.config = config
+        nvda_harness.ClassicSpeechNVDAConfigStartupTests().setUp()
+        nvda_harness._import_classic_speech_like_nvda()
+
+    def tearDown(self):
+        self.nvda_harness._reset_global_plugin_imports()
+
+    def test_getters_and_capture_do_not_materialize_absent_or_malformed_page_summary_data(self):
+        from globalPlugins._speech_core.settings import web_summary_config as summary_config
+
+        self.config.conf.profiles[0]["classicSpeech"] = {"unrelated": {"future": "keep"}}
+        section = self.config.conf.profiles[0]["classicSpeech"]
+        snapshot = summary_config.capture_page_summary_state()
+        self.assertEqual(summary_config.get_included_element_types(), ("heading", "landmark", "link", "formField", "button", "table"))
+        self.assertEqual(summary_config.get_page_load_summary_mode(), "native")
+        self.assertFalse(summary_config.get_notify_when_page_ready())
+        self.assertEqual(summary_config.get_page_ready_message(), "Page ready")
+        self.assertFalse(snapshot["hasPageSummaryData"])
+        self.assertNotIn("pageSummaryData", section)
+        self.assertEqual(section["unrelated"], {"future": "keep"})
+
+        section["pageSummaryData"] = ["malformed", {"unknown": "raw"}]
+        malformed = summary_config.capture_page_summary_state()
+        self.assertEqual(summary_config.get_included_element_types(), ("heading", "landmark", "link", "formField", "button", "table"))
+        self.assertEqual(summary_config.get_page_load_summary_mode(), "native")
+        self.assertEqual(malformed["pageSummaryData"], ["malformed", {"unknown": "raw"}])
+        self.assertEqual(section["pageSummaryData"], ["malformed", {"unknown": "raw"}])
+
+    def test_restore_preserves_legacy_empty_malformed_unknown_and_absent_page_summary_data(self):
+        from globalPlugins._speech_core.settings import web_summary_config as summary_config
+
+        section = self.config.conf.profiles[0].setdefault("classicSpeech", {})
+        original = {
+            "automaticReportOnPageLoad": True,
+            "includedElementTypes": [],
+            "unknownFutureKey": {"raw": [1, "two"]},
+            "notifyWhenPageReady": "malformed",
+        }
+        expected_original = __import__("copy").deepcopy(original)
+        section["pageSummaryData"] = original
+        section["unrelatedClassicSpeechValue"] = "keep"
+        snapshot = summary_config.capture_page_summary_state()
+        summary_config.set_included_element_types(["link"])
+        summary_config.set_page_load_summary_mode("orientation")
+        summary_config.set_notify_when_page_ready(True)
+        summary_config.set_page_ready_message("Changed")
+        summary_config.restore_page_summary_state(snapshot)
+        self.assertEqual(section["pageSummaryData"], expected_original)
+        self.assertEqual(section["unrelatedClassicSpeechValue"], "keep")
+
+        del section["pageSummaryData"]
+        absent = summary_config.capture_page_summary_state()
+        summary_config.set_included_element_types([])
+        summary_config.restore_page_summary_state(absent)
+        self.assertNotIn("pageSummaryData", section)
+        self.assertEqual(section["unrelatedClassicSpeechValue"], "keep")
 
 
 class WebSummaryCommandTests(unittest.TestCase):

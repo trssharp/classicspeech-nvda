@@ -7,6 +7,7 @@ state snapshots without starting NVDA.
 """
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -133,6 +134,48 @@ class WebBrowseConfigHelperTests(unittest.TestCase):
 		self.assertFalse(config.conf["annotations"]["reportDetails"])
 		self.assertEqual(config.conf["braille"]["reportLiveRegions"], "DEFAULT")
 		self.assertEqual(config.conf["virtualBuffers"]["loadChromiumVBufOnBusyState"], "DEFAULT")
+
+	def test_getters_and_capture_do_not_materialize_absent_native_sections(self):
+		nvda_harness._import_classic_speech_like_nvda()
+		from globalPlugins._speech_core.settings import web_formatting_config as web_config
+
+		for section in ("virtualBuffers", "documentFormatting", "annotations", "braille"):
+			config.conf.pop(section, None)
+		self.assertEqual(web_config.get_virtual_buffer_setting("maxLineLength"), 100)
+		self.assertTrue(web_config.get_web_document_formatting_setting("reportLinks"))
+		self.assertTrue(web_config.get_annotation_setting("reportDetails"))
+		snapshot = web_config.capture_web_browse_state()
+		self.assertEqual(snapshot["virtualBuffers"]["present"], False)
+		for section in ("virtualBuffers", "documentFormatting", "annotations", "braille"):
+			self.assertNotIn(section, config.conf)
+
+	def test_restore_preserves_exact_raw_native_sections_and_removes_absent_ones(self):
+		nvda_harness._import_classic_speech_like_nvda()
+		from globalPlugins._speech_core.settings import web_formatting_config as web_config
+
+		for section in ("virtualBuffers", "documentFormatting", "annotations", "braille"):
+			config.conf.pop(section, None)
+		config.conf["virtualBuffers"] = {"legacy": {"raw": "preserve"}, "unknown": ["keep"], "linesPerPage": "malformed"}
+		config.conf["annotations"] = ["malformed section"]
+		# This raw section intentionally exists before opening; the test verifies
+		# that a Cancel restores it exactly while removing sections absent at open.
+		config.conf["braille"] = {"reportLiveRegions": "DEFAULT"}
+		original_virtual_buffers = config.conf["virtualBuffers"]
+		original_annotations = config.conf["annotations"]
+		snapshot = web_config.capture_web_browse_state()
+		web_config.set_virtual_buffer_setting("linesPerPage", 55)
+		web_config.set_web_document_formatting_setting("reportLinks", False)
+		web_config.set_annotation_setting("reportDetails", False)
+		web_config.set_annotation_setting("reportAriaDescription", False)
+		config.conf["braille"]["unknown"] = {"forward": "compatible"}
+		web_config.restore_web_browse_state(snapshot)
+
+		self.assertEqual(config.conf["virtualBuffers"]["legacy"], original_virtual_buffers["legacy"])
+		self.assertEqual(config.conf["virtualBuffers"]["unknown"], ["keep"])
+		self.assertEqual(config.conf["virtualBuffers"]["linesPerPage"], "malformed")
+		self.assertEqual(config.conf["annotations"], original_annotations)
+		self.assertNotIn("documentFormatting", config.conf)
+		self.assertEqual(config.conf["braille"], {"reportLiveRegions": "DEFAULT"})
 
 
 class WebBrowseNativeFidelityTests(unittest.TestCase):
@@ -477,7 +520,13 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
 
 		dialog = object.__new__(WebBrowseSettingsDialog)
+		# This class intentionally has no shared setup; establish the actual raw
+		# opening values before capture rather than assigning unrelated legacy
+		# fields on the lightweight fake dialog.
+		web_summary_config.set_notify_when_page_ready(False)
+		web_summary_config.set_page_ready_message("Page ready")
 		dialog._originalWebBrowse = web_formatting_config.capture_web_browse_state()
+		dialog._originalPageSummary = web_summary_config.capture_page_summary_state()
 		dialog._originalPageSummaryTypes = web_summary_config.get_included_element_types()
 		dialog._originalPageSummaryTitle = web_summary_config.get_include_document_title()
 		dialog._originalPageLoadSummaryMode = web_summary_config.get_page_load_summary_mode()
@@ -948,6 +997,74 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		for handler in ("onApply", "onOK", "onCancel", "onClose"):
 			self.assertNotIn(f"def {handler}(self", dialog_source)
 		self.assertNotIn("_closeAfterOK", dialog_source)
+
+
+class WebBrowseFreshReloadPersistenceTests(unittest.TestCase):
+	"""Model NVDA global save/reload using the existing NVDA-shaped config stub."""
+
+	def setUp(self):
+		nvda_harness.ClassicSpeechNVDAConfigStartupTests().setUp()
+		nvda_harness._import_classic_speech_like_nvda()
+		from globalPlugins._speech_core import plugin_config
+		plugin_config._initClassicSpeechConfig()
+
+	def tearDown(self):
+		nvda_harness._reset_global_plugin_imports()
+
+	def test_global_save_then_fresh_config_reconstruction_preserves_web_settings(self):
+		"""Proves representative owner writes survive JSON-shaped NVDA persistence.
+
+		The test serializes the root native sections and the base-only ClassicSpeech
+		section, recreates the harness config as a fresh NVDA process would, then
+		reimports the add-on and verifies its public read APIs.
+		"""
+		from globalPlugins._speech_core.settings import edge_notifications_config as edge_config
+		from globalPlugins._speech_core.settings import web_formatting_config as web_config
+		from globalPlugins._speech_core.settings import web_summary_config as summary_config
+
+		web_config.set_virtual_buffer_setting("maxLineLength", 143)
+		web_config.set_virtual_buffer_setting("browseModeTouchNavigationElements", ["link", "table"])
+		web_config.set_web_document_formatting_setting("reportLinks", False)
+		web_config.set_annotation_setting("reportDetails", False)
+		config.conf["braille"] = {"reportLiveRegions": "ENABLED"}
+		summary_config.set_included_element_types(["table", "heading"])
+		summary_config.set_include_document_title(True)
+		summary_config.set_page_load_summary_mode("orientation")
+		summary_config.set_notify_when_page_ready(True)
+		summary_config.set_page_ready_message("  Web page is ready  ")
+		edge_config.set_enabled_activity_ids(["PageZoom", "PageLoading"])
+		edge_config.set_custom_messages({"PageZoom": "  Zoom level changed  "})
+
+		# JSON round-trip deliberately limits this model to NVDA-persistable scalar,
+		# list, and mapping values rather than sharing live references.
+		persisted = json.loads(json.dumps({
+			section: config.conf[section]
+			for section in ("virtualBuffers", "documentFormatting", "annotations", "braille")
+		} | {"classicSpeech": config.conf.profiles[0]["classicSpeech"]}))
+
+		nvda_harness.ClassicSpeechNVDAConfigStartupTests().setUp()
+		for section in ("virtualBuffers", "documentFormatting", "annotations", "braille"):
+			config.conf[section] = persisted[section]
+		config.conf.profiles[0]["classicSpeech"] = persisted["classicSpeech"]
+		nvda_harness._import_classic_speech_like_nvda()
+		from globalPlugins._speech_core import plugin_config
+		plugin_config._initClassicSpeechConfig()
+		from globalPlugins._speech_core.settings import edge_notifications_config as reloaded_edge
+		from globalPlugins._speech_core.settings import web_formatting_config as reloaded_web
+		from globalPlugins._speech_core.settings import web_summary_config as reloaded_summary
+
+		self.assertEqual(reloaded_web.get_virtual_buffer_setting("maxLineLength"), 143)
+		self.assertEqual(reloaded_web.get_virtual_buffer_setting("browseModeTouchNavigationElements"), ["link", "table"])
+		self.assertFalse(reloaded_web.get_web_document_formatting_setting("reportLinks"))
+		self.assertFalse(reloaded_web.get_annotation_setting("reportDetails"))
+		self.assertEqual(config.conf["braille"]["reportLiveRegions"], "ENABLED")
+		self.assertEqual(reloaded_summary.get_included_element_types(), ("heading", "table"))
+		self.assertTrue(reloaded_summary.get_include_document_title())
+		self.assertEqual(reloaded_summary.get_page_load_summary_mode(), "orientation")
+		self.assertTrue(reloaded_summary.get_notify_when_page_ready())
+		self.assertEqual(reloaded_summary.get_page_ready_message(), "Web page is ready")
+		self.assertEqual(reloaded_edge.get_enabled_activity_ids(), ("PageLoading", "PageZoom"))
+		self.assertEqual(reloaded_edge.get_custom_messages(), {"PageZoom": "Zoom level changed"})
 
 
 if __name__ == "__main__":
