@@ -3,6 +3,7 @@ name: Verify and package ClassicSpeech
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
@@ -39,19 +40,39 @@ jobs:
             python "$test"
           done
 
-      - name: Build date-named NVDA add-on
+      - name: Build manifest-versioned NVDA add-on
         id: package
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          RUN_NUMBER: ${{ github.run_number }}
+          COMMIT_SHA: ${{ github.sha }}
         run: |
           build_date="$(date -u +%F)"
-          echo "build_date=$build_date" >> "$GITHUB_OUTPUT"
-          python scripts/package_addon.py --date "$build_date"
+          package_output="$(python scripts/package_addon.py --date "$build_date")"
+          version="$(printf '%s\n' "$package_output" | awk -F= '/^PACKAGE_VERSION=/{print $2}')"
+          test -n "$version"
+          if [ "$REF_TYPE" = "tag" ]; then
+            case "$REF_NAME" in
+              "v$version") label="" ;;
+              "v$version-rc."[0-9]*) label="${REF_NAME#v$version-}" ;;
+              *) echo "Tag $REF_NAME must be v$version or v$version-rc.N" >&2; exit 1 ;;
+            esac
+          else
+            label="dev.$RUN_NUMBER-g${COMMIT_SHA:0:7}"
+          fi
+          package_output="$(python scripts/package_addon.py --date "$build_date" --label "$label")"
+          package_name="$(printf '%s\n' "$package_output" | awk -F= '/^PACKAGE_NAME=/{print $2}')"
+          test -n "$package_name"
+          echo "$package_output"
+          echo "package_name=$package_name" >> "$GITHUB_OUTPUT"
 
-      - name: Upload date-named add-on artifact
+      - name: Upload manifest-versioned add-on artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ClassicSpeech-${{ steps.package.outputs.build_date }}
+          name: ${{ steps.package.outputs.package_name }}
           path: |
-            dist/ClassicSpeech-${{ steps.package.outputs.build_date }}.nvda-addon
-            dist/ClassicSpeech-${{ steps.package.outputs.build_date }}.nvda-addon.sha256
+            dist/${{ steps.package.outputs.package_name }}
+            dist/${{ steps.package.outputs.package_name }}.sha256
           if-no-files-found: error
           retention-days: 30

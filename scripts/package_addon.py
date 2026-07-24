@@ -1,12 +1,13 @@
-"""Build a clean, date-named ClassicSpeech NVDA add-on archive.
+"""Build a clean ClassicSpeech NVDA add-on archive named from its manifest version.
 
-The public filename is based on the UTC build date, while manifest.ini retains
-NVDA's technical add-on version for update compatibility.
+The public filename includes both the technical NVDA add-on version and UTC
+build date so a downloaded artifact identifies the installed release.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
+import re
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -19,7 +20,9 @@ RUNTIME_FILES = (
 )
 RUNTIME_DIRECTORIES = ("_speech_core",)
 APP_MODULE_DIRECTORIES = ("appModules",)
-RELEASE_NOTES = "PAGE-ORIENTATION-RC-V25.md"
+RELEASE_NOTES = "EDGE-NOTIFICATIONS-RC-V26.md"
+_NUMERIC_VERSION = re.compile(r"^\d+\.\d+\.\d+$")
+_SAFE_LABEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 def _parse_args() -> argparse.Namespace:
@@ -30,6 +33,11 @@ def _parse_args() -> argparse.Namespace:
         default=datetime.now(UTC).date().isoformat(),
         help="UTC creation date in YYYY-MM-DD format (defaults to today).",
     )
+    parser.add_argument(
+        "--label",
+        default="",
+        help="Optional safe build label, such as rc.1 or dev.123-gabcdef0.",
+    )
     return parser.parse_args()
 
 
@@ -38,6 +46,28 @@ def _validate_date(value: str) -> str:
         return datetime.strptime(value, "%Y-%m-%d").date().isoformat()
     except ValueError as error:
         raise SystemExit(f"Invalid --date {value!r}; use YYYY-MM-DD.") from error
+
+
+def get_manifest_version(manifest: Path) -> str:
+    """Return the manifest version without accepting ambiguous artifact names."""
+    for line in manifest.read_text(encoding="utf-8").splitlines():
+        key, separator, value = line.partition("=")
+        if separator and key.strip().casefold() == "version":
+            version = value.strip()
+            if _NUMERIC_VERSION.fullmatch(version):
+                return version
+            raise ValueError(f"Manifest version must use MAJOR.MINOR.PATCH: {version!r}")
+    raise ValueError("manifest.ini has no version entry")
+
+
+def package_filename(version: str, build_date: str, label: str = "") -> str:
+    """Build the public package filename from version, optional channel, and UTC date."""
+    if not _NUMERIC_VERSION.fullmatch(version):
+        raise ValueError(f"Version must use MAJOR.MINOR.PATCH: {version!r}")
+    if label and not _SAFE_LABEL.fullmatch(label):
+        raise ValueError(f"Label is not safe for an artifact filename: {label!r}")
+    channel = f"-{label}" if label else ""
+    return f"ClassicSpeech-{version}{channel}-{_validate_date(build_date)}.nvda-addon"
 
 
 def _add_tree(archive: zipfile.ZipFile, source: Path, prefix: Path) -> None:
@@ -50,14 +80,15 @@ def _add_tree(archive: zipfile.ZipFile, source: Path, prefix: Path) -> None:
 
 
 def main() -> None:
-    build_date = _validate_date(_parse_args().build_date)
-    package_name = f"ClassicSpeech-{build_date}.nvda-addon"
-    package_path = DIST / package_name
-    checksum_path = package_path.with_suffix(package_path.suffix + ".sha256")
-
+    args = _parse_args()
+    build_date = _validate_date(args.build_date)
     manifest = ROOT / "manifest.ini"
     if not manifest.is_file():
         raise SystemExit(f"Missing manifest: {manifest}")
+    version = get_manifest_version(manifest)
+    package_name = package_filename(version, build_date, args.label)
+    package_path = DIST / package_name
+    checksum_path = package_path.with_suffix(package_path.suffix + ".sha256")
 
     DIST.mkdir(exist_ok=True)
     package_path.unlink(missing_ok=True)
@@ -103,6 +134,8 @@ def main() -> None:
 
     checksum = hashlib.sha256(package_path.read_bytes()).hexdigest()
     checksum_path.write_text(f"{checksum}  {package_name}\n", encoding="ascii")
+    print(f"PACKAGE_VERSION={version}")
+    print(f"PACKAGE_NAME={package_name}")
     print(f"PACKAGE={package_path}")
     print(f"SHA256={checksum}")
 
