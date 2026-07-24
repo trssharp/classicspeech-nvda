@@ -30,6 +30,7 @@ _CLASSIC_SPEECH_SPEC = {
     "menuBarLeaveMessage": "string(default='Leaving menu bar')",
     "hotkeyMode": "string(default='both')",
     "hotkeyFormat": "string(default='native')",
+    "hotkeyTypes": "string(default='both')",
     "hotkeyDialogAccessKeyOnly": "boolean(default=False)",
     "positionMode": "string(default='each')",
     "textProcessingData": {
@@ -114,6 +115,7 @@ _CLASSIC_SPEECH_SPEC = {
             "hotkey": "integer(default=-1)",
         },
         "pauseAfterFinalToken": "boolean(default=True)",
+        "pausePlacement": "string(default='before')",
     },
 }
 

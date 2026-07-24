@@ -40,6 +40,21 @@ class FeedbackPauseConfigTests(unittest.TestCase):
         finally:
             plugin.terminate()
 
+    def test_key_label_runtime_restores_native_labels_when_terminated(self):
+        import keyLabels
+        from globalPlugins._speech_core.key_labels import KeyLabelRuntime
+
+        keyLabels.localizedKeyLabels.clear()
+        keyLabels.localizedKeyLabels["f1"] = "F1"
+        runtime = KeyLabelRuntime()
+        runtime.install()
+        try:
+            runtime.apply_config({"renames": {"f1": "help"}, "mutedLabels": []})
+            self.assertEqual(keyLabels.localizedKeyLabels["f1"], "help")
+        finally:
+            runtime.terminate()
+        self.assertEqual(keyLabels.localizedKeyLabels["f1"], "F1")
+
 
 class FeedbackCancelRestoreTests(unittest.TestCase):
     def setUp(self):

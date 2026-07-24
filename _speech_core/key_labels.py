@@ -447,6 +447,11 @@ def install_key_label_runtime():
 	return _runtime
 
 
+def get_key_label_runtime():
+	"""Return the shared runtime without enabling its ClassicSpeech changes."""
+	return _runtime
+
+
 def apply_key_labels_live(config_data=None):
 	_runtime.apply_config(config_data if config_data is not None else get_key_label_config())
 
