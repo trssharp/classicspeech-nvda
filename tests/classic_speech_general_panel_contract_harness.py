@@ -214,6 +214,8 @@ class GeneralPanelContractTests(unittest.TestCase):
         self.assertFalse(shape["pauseAfterFinalToken"])
         self.assertEqual(shape["pauses"], {kind: -1 for kind in TOKEN_ORDER_KINDS})
         self.assertEqual(self._section()["shapeData"]["pausePlacement"], "after")
+        from globalPlugins._speech_core.verbosity import VerbosityManager
+        self.assertEqual(VerbosityManager().get_shape_config()["pausePlacement"], "after")
 
     def test_key_labels_panel_persists_renames_and_muted_labels(self):
         from globalPlugins._speech_core.settings.key_labels_panel import KeyLabelsPanel
@@ -232,6 +234,8 @@ class GeneralPanelContractTests(unittest.TestCase):
             self._section()["keyLabelData"],
             {"renames": {"f1": "Help"}, "mutedLabels": ["tab"]},
         )
+        from globalPlugins._speech_core.key_labels import get_key_label_config
+        self.assertEqual(get_key_label_config(), {"renames": {"f1": "Help"}, "mutedLabels": ["tab"]})
 
 
 if __name__ == "__main__":
