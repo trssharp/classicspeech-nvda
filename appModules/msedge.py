@@ -11,6 +11,12 @@ import appModuleHandler
 import ui
 
 from globalPlugins._speech_core.settings import edge_notifications_config
+from globalPlugins._speech_core.settings.web_summary_config import get_notify_when_page_ready
+
+
+_PAGE_LOADING_ACTIVITY_ID = "PageLoading"
+_PAGE_LOADING_START_TEXT = "Loading page"
+_PAGE_LOADING_COMPLETE_TEXT = "Loading complete"
 
 
 class AppModule(appModuleHandler.AppModule):
@@ -56,6 +62,27 @@ class AppModule(appModuleHandler.AppModule):
         except Exception:
             nextHandler()
             return
+
+        if activityId == _PAGE_LOADING_ACTIVITY_ID:
+            normalized_display_string = displayString.strip() if isinstance(displayString, str) else None
+            page_loading_phase = {
+                _PAGE_LOADING_START_TEXT: "start",
+                _PAGE_LOADING_COMPLETE_TEXT: "complete",
+            }.get(normalized_display_string)
+            if page_loading_phase == "complete":
+                try:
+                    if get_notify_when_page_ready():
+                        return
+                except Exception:
+                    # A broken Page Ready getter must preserve native Edge behavior.
+                    nextHandler()
+                    return
+                # Completion is owned by the shared Page Ready setting, never by
+                # the PageLoading custom start-message setting.
+                nextHandler()
+                return
+            # The exact start event and future PageLoading text keep the
+            # established PageLoading policy below.
 
         if isinstance(custom_message, str):
             custom_message = custom_message.strip()
