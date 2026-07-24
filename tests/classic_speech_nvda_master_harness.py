@@ -725,6 +725,82 @@ class ClassicSpeechNVDAConfigStartupTests(unittest.TestCase):
 		finally:
 			plugin.terminate()
 
+	def test_hook_toggle_owns_independent_interrupt_and_key_label_runtime(self):
+		module = _import_classic_speech_like_nvda()
+		calls = []
+
+		class Runtime:
+			def install(self):
+				calls.append("install")
+			def uninstall(self):
+				calls.append("uninstall")
+			def terminate(self):
+				calls.append("terminate")
+
+		plugin = object.__new__(module.GlobalPlugin)
+		plugin._interruptController = Runtime()
+		plugin._keyLabelRuntime = Runtime()
+		plugin._speechHookRegistered = False
+		plugin._register_speech_hook = lambda: calls.append("register")
+		plugin._unregister_speech_hook = lambda: calls.append("unregister")
+		plugin._clear_hotkey_carryover = lambda: calls.append("clear-hotkeys")
+		plugin._cancel_pending_container_flush = lambda: calls.append("cancel-flush")
+		plugin._pendingContainerSequence = object()
+		plugin.processor = types.SimpleNamespace(_bypass_next_sequence=True)
+
+		plugin.set_speech_hook_enabled(False)
+		self.assertEqual(
+			calls,
+			["unregister", "uninstall", "terminate", "clear-hotkeys", "cancel-flush"],
+		)
+		self.assertFalse(plugin.processor._bypass_next_sequence)
+		self.assertIsNone(plugin._pendingContainerSequence)
+
+		calls.clear()
+		plugin.set_speech_hook_enabled(True)
+		self.assertEqual(calls, ["install", "install", "register"])
+
+	def test_nvda_control_c_save_route_calls_real_save_and_preserves_confirmation(self):
+		import queueHandler
+		import ui
+
+		module = _import_classic_speech_like_nvda()
+		original_main_frame = module.gui.mainFrame
+		saves = []
+		ui.messages.clear()
+		config.conf.save = lambda: saves.append("saved")
+
+		def native_save_command(event):
+			config.conf.save()
+			queueHandler.queueFunction(queueHandler.eventQueue, ui.message, "Configuration saved")
+
+		def native_revert_command(event):
+			queueHandler.queueFunction(queueHandler.eventQueue, ui.message, "Configuration applied")
+
+		module.gui.ui = ui
+		module.gui.mainFrame = types.SimpleNamespace(
+			onSaveConfigurationCommand=native_save_command,
+			onRevertToSavedConfigurationCommand=native_revert_command,
+		)
+		plugin = module.GlobalPlugin()
+		try:
+			module.gui.mainFrame.onSaveConfigurationCommand(None)
+			self.assertEqual(saves, ["saved"])
+			self.assertEqual(ui.messages, ["Configuration saved"])
+		finally:
+			plugin.terminate()
+			module.gui.mainFrame = original_main_frame
+
+	def test_classic_speech_config_spec_declares_every_written_hook_timing_and_hotkey_key(self):
+		module = _import_classic_speech_like_nvda()
+		plugin = module.GlobalPlugin()
+		try:
+			spec = config.conf.spec["classicSpeech"]
+			self.assertEqual(spec["hotkeyTypes"], "string(default='both')")
+			self.assertEqual(spec["shapeData"]["pausePlacement"], "string(default='before')")
+		finally:
+			plugin.terminate()
+
 	def test_filter_path_leaves_literal_text_unchanged_by_default(self):
 		plugin = _import_classic_speech_like_nvda().GlobalPlugin()
 		try:

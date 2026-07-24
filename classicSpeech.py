@@ -38,7 +38,7 @@ from ._speech_core.prosody_routing import (
     wrap_review_literal_sequence,
     wrap_system_notification_sequence,
 )
-from ._speech_core.key_labels import install_key_label_runtime
+from ._speech_core.key_labels import get_key_label_runtime
 from ._speech_core.processors.core_ui import CoreUISpeechProcessor
 from ._speech_core.settings import (
     ClassicSpeechDialog,
@@ -608,9 +608,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._classicSpeechPreferencesMenu = None
         self._classicSpeechMenuItems = []
         self._menuHints = MenuHintHelper()
-        self._keyLabelRuntime = install_key_label_runtime()
+        self._keyLabelRuntime = get_key_label_runtime()
         self._interruptController = SpeechInterruptController()
-        self._interruptController.install()
         self._install_shortcut_speaker_bypass()
         self._install_keyboard_entry_profile_route()
         self._install_mouse_pointer_profile_route()
@@ -709,9 +708,13 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def set_speech_hook_enabled(self, enabled):
         if enabled:
+            self._interruptController.install()
+            self._keyLabelRuntime.install()
             self._register_speech_hook()
         else:
             self._unregister_speech_hook()
+            self._interruptController.uninstall()
+            self._keyLabelRuntime.terminate()
             self._clear_hotkey_carryover()
             try:
                 self.processor._bypass_next_sequence = False
