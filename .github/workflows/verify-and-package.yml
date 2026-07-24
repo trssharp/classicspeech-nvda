@@ -3,7 +3,6 @@ name: Verify and package ClassicSpeech
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
@@ -43,25 +42,12 @@ jobs:
       - name: Build manifest-versioned NVDA add-on
         id: package
         env:
-          REF_NAME: ${{ github.ref_name }}
-          REF_TYPE: ${{ github.ref_type }}
           RUN_NUMBER: ${{ github.run_number }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
           build_date="$(date -u +%F)"
-          package_output="$(python scripts/package_addon.py --date "$build_date")"
-          version="$(printf '%s\n' "$package_output" | awk -F= '/^PACKAGE_VERSION=/{print $2}')"
-          test -n "$version"
-          if [ "$REF_TYPE" = "tag" ]; then
-            case "$REF_NAME" in
-              "v$version") label="" ;;
-              "v$version-rc."[0-9]*) label="${REF_NAME#v$version-}" ;;
-              *) echo "Tag $REF_NAME must be v$version or v$version-rc.N" >&2; exit 1 ;;
-            esac
-          else
-            label="dev.$RUN_NUMBER-g${COMMIT_SHA:0:7}"
-          fi
-          package_output="$(python scripts/package_addon.py --date "$build_date" --label "$label")"
+          version="$(BUILD_DATE="$build_date" python -c 'from scripts.package_addon import build_version; import os; print(build_version(os.environ["BUILD_DATE"], os.environ["RUN_NUMBER"]))')"
+          package_output="$(python scripts/package_addon.py --version "$version" --label "g${COMMIT_SHA:0:7}")"
           package_name="$(printf '%s\n' "$package_output" | awk -F= '/^PACKAGE_NAME=/{print $2}')"
           test -n "$package_name"
           echo "$package_output"

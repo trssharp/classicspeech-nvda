@@ -726,20 +726,22 @@ class EdgeNotificationRuntimeTests(unittest.TestCase):
 
 class EdgeNotificationPackageTests(unittest.TestCase):
     def test_fixed_date_archive_contains_root_app_module(self):
-        build_date = "2001-02-03"
-        manifest_version = next(
-            line.partition("=")[2].strip()
-            for line in (ROOT / "manifest.ini").read_text(encoding="utf-8").splitlines()
-            if line.partition("=")[0].strip() == "version"
-        )
-        package = ROOT / "dist" / f"ClassicSpeech-{manifest_version}-{build_date}.nvda-addon"
+        manifest_version = "20010203.1"
+        package = ROOT / "dist" / f"ClassicSpeech-{manifest_version}.nvda-addon"
         checksum = package.with_suffix(package.suffix + ".sha256")
         self.addCleanup(package.unlink, missing_ok=True)
         self.addCleanup(checksum.unlink, missing_ok=True)
-        result = subprocess.run([sys.executable, "scripts/package_addon.py", "--date", build_date], cwd=ROOT, text=True, capture_output=True)
+        result = subprocess.run(
+            [sys.executable, "scripts/package_addon.py", "--version", manifest_version],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+        )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         with zipfile.ZipFile(package) as archive:
             self.assertIn("appModules/msedge.py", archive.namelist())
+            self.assertIn(f"version = {manifest_version}", archive.read("manifest.ini").decode("utf-8"))
+        self.assertIn("version = 0.0.0", (ROOT / "manifest.ini").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

@@ -1,44 +1,33 @@
 # ClassicSpeech versioning and CI artifact identity
 
-## Version schema
+## Generated numeric version
 
-ClassicSpeech uses a numeric three-part manifest version:
-
-```text
-MAJOR.MINOR.PATCH
-```
-
-This is intentionally plain numeric data because current NVDA Add-on Store logic parses side-loaded add-on versions as two or three integers. A nonnumeric version makes automatic update ordering unknown.
-
-- **MAJOR** changes for incompatible add-on behavior or storage migration.
-- **MINOR** changes for a compatible feature release.
-- **PATCH** changes for a compatible bug fix or release-candidate progression.
-
-The Edge release candidate in this branch is **4.0.26**. Future compatible candidates advance the numeric version; do not encode a feature name or `rc` text in `manifest.ini`.
-
-## Release channels
-
-The Git tag—not `manifest.ini`—expresses the channel:
+Every GitHub Actions workflow run generates the package manifest version:
 
 ```text
-v4.0.26          stable release
-v4.0.26-rc.1     first release candidate
-v4.0.26-rc.2     second release candidate
+YYYYMMDD.RUN
 ```
 
-The GitHub Actions workflow rejects a tag that does not match the current manifest version.
+For example, workflow run 16 on UTC date 2026-07-24 installs as version:
+
+```text
+20260724.16
+```
+
+The source `manifest.ini` deliberately uses the neutral `0.0.0` placeholder. During packaging, `scripts/package_addon.py` replaces that value **inside the `.nvda-addon` archive only**. The checked-out source manifest is never changed.
+
+This uses two numeric components because current NVDA Add-on Store logic compares side-loaded add-on versions only when it can parse two or three integers. The date component preserves chronological order; the GitHub Actions run component makes every workflow artifact unique, including multiple runs on one day.
 
 ## Artifact names
 
-Every artifact begins with the manifest version. CI appends a channel/build identity and UTC date:
+An artifact includes the generated installed version and the source commit:
 
 ```text
-ClassicSpeech-4.0.26-rc.1-2026-07-24.nvda-addon
-ClassicSpeech-4.0.26-dev.30114390474-gdbdd07b-2026-07-24.nvda-addon
+ClassicSpeech-20260724.16-gddf21ae.nvda-addon
 ```
 
-- A matching `vMAJOR.MINOR.PATCH` tag produces a stable artifact with no channel label.
-- A matching `vMAJOR.MINOR.PATCH-rc.N` tag produces an `rc.N` artifact.
-- A branch or manually dispatched workflow produces a non-release `dev.<run>-g<shortSHA>` artifact.
+- `20260724.16` is the version shown by NVDA after installation.
+- `gddf21ae` identifies the source commit used by the workflow.
+- The `.sha256` sidecar has the same basename.
 
-The accompanying `.sha256` sidecar uses the same basename. Do not publish a `dev` artifact as a release.
+Git tags and GitHub releases may still carry human-facing labels such as `RC` or `stable`, but they do not change the numeric installed version.
