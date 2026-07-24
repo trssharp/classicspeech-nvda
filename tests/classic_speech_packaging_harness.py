@@ -29,6 +29,10 @@ class PackageVersioningTests(unittest.TestCase):
             self.packager.package_filename(version, "gddf21ae"),
             "ClassicSpeech-20260724.16-gddf21ae.nvda-addon",
         )
+        self.assertEqual(
+            self.packager.package_filename("4.0.0"),
+            "ClassicSpeech-4.0.0.nvda-addon",
+        )
 
     def test_invalid_version_or_label_is_rejected(self):
         with self.assertRaises(ValueError):
