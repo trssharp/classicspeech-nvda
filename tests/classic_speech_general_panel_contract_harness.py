@@ -236,6 +236,120 @@ class GeneralPanelContractTests(unittest.TestCase):
         )
         from globalPlugins._speech_core.key_labels import get_key_label_config
         self.assertEqual(get_key_label_config(), {"renames": {"f1": "Help"}, "mutedLabels": ["tab"]})
+    def test_verbosity_panel_persists_selected_profile_tokens_and_position_mode(self):
+        from globalPlugins._speech_core.settings.verbosity_panel import VerbosityPanel
+
+        panel = types.SimpleNamespace(
+            currentEditProfile="Beginner",
+            profileConfig={"enabledTokens": {"name": True, "position": True, "value": True}},
+            profileBehavior={},
+            activeProfileChoice=Control("Advanced"),
+            tokenChecks={
+                "role": Control(False),
+                "state": Control(True),
+                "description": Control(False),
+                "tooltip": Control(True),
+            },
+            positionModeChoice=Control(1),
+        )
+        panel.activeProfileChoice.GetStringSelection = lambda: panel.activeProfileChoice.value
+        panel._getPositionModeFromChoice = lambda: VerbosityPanel._getPositionModeFromChoice(panel)
+        panel._refreshWorkingConfigFromControls = lambda: VerbosityPanel._refreshWorkingConfigFromControls(panel)
+
+        profile = VerbosityPanel.get_working_profile_config(panel)
+        behavior = VerbosityPanel.get_working_profile_behavior(panel)
+        VerbosityPanel.apply_live(panel, save=True)
+
+        self.assertEqual(panel.currentEditProfile, "Advanced")
+        self.assertEqual(
+            profile["enabledTokens"],
+            {"name": True, "position": True, "value": True, "role": False, "state": True, "description": False, "tooltip": True},
+        )
+        self.assertEqual(behavior["positionMode"], "first")
+        saved = self._section()["profileData"]["Advanced"]
+        self.assertFalse(saved["enabledTokens"]["role"])
+        self.assertTrue(saved["enabledTokens"]["tooltip"])
+        self.assertEqual(self._section()["profileBehaviorData"]["Advanced"]["positionMode"], "first")
+
+    def test_token_editor_persists_order_renames_and_muted_labels(self):
+        from globalPlugins._speech_core.settings.token_editor_panel import TokenEditorPanel
+        from globalPlugins._speech_core.settings.constants import TOKEN_ORDER_KINDS
+
+        class TokenList:
+            def __init__(self, order):
+                self.order = order
+            def GetCount(self):
+                return len(self.order)
+            def GetClientData(self, index):
+                return self.order[index]
+            def GetString(self, index):
+                return self.order[index]
+
+        class RenameData:
+            def __init__(self, renames, muted):
+                self.renames = renames
+                self.muted = muted
+            def getRenames(self):
+                return self.renames
+            def getMutedLabels(self):
+                return self.muted
+
+        order = ["state", "role", "name", "value", "position", "description", "hotkey"]
+        panel = types.SimpleNamespace(
+            shapeConfig={"order": list(TOKEN_ORDER_KINDS), "renames": {"custom": "Custom", "role": "Old"}, "mutedLabels": ["custom", "role"]},
+            tokenOrderList=TokenList(order),
+            rolePanel=RenameData({"role": "Type"}, ["role"]),
+            statePanel=RenameData({"state": "Status"}, ["state"]),
+        )
+        panel._normalizeOrder = lambda values: TokenEditorPanel._normalizeOrder(panel, values)
+        panel._getTokenOrderFromList = lambda: TokenEditorPanel._getTokenOrderFromList(panel)
+        panel._rebuildMergedRenames = lambda: TokenEditorPanel._rebuildMergedRenames(panel)
+        panel._rebuildMutedLabels = lambda: TokenEditorPanel._rebuildMutedLabels(panel)
+        panel._refreshWorkingConfigFromControls = lambda: TokenEditorPanel._refreshWorkingConfigFromControls(panel)
+        TokenEditorPanel.apply_live(panel, save=True)
+
+        saved = self._section()["shapeData"]
+        self.assertEqual(saved["order"], order)
+        self.assertEqual(saved["renames"], {"custom": "Custom", "role": "Type", "state": "Status"})
+        self.assertEqual(saved["mutedLabels"], ["custom", "role", "state"])
+
+    def test_document_reading_proofing_panel_persists_every_native_control(self):
+        from globalPlugins._speech_core.settings.document_reading_proofing_panel import DocumentReadingProofingPanel
+
+        class Checked(Control):
+            def IsChecked(self):
+                return self.value
+
+        panel = types.SimpleNamespace(
+            fontNameCheckBox=Checked(True), fontSizeCheckBox=Checked(True), fontAttrsList=Control(3),
+            superscriptsAndSubscriptsCheckBox=Checked(True), emphasisCheckBox=Checked(True), highlightCheckBox=Checked(False),
+            styleCheckBox=Checked(True), colorCheckBox=Checked(True), transparentColorCheckBox=Checked(True),
+            commentsCheckBox=Checked(False), bookmarksCheckBox=Checked(False), revisionsCheckBox=Checked(False),
+            reportSpellingErrors2=types.SimpleNamespace(GetCheckedItems=lambda: [0, 2]),
+            pageCheckBox=Checked(False), lineNumberCheckBox=Checked(True), lineIndentationCombo=Control(3),
+            ignoreBlankLinesRLICheckbox=Checked(True), paragraphIndentationCheckBox=Checked(True), lineSpacingCheckBox=Checked(True),
+            alignmentCheckBox=Checked(True), tablesCheckBox=Checked(False), tableHeadersComboBox=Control(3),
+            tableCellCoordsCheckBox=Checked(False), borderComboBox=Control(2), detectFormatAfterCursorCheckBox=Checked(True),
+        )
+        panel._get_spelling_errors_value = lambda: DocumentReadingProofingPanel._get_spelling_errors_value(panel)
+        panel._sync_line_indentation_dependency = lambda: None
+        panel._sync_transparent_color_dependency = lambda: None
+        DocumentReadingProofingPanel.apply_live(panel, save=True)
+
+        expected = {
+            "reportFontName": True, "reportFontSize": True, "fontAttributeReporting": 3,
+            "reportSuperscriptsAndSubscripts": True, "reportEmphasis": True, "reportHighlight": False,
+            "reportStyle": True, "reportColor": True, "reportTransparentColor": True,
+            "reportComments": False, "reportBookmarks": False, "reportRevisions": False,
+            "reportSpellingErrors2": 5, "reportPage": False, "reportLineNumber": True,
+            "reportLineIndentation": 3, "ignoreBlankLinesForRLI": True,
+            "reportParagraphIndentation": True, "reportLineSpacing": True, "reportAlignment": True,
+            "reportTables": False, "reportTableHeaders": 3, "reportTableCellCoords": False,
+            "reportCellBorders": 2, "detectFormatAfterCursor": True,
+        }
+        for key, value in expected.items():
+            with self.subTest(key=key):
+                self.assertEqual(config.conf["documentFormatting"].get(key), value)
 
 
 if __name__ == "__main__":
