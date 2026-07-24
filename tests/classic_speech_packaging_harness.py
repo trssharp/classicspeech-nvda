@@ -1,4 +1,4 @@
-"""Focused tests for generated, NVDA-comparable ClassicSpeech package versions."""
+"""Focused tests for reproducible, manifest-versioned ClassicSpeech packages."""
 from __future__ import annotations
 
 import importlib.util
@@ -11,37 +11,30 @@ SCRIPT = ROOT / "scripts" / "package_addon.py"
 
 
 def _load_packager():
-    spec = importlib.util.spec_from_file_location("classicspeech_package_addon", SCRIPT)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
+	spec = importlib.util.spec_from_file_location("classicspeech_package_addon", SCRIPT)
+	module = importlib.util.module_from_spec(spec)
+	sys.modules[spec.name] = module
+	spec.loader.exec_module(module)
+	return module
 
 
 class PackageVersioningTests(unittest.TestCase):
-    def setUp(self):
-        self.packager = _load_packager()
+	def setUp(self):
+		self.packager = _load_packager()
 
-    def test_package_filename_uses_generated_date_and_run_version(self):
-        version = self.packager.build_version("2026-07-24", "16")
-        self.assertEqual(version, "20260724.16")
-        self.assertEqual(
-            self.packager.package_filename(version, "gddf21ae"),
-            "ClassicSpeech-20260724.16-gddf21ae.nvda-addon",
-        )
-        self.assertEqual(
-            self.packager.package_filename("4.0.0"),
-            "ClassicSpeech-4.0.0.nvda-addon",
-        )
+	def test_package_filename_includes_manifest_version_and_utc_build_date(self):
+		version = self.packager.get_manifest_version(ROOT / "manifest.ini")
+		self.assertEqual(
+			self.packager.package_filename(version, "2026-07-24", "rc.1"),
+			f"ClassicSpeech-{version}-rc.1-2026-07-24.nvda-addon",
+		)
 
-    def test_invalid_version_or_label_is_rejected(self):
-        with self.assertRaises(ValueError):
-            self.packager.package_filename("4.0-edge-notifications")
-        with self.assertRaises(ValueError):
-            self.packager.package_filename("20260724.16", "build unsafe")
-        with self.assertRaises(ValueError):
-            self.packager.build_version("2026-07-24", "zero")
+	def test_manifest_version_must_be_a_safe_filename_component(self):
+		with self.assertRaises(ValueError):
+			self.packager.package_filename("4.0-edge-notifications", "2026-07-24")
+		with self.assertRaises(ValueError):
+			self.packager.package_filename("4.0.26", "2026-07-24", "dev unsafe")
 
 
 if __name__ == "__main__":
-    unittest.main()
+	unittest.main()

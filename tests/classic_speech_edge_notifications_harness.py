@@ -727,7 +727,12 @@ class EdgeNotificationRuntimeTests(unittest.TestCase):
 class EdgeNotificationPackageTests(unittest.TestCase):
     def test_fixed_date_archive_contains_root_app_module(self):
         build_date = "2001-02-03"
-        package = ROOT / "dist" / f"ClassicSpeech-{build_date}.nvda-addon"
+        manifest_version = next(
+            line.partition("=")[2].strip()
+            for line in (ROOT / "manifest.ini").read_text(encoding="utf-8").splitlines()
+            if line.partition("=")[0].strip() == "version"
+        )
+        package = ROOT / "dist" / f"ClassicSpeech-{manifest_version}-{build_date}.nvda-addon"
         checksum = package.with_suffix(package.suffix + ".sha256")
         self.addCleanup(package.unlink, missing_ok=True)
         self.addCleanup(checksum.unlink, missing_ok=True)
