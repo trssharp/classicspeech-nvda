@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Optional numeric release version (for example, 4.0.0). Leave blank for a date/run build."
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -42,12 +47,19 @@ jobs:
       - name: Build manifest-versioned NVDA add-on
         id: package
         env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
           RUN_NUMBER: ${{ github.run_number }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
-          build_date="$(date -u +%F)"
-          version="$(BUILD_DATE="$build_date" python -c 'from scripts.package_addon import build_version; import os; print(build_version(os.environ["BUILD_DATE"], os.environ["RUN_NUMBER"]))')"
-          package_output="$(python scripts/package_addon.py --version "$version" --label "g${COMMIT_SHA:0:7}")"
+          if [ -n "$RELEASE_VERSION" ]; then
+            version="$RELEASE_VERSION"
+            label=""
+          else
+            build_date="$(date -u +%F)"
+            version="$(BUILD_DATE="$build_date" python -c 'from scripts.package_addon import build_version; import os; print(build_version(os.environ["BUILD_DATE"], os.environ["RUN_NUMBER"]))')"
+            label="g${COMMIT_SHA:0:7}"
+          fi
+          package_output="$(python scripts/package_addon.py --version "$version" --label "$label")"
           package_name="$(printf '%s\n' "$package_output" | awk -F= '/^PACKAGE_NAME=/{print $2}')"
           test -n "$package_name"
           echo "$package_output"

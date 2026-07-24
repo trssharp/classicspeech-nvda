@@ -31,3 +31,13 @@ ClassicSpeech-20260724.16-gddf21ae.nvda-addon
 - The `.sha256` sidecar has the same basename.
 
 Git tags and GitHub releases may still carry human-facing labels such as `RC` or `stable`, but they do not change the numeric installed version.
+
+## Release builds
+
+For an official release, run the workflow manually and fill in **Release version** with a numeric version such as `4.0.0` or `4.0.1`. That value is written into the package manifest and its artifact name is simply:
+
+```text
+ClassicSpeech-4.0.0.nvda-addon
+```
+
+Leave **Release version** blank for all ordinary branch, pull-request, and manual test builds. Those continue to use the generated UTC-date-and-run version.
