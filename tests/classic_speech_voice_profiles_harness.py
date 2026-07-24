@@ -174,6 +174,69 @@ class VoiceProfileConfigTests(unittest.TestCase):
 		persisted = json.loads(config.conf.profiles[0]["classicSpeech"]["voiceProfileData"])
 		self.assertNotIn(store.synth_id, persisted)
 
+	def test_reset_all_clears_every_active_category_preserves_other_synth_and_saves_once(self):
+		from globalPlugins._speech_core.settings.voice_profiles_config import VoiceProfileStore
+
+		active_profiles = {
+			"focusNavigation": {"baseline": {"rate": 45}, "overrides": {"rate": 50}},
+			"reviewObjectNavigation": {"baseline": {"rate": 45}, "overrides": {"rate": 55}},
+			"keyboardEntry": {"baseline": {"rate": 45}, "overrides": {"rate": 60}},
+			"systemNotifications": {"baseline": {"rate": 45}, "overrides": {"rate": 65}},
+		}
+		other_profiles = {
+			"focusNavigation": {"baseline": {"rate": 20}, "overrides": {"rate": 25}},
+		}
+		config.conf.profiles[0].setdefault("classicSpeech", {})["voiceProfileData"] = json.dumps({
+			"fakeSynth": active_profiles,
+			"otherSynth": other_profiles,
+		})
+		store = VoiceProfileStore(self.driver)
+		events = []
+		original_reset = store.reset_all_overrides
+		original_apply = store.apply
+		original_save = getattr(config.conf, "save", None)
+		store.reset_all_overrides = lambda: (events.append("reset"), original_reset())[1]
+		store.apply = lambda: (events.append("apply"), original_apply())[1]
+		config.conf.save = lambda: events.append("save")
+		try:
+			store.reset_all_overrides()
+			store.apply()
+		finally:
+			if original_save is None:
+				delattr(config.conf, "save")
+			else:
+				config.conf.save = original_save
+
+		persisted = json.loads(config.conf.profiles[0]["classicSpeech"]["voiceProfileData"])
+		self.assertEqual(events, ["reset", "apply", "save"])
+		self.assertNotIn("fakeSynth", persisted)
+		self.assertEqual(persisted["otherSynth"], other_profiles)
+
+	def test_reset_then_selected_row_refresh_and_cancel_cannot_repersist_active_synth(self):
+		from globalPlugins._speech_core.settings.voice_profiles_config import VoiceProfileStore
+
+		config.conf.profiles[0].setdefault("classicSpeech", {})["voiceProfileData"] = json.dumps({
+			"fakeSynth": {
+				row.profile_id: {"baseline": {"rate": 45}, "overrides": {"rate": index + 50}}
+				for index, row in enumerate(VoiceProfileStore(self.driver).rows)
+			},
+			"otherSynth": {"focusNavigation": {"baseline": {"rate": 20}, "overrides": {}}},
+		})
+		store = VoiceProfileStore(self.driver)
+		store.reset_all_overrides()
+		store.apply()
+		store.mark_applied()
+
+		# The dialog refreshes its selected row after reset. That lazy read creates
+		# a new working record, but Cancel must restore the applied reset state.
+		store.get_snapshot("focusNavigation")
+		self.assertIn("fakeSynth", store._working_registry)
+		store.cancel()
+		store.apply()
+		persisted = json.loads(config.conf.profiles[0]["classicSpeech"]["voiceProfileData"])
+		self.assertNotIn("fakeSynth", persisted)
+		self.assertIn("otherSynth", persisted)
+
 	def test_first_access_inherits_independent_current_synth_snapshot(self):
 		from globalPlugins._speech_core.settings.voice_profiles_config import VoiceProfileStore
 
@@ -590,14 +653,142 @@ class VoiceProfileControlAndDialogTests(unittest.TestCase):
 			selector_block.index("self._show_profile("),
 		)
 
-	def test_reset_action_is_confirmed_and_profile_navigation_has_no_destructive_branch(self):
+	def test_profile_navigation_has_no_destructive_branch(self):
 		source = (ROOT / "_speech_core" / "settings" / "voice_profiles_dialog.py").read_text(encoding="utf-8")
 		self.assertNotIn("nvdaDefault", source)
 		self.assertNotIn("select_nvda_default", source)
-		reset_block = source.split("def onResetAllOverrides", 1)[1].split("\n	def onApply", 1)[0]
-		self.assertIn("wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING", reset_block)
-		self.assertIn("self.store.reset_all_overrides()", reset_block)
-		self.assertIn("self.store.apply()", reset_block)
+
+	def test_reset_dialog_no_keeps_existing_profiles_without_saving(self):
+		from globalPlugins._speech_core.settings import voice_profiles_dialog
+		from globalPlugins._speech_core.settings.voice_profiles_config import VoiceProfileStore
+
+		store = VoiceProfileStore(FakeDriver())
+		store.set_value("focusNavigation", "rate", 70)
+		store.apply()
+		before = config.conf.profiles[0]["classicSpeech"]["voiceProfileData"]
+		original_message_box = voice_profiles_dialog.wx.MessageBox
+		original_icon_warning = getattr(voice_profiles_dialog.wx, "ICON_WARNING", None)
+		original_save = getattr(config.conf, "save", None)
+		save_calls = []
+		voice_profiles_dialog.wx.ICON_WARNING = 0
+		voice_profiles_dialog.wx.MessageBox = lambda *args, **kwargs: 0
+		config.conf.save = lambda: save_calls.append("save")
+		try:
+			probe = _ResetDialogProbe(store)
+			voice_profiles_dialog.VoiceProfilesDialog.onResetAllOverrides(probe, None)
+		finally:
+			voice_profiles_dialog.wx.MessageBox = original_message_box
+			if original_icon_warning is None:
+				delattr(voice_profiles_dialog.wx, "ICON_WARNING")
+			else:
+				voice_profiles_dialog.wx.ICON_WARNING = original_icon_warning
+			if original_save is None:
+				delattr(config.conf, "save")
+			else:
+				config.conf.save = original_save
+
+		self.assertEqual(probe.preview_cancellations, 1)
+		self.assertEqual(probe.shown_profiles, [])
+		self.assertEqual(save_calls, [])
+		self.assertEqual(config.conf.profiles[0]["classicSpeech"]["voiceProfileData"], before)
+
+	def test_reset_dialog_yes_saves_once_refreshes_selected_row_and_cancel_keeps_reset(self):
+		from globalPlugins._speech_core.settings import voice_profiles_dialog
+		from globalPlugins._speech_core.settings.voice_profiles_config import VoiceProfileStore
+
+		store = VoiceProfileStore(FakeDriver())
+		for index, row in enumerate(store.rows):
+			store.set_value(row.profile_id, "rate", 50 + index)
+		store.apply()
+		other_store = VoiceProfileStore(FakeDriver("otherSynth"))
+		other_store.set_value("focusNavigation", "rate", 25)
+		other_store.apply()
+		store = VoiceProfileStore(FakeDriver())
+		events = []
+		original_message_box = voice_profiles_dialog.wx.MessageBox
+		original_icon_warning = getattr(voice_profiles_dialog.wx, "ICON_WARNING", None)
+		original_save = getattr(config.conf, "save", None)
+		original_reset = store.reset_all_overrides
+		original_apply = store.apply
+		voice_profiles_dialog.wx.ICON_WARNING = 0
+		voice_profiles_dialog.wx.MessageBox = lambda *args, **kwargs: voice_profiles_dialog.wx.YES
+		config.conf.save = lambda: events.append("save")
+		store.reset_all_overrides = lambda: (events.append("reset"), original_reset())[1]
+		store.apply = lambda: (events.append("apply"), original_apply())[1]
+		try:
+			probe = _ResetDialogProbe(store, events)
+			voice_profiles_dialog.VoiceProfilesDialog.onResetAllOverrides(probe, None)
+			voice_profiles_dialog.VoiceProfilesDialog.onCancel(probe, None)
+		finally:
+			voice_profiles_dialog.wx.MessageBox = original_message_box
+			if original_icon_warning is None:
+				delattr(voice_profiles_dialog.wx, "ICON_WARNING")
+			else:
+				voice_profiles_dialog.wx.ICON_WARNING = original_icon_warning
+			if original_save is None:
+				delattr(config.conf, "save")
+			else:
+				config.conf.save = original_save
+
+		persisted = json.loads(config.conf.profiles[0]["classicSpeech"]["voiceProfileData"])
+		self.assertEqual(events, ["reset", "apply", "save", "show", "clear", "destroy"])
+		self.assertEqual(probe.preview_cancellations, 2)
+		self.assertNotIn("fakeSynth", persisted)
+		self.assertIn("otherSynth", persisted)
+
+	def test_reset_dialog_close_after_selected_row_refresh_cannot_repersist_active_synth(self):
+		from globalPlugins._speech_core.settings import voice_profiles_dialog
+		from globalPlugins._speech_core.settings.voice_profiles_config import VoiceProfileStore
+
+		store = VoiceProfileStore(FakeDriver())
+		for index, row in enumerate(store.rows):
+			store.set_value(row.profile_id, "rate", 50 + index)
+		store.apply()
+		store.reset_all_overrides()
+		store.apply()
+		store.mark_applied()
+		probe = _ResetDialogProbe(store)
+		probe._show_profile(store.rows[0])
+		event = _CloseEvent()
+		voice_profiles_dialog.VoiceProfilesDialog.onClose(probe, event)
+		store.apply()
+
+		persisted = json.loads(config.conf.profiles[0]["classicSpeech"]["voiceProfileData"])
+		self.assertTrue(event.skipped)
+		self.assertEqual(probe.preview_cancellations, 1)
+		self.assertNotIn("fakeSynth", persisted)
+
+
+class _ResetDialogProbe:
+	"""Small handler receiver that exercises reset without constructing wx widgets."""
+	def __init__(self, store, events=None):
+		self.store = store
+		self.currentProfileId = "focusNavigation"
+		self.preview_cancellations = 0
+		self.shown_profiles = []
+		self.events = events if events is not None else []
+
+	def _cancelPreview(self):
+		self.preview_cancellations += 1
+
+	def _show_profile(self, row):
+		self.shown_profiles.append(row.profile_id)
+		self.store.get_snapshot(row.profile_id)
+		self.events.append("show")
+
+	def _clearDirty(self):
+		self.events.append("clear")
+
+	def Destroy(self):
+		self.events.append("destroy")
+
+
+class _CloseEvent:
+	def __init__(self):
+		self.skipped = False
+
+	def Skip(self):
+		self.skipped = True
 
 
 class FakeAction:
