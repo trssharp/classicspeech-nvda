@@ -513,6 +513,9 @@ class EdgeNotificationRuntimeTests(unittest.TestCase):
         plugin_config._initClassicSpeechConfig()
         self.edge = edge_notifications_config
         self.messages = []
+        from globalPlugins._speech_core.settings.web_summary_config import set_notify_when_page_ready
+        self.set_notify_when_page_ready = set_notify_when_page_ready
+        self.set_notify_when_page_ready(False)
         app_module_handler = types.ModuleType("appModuleHandler")
         app_module_handler.AppModule = type("AppModule", (), {})
         sys.modules["appModuleHandler"] = app_module_handler
@@ -565,6 +568,72 @@ class EdgeNotificationRuntimeTests(unittest.TestCase):
         self.edge.set_enabled_activity_ids(["PageLoading"])
         self.edge.set_custom_messages({})
         self.assertEqual(self._event("PageLoading"), [True])
+        self.assertEqual(self.messages, [])
+
+    def test_page_loading_start_is_suppressed_when_disabled(self):
+        self.edge.set_enabled_activity_ids([])
+        self.edge.set_custom_messages({"PageLoading": "Custom loading"})
+
+        self.assertEqual(self._event("PageLoading", displayString=" Loading page "), [])
+        self.assertEqual(self.messages, [])
+
+    def test_page_loading_start_uses_its_custom_message_when_enabled(self):
+        self.edge.set_enabled_activity_ids(["PageLoading"])
+        self.edge.set_custom_messages({"PageLoading": "  Loading now  "})
+
+        self.assertEqual(self._event("PageLoading", displayString="Loading page"), [])
+        self.assertEqual(self.messages, ["Loading now"])
+
+    def test_page_loading_complete_never_uses_the_start_custom_message(self):
+        self.edge.set_enabled_activity_ids(["PageLoading"])
+        self.edge.set_custom_messages({"PageLoading": "Loading now"})
+
+        self.assertEqual(self._event("PageLoading", displayString="Loading complete"), [True])
+        self.assertEqual(self.messages, [])
+
+    def test_page_loading_complete_is_native_only_when_enabled_and_page_ready_is_disabled(self):
+        cases = (
+            ([], False, []),
+            (["PageLoading"], False, [True]),
+            (["PageLoading"], True, []),
+        )
+        for enabled_ids, page_ready_enabled, expected_native_calls in cases:
+            with self.subTest(enabled_ids=enabled_ids, page_ready_enabled=page_ready_enabled):
+                self.messages.clear()
+                self.edge.set_enabled_activity_ids(enabled_ids)
+                self.edge.set_custom_messages({"PageLoading": "Loading now"})
+                self.set_notify_when_page_ready(page_ready_enabled)
+
+                self.assertEqual(
+                    self._event("PageLoading", displayString="Loading complete"),
+                    expected_native_calls,
+                )
+                self.assertEqual(self.messages, [])
+
+    def test_page_loading_complete_fails_open_when_page_ready_config_cannot_be_read(self):
+        original = self.module.get_notify_when_page_ready
+        self.addCleanup(setattr, self.module, "get_notify_when_page_ready", original)
+        self.module.get_notify_when_page_ready = lambda: (_ for _ in ()).throw(RuntimeError("bad config"))
+        self.edge.set_enabled_activity_ids(["PageLoading"])
+        self.edge.set_custom_messages({"PageLoading": "Loading now"})
+
+        self.assertEqual(self._event("PageLoading", displayString="Loading complete"), [True])
+        self.assertEqual(self.messages, [])
+
+    def test_other_page_loading_display_text_retains_the_existing_policy(self):
+        self.edge.set_enabled_activity_ids(["PageLoading"])
+        self.edge.set_custom_messages({"PageLoading": "Loading now"})
+        self.set_notify_when_page_ready(True)
+
+        self.assertEqual(self._event("PageLoading", displayString="Loading status changed"), [])
+        self.assertEqual(self.messages, ["Loading now"])
+
+    def test_unknown_events_are_unchanged_even_with_loading_display_text(self):
+        self.edge.set_enabled_activity_ids([])
+        self.edge.set_custom_messages({"PageLoading": "Loading now"})
+        self.set_notify_when_page_ready(True)
+
+        self.assertEqual(self._event("UnregisteredLoadComplete", displayString="Loading complete"), [True])
         self.assertEqual(self.messages, [])
 
     def test_every_canonical_activity_has_suppressed_native_and_custom_runtime_paths(self):
