@@ -10,6 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
+<<<<<<< HEAD
 RUNTIME_FILES = (
     "classicSpeech.py",
     "page_orientation_runtime.py",
@@ -17,6 +18,12 @@ RUNTIME_FILES = (
 RUNTIME_DIRECTORIES = ("_speech_core",)
 APP_MODULE_DIRECTORIES = ()
 RELEASE_NOTES = "PAGE-ORIENTATION-RC-V25.md"
+=======
+RUNTIME_FILES = ('classicSpeech.py', 'page_orientation_runtime.py')
+RUNTIME_DIRECTORIES = ('_speech_core',)
+APP_MODULE_DIRECTORIES = ()
+RELEASE_NOTES = 'VOICE-PROFILES-RC-V24.md'
+>>>>>>> 5b88baf (fix: generate package versions in CI)
 _NUMERIC_VERSION = re.compile(r"^\d+\.\d+(?:\.\d+)?$")
 _SAFE_LABEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
@@ -114,11 +121,7 @@ def main() -> None:
         if invalid_member:
             raise SystemExit(f"Corrupt ZIP member: {invalid_member}")
         members = set(archive.namelist())
-        required = {
-            "manifest.ini",
-            "globalPlugins/classicSpeech.py",
-            "globalPlugins/page_orientation_runtime.py",
-        }
+        required = {"manifest.ini"} | {f"globalPlugins/{path}" for path in RUNTIME_FILES}
         if not required.issubset(members):
             raise SystemExit(f"Missing required package files: {sorted(required - members)}")
         if any("__pycache__" in name or name.endswith((".pyc", ".pyo")) for name in members):
