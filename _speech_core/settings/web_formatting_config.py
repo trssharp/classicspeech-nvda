@@ -99,9 +99,11 @@ _FEATURE_FLAG_VIRTUAL_BUFFER_KEYS = {"loadChromiumVBufOnBusyState"}
 
 
 def _ensure_section(section_name: str):
-	if section_name not in config.conf:
+	section = _get_section(section_name)
+	if section is None:
 		config.conf[section_name] = {}
-	return config.conf[section_name]
+		section = config.conf[section_name]
+	return section
 
 
 def _coerce_virtual_buffer_value(key: str, value):
@@ -123,11 +125,20 @@ def _coerce_document_formatting_value(key: str, value):
 	return bool(value)
 
 
+def _get_section(section_name: str):
+	"""Read a config section without materializing a default section."""
+	try:
+		section = config.conf.get(section_name)
+	except Exception:
+		return None
+	return section if hasattr(section, "get") else None
+
+
 def get_virtual_buffer_setting(key: str):
 	if key not in VIRTUAL_BUFFER_KEYS:
 		raise KeyError(key)
-	section = _ensure_section("virtualBuffers")
-	value = section.get(key, copy.deepcopy(VIRTUAL_BUFFER_DEFAULTS[key]))
+	section = _get_section("virtualBuffers")
+	value = section.get(key, copy.deepcopy(VIRTUAL_BUFFER_DEFAULTS[key])) if section is not None else copy.deepcopy(VIRTUAL_BUFFER_DEFAULTS[key])
 	return _coerce_virtual_buffer_value(key, value)
 
 
@@ -141,8 +152,8 @@ def set_virtual_buffer_setting(key: str, value) -> None:
 def get_web_document_formatting_setting(key: str):
 	if key not in WEB_DOCUMENT_FORMATTING_KEYS:
 		raise KeyError(key)
-	section = _ensure_section("documentFormatting")
-	value = section.get(key, WEB_DOCUMENT_FORMATTING_DEFAULTS[key])
+	section = _get_section("documentFormatting")
+	value = section.get(key, WEB_DOCUMENT_FORMATTING_DEFAULTS[key]) if section is not None else WEB_DOCUMENT_FORMATTING_DEFAULTS[key]
 	return _coerce_document_formatting_value(key, value)
 
 
@@ -156,8 +167,8 @@ def set_web_document_formatting_setting(key: str, value) -> None:
 def get_annotation_setting(key: str):
 	if key not in ANNOTATION_KEYS:
 		raise KeyError(key)
-	section = _ensure_section("annotations")
-	return bool(section.get(key, ANNOTATION_DEFAULTS[key]))
+	section = _get_section("annotations")
+	return bool(section.get(key, ANNOTATION_DEFAULTS[key])) if section is not None else ANNOTATION_DEFAULTS[key]
 
 
 def set_annotation_setting(key: str, value) -> None:
@@ -167,51 +178,41 @@ def set_annotation_setting(key: str, value) -> None:
 	section[key] = bool(value)
 
 
+def _capture_section(section_name: str) -> dict:
+	try:
+		present = section_name in config.conf
+		data = config.conf.get(section_name) if present else None
+	except Exception:
+		present, data = False, None
+	return {"present": present, "data": copy.deepcopy(data)}
+
+
 def capture_web_browse_state() -> dict:
-	virtual_buffers = _ensure_section("virtualBuffers")
-	document_formatting = _ensure_section("documentFormatting")
-	annotations = _ensure_section("annotations")
-	braille = _ensure_section("braille")
+	"""Capture each complete native section without creating defaults.
+
+	Whole raw sections are retained because this dialog only owns selected keys;
+	Cancel must put malformed legacy values and forward-compatible siblings back
+	exactly as it found them.
+	"""
 	return {
-		"virtualBuffers": {
-			key: copy.deepcopy(virtual_buffers.get(key, VIRTUAL_BUFFER_DEFAULTS[key]))
-			for key in VIRTUAL_BUFFER_KEYS
-		},
-		"documentFormatting": {
-			key: copy.deepcopy(document_formatting.get(key, WEB_DOCUMENT_FORMATTING_DEFAULTS[key]))
-			for key in WEB_DOCUMENT_FORMATTING_KEYS
-		},
-		"annotations": {
-			key: copy.deepcopy(annotations.get(key, ANNOTATION_DEFAULTS[key]))
-			for key in ANNOTATION_KEYS
-		},
-		"braille": {
-			key: copy.deepcopy(braille.get(key, FEATURE_FLAG_DEFAULTS[key]))
-			for key in BRAILLE_WEB_KEYS
-		},
+		section_name: _capture_section(section_name)
+		for section_name in ("virtualBuffers", "documentFormatting", "annotations", "braille")
 	}
 
 
 def restore_web_browse_state(state: dict) -> None:
-	virtual_buffers = _ensure_section("virtualBuffers")
-	document_formatting = _ensure_section("documentFormatting")
-	annotations = _ensure_section("annotations")
-	braille = _ensure_section("braille")
-	for key in VIRTUAL_BUFFER_KEYS:
-		if key in state.get("virtualBuffers", {}):
-			virtual_buffers[key] = _coerce_virtual_buffer_value(
-				key,
-				state["virtualBuffers"][key],
-			)
-	for key in WEB_DOCUMENT_FORMATTING_KEYS:
-		if key in state.get("documentFormatting", {}):
-			document_formatting[key] = _coerce_document_formatting_value(
-				key,
-				state["documentFormatting"][key],
-			)
-	for key in ANNOTATION_KEYS:
-		if key in state.get("annotations", {}):
-			annotations[key] = bool(state["annotations"][key])
-	for key in BRAILLE_WEB_KEYS:
-		if key in state.get("braille", {}):
-			braille[key] = copy.deepcopy(state["braille"][key])
+	"""Restore exact section presence and raw data from a transaction snapshot."""
+	if not hasattr(state, "get"):
+		return
+	for section_name in ("virtualBuffers", "documentFormatting", "annotations", "braille"):
+		snapshot = state.get(section_name)
+		if not hasattr(snapshot, "get") or "present" not in snapshot:
+			continue
+		if snapshot.get("present"):
+			config.conf[section_name] = copy.deepcopy(snapshot.get("data"))
+		else:
+			try:
+				if section_name in config.conf:
+					del config.conf[section_name]
+			except Exception:
+				pass

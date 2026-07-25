@@ -13,6 +13,8 @@ from .web_summary_config import (
     get_page_load_summary_mode,
     get_included_element_types,
     get_include_document_title,
+    capture_page_summary_state,
+    restore_page_summary_state,
     set_page_load_summary_mode,
     set_included_element_types,
     set_include_document_title,
@@ -69,6 +71,7 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		self._popupReleased = False
 		self._committed = False
 		self._originalWebBrowse = capture_web_browse_state()
+		self._originalPageSummary = capture_page_summary_state()
 		self._originalPageSummaryTypes = get_included_element_types()
 		self._originalPageSummaryTitle = get_include_document_title()
 		self._originalPageLoadSummaryMode = get_page_load_summary_mode()
@@ -444,6 +447,7 @@ class WebBrowseSettingsDialog(wx.Dialog):
 		try:
 			self._apply_to_config()
 			self._originalWebBrowse = capture_web_browse_state()
+			self._originalPageSummary = capture_page_summary_state()
 			self._originalPageSummaryTypes = get_included_element_types()
 			self._originalPageSummaryTitle = get_include_document_title()
 			self._originalPageLoadSummaryMode = get_page_load_summary_mode()
@@ -458,17 +462,13 @@ class WebBrowseSettingsDialog(wx.Dialog):
 
 	def onCancel(self, evt):
 		restore_web_browse_state(self._originalWebBrowse)
-		set_included_element_types(self._originalPageSummaryTypes)
-		set_include_document_title(self._originalPageSummaryTitle)
-		set_page_load_summary_mode(self._originalPageLoadSummaryMode)
+		restore_page_summary_state(self._originalPageSummary)
 		self.Destroy()
 
 	def onClose(self, evt):
 		try:
 			restore_web_browse_state(self._originalWebBrowse)
-			set_included_element_types(self._originalPageSummaryTypes)
-			set_include_document_title(self._originalPageSummaryTitle)
-			set_page_load_summary_mode(self._originalPageLoadSummaryMode)
+			restore_page_summary_state(self._originalPageSummary)
 			evt.Skip()
 		finally:
 			self._releasePopup()

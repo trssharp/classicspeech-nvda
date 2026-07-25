@@ -22,7 +22,7 @@ A Voice Profile may select an exposed Voice or Variant and supported synthesizer
 - ClassicSpeech does **not** automatically change NVDA's selected synthesizer.
 - Automatic cross-synth switching is out of scope.
 - Voice Profiles are stored separately for each synthesizer.
-- Resetting a Voice Profile returns that category to native NVDA Voice Settings.
+- Reset all Voice Profile overrides clears every ClassicSpeech profile override for the active synthesizer, returning all categories to native NVDA Voice Settings.
 - System routing is source-scoped. ClassicSpeech does not route every NVDA message through a System profile.
 - Windows can place notifications in Notification Center without sending NVDA a live accessibility event. ClassicSpeech can only route notification speech that NVDA receives.
 

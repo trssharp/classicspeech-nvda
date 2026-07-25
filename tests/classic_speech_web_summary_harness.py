@@ -223,6 +223,7 @@ class WebSummaryConfigTests(unittest.TestCase):
 
 
     def test_automatic_reporting_parses_only_explicit_boolean_values(self):
+        self.config.conf.profiles[0]["classicSpeech"] = {"pageSummaryData": {}}
         section = self.config.conf.profiles[0]["classicSpeech"]
         data = section["pageSummaryData"]
         for saved_value, expected in (
@@ -240,6 +241,7 @@ class WebSummaryConfigTests(unittest.TestCase):
             self.assertIs(self.summary_config.get_automatic_reporting_enabled(), expected)
 
     def test_automatic_reporting_setter_fails_closed_and_persists_normalized_boolean(self):
+        self.config.conf.profiles[0]["classicSpeech"] = {"pageSummaryData": {}}
         section = self.config.conf.profiles[0]["classicSpeech"]
         data = section["pageSummaryData"]
 
@@ -253,6 +255,7 @@ class WebSummaryConfigTests(unittest.TestCase):
             self.assertFalse(self.summary_config.get_automatic_reporting_enabled())
 
     def test_invalid_saved_choices_are_dropped_without_losing_valid_choices(self):
+        self.config.conf.profiles[0]["classicSpeech"] = {}
         section = self.config.conf.profiles[0]["classicSpeech"]
         section["pageSummaryData"] = {"includedElementTypes": ["unknown", "link", "link", 1]}
         self.assertEqual(self.summary_config.get_included_element_types(), ("link",))

@@ -19,9 +19,14 @@ log = logHandler.log
 
 
 def _ensure_classic_speech_section():
-	if "classicSpeech" not in config.conf:
-		config.conf["classicSpeech"] = {}
-	conf = config.conf["classicSpeech"]
+	"""Return the persistent base section, never a transient profile overlay."""
+	try:
+		baseConf = config.conf.profiles[0]
+	except Exception:
+		baseConf = config.conf
+	if "classicSpeech" not in baseConf:
+		baseConf["classicSpeech"] = {}
+	conf = baseConf["classicSpeech"]
 	if "keyLabelData" not in conf:
 		conf["keyLabelData"] = {}
 	data = conf["keyLabelData"]
@@ -444,6 +449,11 @@ _runtime = KeyLabelRuntime()
 
 def install_key_label_runtime():
 	_runtime.install()
+	return _runtime
+
+
+def get_key_label_runtime():
+	"""Return the shared runtime without enabling its ClassicSpeech changes."""
 	return _runtime
 
 
