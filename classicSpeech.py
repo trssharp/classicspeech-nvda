@@ -63,6 +63,8 @@ from ._speech_core.settings.web_summary_config import (
     get_included_element_types,
     get_include_document_title,
     get_page_orientation_enabled,
+    get_notify_when_page_ready,
+    get_page_ready_message,
 )
 
 log = logHandler.log
@@ -1279,6 +1281,14 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 return False
             if getattr(document, "isReady", False) is not True:
                 return False
+            if get_notify_when_page_ready():
+                cycle_marker = self._automatic_summary_load_cycle_marker(document)
+                if getattr(self, "_automaticSummaryReported", None) != (document, cycle_marker):
+                    # Page Orientation owns this ready presentation cycle. Mark
+                    # it before the summary so a later duplicate load-complete
+                    # callback cannot repeat either message.
+                    self._automaticSummaryReported = (document, cycle_marker)
+                    ui.message(get_page_ready_message())
             self._report_page_summary_for_document(document)
             return True
         except Exception:
@@ -1368,8 +1378,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             return
 
         try:
+            summary_enabled = get_automatic_reporting_enabled()
+            ready_enabled = get_notify_when_page_ready()
             if (
-                not get_automatic_reporting_enabled()
+                not (summary_enabled or ready_enabled)
                 or self._automatic_summary_document_for_event(document) is not document
             ):
                 return
@@ -1380,10 +1392,25 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                     self._queue_automatic_page_summary(document, cycle_marker, attempt + 1)
                 return
             ready_cycle_marker = self._automatic_summary_load_cycle_marker(document)
+            # A retry that began with an actual virtual-buffer handle belongs
+            # only to that generation. If Firefox/another backend replaces it
+            # before readiness, a later load-complete event owns the replacement
+            # cycle and this stale callback must stay silent. By contrast, NVDA
+            # can signal documentLoadComplete before any handle exists; its
+            # event-fallback marker must be allowed to acquire the first handle.
+            if cycle_marker[0] == "buffer" and ready_cycle_marker != cycle_marker:
+                return
             if getattr(self, "_automaticSummaryReported", None) == (document, ready_cycle_marker):
                 return
-            self._report_page_summary_for_document(document)
             self._automaticSummaryReported = (document, ready_cycle_marker)
+            # Read configuration only after this document has become ready, so
+            # a disabled notification cannot leak from an earlier schedule.
+            # Keep the ready notification ahead of the existing automatic
+            # summary for the same virtual-buffer generation.
+            if ready_enabled:
+                ui.message(get_page_ready_message())
+            if summary_enabled:
+                self._report_page_summary_for_document(document)
         except Exception:
             # Automatic failures are silent; the manual command remains explicit.
             log.debug("ClassicSpeech: automatic page summary failed", exc_info=True)
@@ -1407,13 +1434,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if pending is not None and (pending[0] is not document or pending[1] != cycle_marker):
                 self._stop_automatic_page_summary_pending()
                 pending = None
+            summary_enabled = get_automatic_reporting_enabled()
+            ready_enabled = get_notify_when_page_ready()
             if get_page_orientation_enabled():
-                # Page Orientation owns the single automatic summary at initial
-                # ready-page presentation; never queue the older deferred path.
+                # Page Orientation owns the initial ready-page presentation,
+                # including an enabled Page Ready message. Never queue the
+                # deferred automatic-summary path for that same cycle.
                 if pending is not None:
                     self._stop_automatic_page_summary_pending()
                 return
-            if not get_automatic_reporting_enabled():
+            if not (summary_enabled or ready_enabled):
                 if pending is not None:
                     self._stop_automatic_page_summary_pending()
                 return

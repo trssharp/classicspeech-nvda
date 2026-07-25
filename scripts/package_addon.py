@@ -15,8 +15,8 @@ RUNTIME_FILES = (
     "page_orientation_runtime.py",
 )
 RUNTIME_DIRECTORIES = ("_speech_core",)
-APP_MODULE_DIRECTORIES = ()
-RELEASE_NOTES = "PAGE-ORIENTATION-RC-V25.md"
+APP_MODULE_DIRECTORIES = ("appModules",)
+RELEASE_NOTES = "EDGE-NOTIFICATIONS-RC-V26.md"
 _NUMERIC_VERSION = re.compile(r"^\d+\.\d+(?:\.\d+)?$")
 _SAFE_LABEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
@@ -118,6 +118,7 @@ def main() -> None:
             "manifest.ini",
             "globalPlugins/classicSpeech.py",
             "globalPlugins/page_orientation_runtime.py",
+            "appModules/msedge.py",
         }
         if not required.issubset(members):
             raise SystemExit(f"Missing required package files: {sorted(required - members)}")

@@ -253,17 +253,23 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			for item in SUMMARY_ITEM_TYPES
 		]
 		# The initial page-load mode is native/no summary.
+		dialog.notifyWhenPageReadyCheckBox = ValueControl(True)
+		dialog.pageReadyMessageEdit = ValueControl("  Ready from dialog  ")
 		dialog.pageLoadSummaryMode = ChoiceControl(0)
 		dialog._pageLoadSummaryModes = ("native", "afterReady", "orientation")
 		dialog.pageSummaryElementList = CheckListControl((1, 3))
 		dialog._originalPageSummaryTypes = ("heading", "landmark", "link", "formField", "button", "table")
 		dialog._originalPageSummaryTitle = False
 		dialog._originalPageLoadSummaryMode = "native"
+		dialog._originalNotifyWhenPageReady = False
+		dialog._originalPageReadyMessage = "Page ready"
 		dialog.applyBtn = ApplyButton()
+
 		dialog.layoutCalls = 0
 		dialog.Layout = lambda: setattr(dialog, "layoutCalls", dialog.layoutCalls + 1)
 		dialog.Destroy = lambda: setattr(dialog, "destroyed", True)
 		dialog.destroyed = False
+
 
 		dialog._originalWebBrowse = __import__(
 			"globalPlugins._speech_core.settings.web_formatting_config", fromlist=["capture_web_browse_state"]
@@ -283,6 +289,11 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		self.assertTrue(config.conf["annotations"]["reportDetails"])
 		self.assertFalse(config.conf["annotations"]["reportAriaDescription"])
 		self.assertEqual(config.conf["braille"]["reportLiveRegions"], "ENABLED")
+		self.assertTrue(config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["notifyWhenPageReady"])
+		self.assertEqual(
+			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["pageReadyMessage"],
+			"Ready from dialog",
+		)
 		self.assertTrue(dialog.applyBtn.shown)
 		self.assertTrue(dialog.applyBtn.enabled)
 		self.assertGreaterEqual(dialog.layoutCalls, 1)
@@ -297,6 +308,8 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 
 		# Apply makes the current Page Summary choices the new Cancel baseline.
 		dialog.onApply(None)
+		dialog.notifyWhenPageReadyCheckBox.value = False
+		dialog.pageReadyMessageEdit.value = "Changed after apply"
 		dialog.pageLoadSummaryMode.selection = 0
 		dialog.pageSummaryElementList.checked = [8]
 		dialog.onChanged()
@@ -322,6 +335,11 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		self.assertEqual(config.conf["virtualBuffers"]["loadChromiumVBufOnBusyState"], "DISABLED")
 		self.assertTrue(config.conf["annotations"]["reportDetails"])
 		self.assertEqual(config.conf["braille"]["reportLiveRegions"], "ENABLED")
+		self.assertTrue(config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["notifyWhenPageReady"])
+		self.assertEqual(
+			config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]["pageReadyMessage"],
+			"Ready from dialog",
+		)
 
 	def test_touch_navigation_uses_checklist_event_and_propagating_handler(self):
 		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
@@ -403,6 +421,79 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		):
 			self.assertIn(expected, dialog_source)
 
+	def test_page_ready_controls_are_hidden_as_one_native_row_and_refresh_scrolling(self):
+		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
+		self.assertIn('"Notify when page is ready"', dialog_source)
+		self.assertIn('"Page ready message:"', dialog_source)
+		self.assertIn("wx.TextCtrl", dialog_source)
+		self.assertIn("get_notify_when_page_ready", dialog_source)
+		self.assertIn("get_page_ready_message", dialog_source)
+		self.assertIn("self.pageReadyMessageRow.Hide()", dialog_source)
+		self.assertIn("self.pageReadyMessageRow.Show(", dialog_source)
+		self.assertIn("self.pageSummaryPanel.SetupScrolling(scroll_x=False)", dialog_source)
+		self.assertIn("self.pageReadyMessageEdit.Bind(wx.EVT_TEXT, self.onChanged)", dialog_source)
+		self.assertIn("self.notifyWhenPageReadyCheckBox.Bind(wx.EVT_CHECKBOX, self.onPageReadyChanged)", dialog_source)
+		self.assertLess(
+			dialog_source.index("self.notifyWhenPageReadyCheckBox"),
+			dialog_source.index('"Page-load summary:"'),
+		)
+		self.assertLess(
+			dialog_source.index("self.pageReadyMessageRow"),
+			dialog_source.index('"Page-load summary:"'),
+		)
+
+	def test_page_ready_handler_updates_visibility_then_live_applies(self):
+		nvda_harness._import_classic_speech_like_nvda()
+		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+
+		class CheckBox:
+			def IsChecked(self):
+				return True
+
+		class Row:
+			def __init__(self):
+				self.visible = None
+			def Show(self, visible=True):
+				self.visible = visible
+
+		dialog = object.__new__(WebBrowseSettingsDialog)
+		dialog.notifyWhenPageReadyCheckBox = CheckBox()
+		dialog.pageReadyMessageRow = Row()
+		dialog.pageSummaryPanel = type("Panel", (), {"Layout": lambda self: None, "SetupScrolling": lambda self, **kwargs: None})()
+		dialog.panelHost = type("Host", (), {"Layout": lambda self: None})()
+		dialog.Layout = lambda: None
+		calls = []
+		dialog.onChanged = lambda evt=None: calls.append(evt)
+
+		dialog.onPageReadyChanged()
+
+		self.assertTrue(dialog.pageReadyMessageRow.visible)
+		self.assertEqual(calls, [None])
+
+	def test_page_ready_close_restores_its_baseline(self):
+		nvda_harness._import_classic_speech_like_nvda()
+		from globalPlugins._speech_core.settings import web_formatting_config
+		from globalPlugins._speech_core.settings import web_summary_config
+		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+
+		dialog = object.__new__(WebBrowseSettingsDialog)
+		dialog._originalWebBrowse = web_formatting_config.capture_web_browse_state()
+		dialog._originalPageSummaryTypes = web_summary_config.get_included_element_types()
+		dialog._originalPageSummaryTitle = web_summary_config.get_include_document_title()
+		dialog._originalPageLoadSummaryMode = web_summary_config.get_page_load_summary_mode()
+		dialog._originalNotifyWhenPageReady = False
+		dialog._originalPageReadyMessage = "Page ready"
+		dialog._releaseTransactionPopup = lambda: None
+		web_summary_config.set_notify_when_page_ready(True)
+		web_summary_config.set_page_ready_message("Changed before close")
+		event = type("CloseEvent", (), {"skipped": False, "Skip": lambda self: setattr(self, "skipped", True)})()
+
+		dialog.onClose(event)
+
+		self.assertTrue(event.skipped)
+		self.assertFalse(web_summary_config.get_notify_when_page_ready())
+		self.assertEqual(web_summary_config.get_page_ready_message(), "Page ready")
+
 	def test_page_summary_handler_propagates_and_marks_dialog_dirty(self):
 		nvda_harness._import_classic_speech_like_nvda()
 		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
@@ -419,6 +510,444 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 
 		self.assertTrue(event.skipped)
 		self.assertEqual(calls, [event])
+
+
+class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
+	def setUp(self):
+		nvda_harness.ClassicSpeechNVDAConfigStartupTests().setUp()
+		nvda_harness._import_classic_speech_like_nvda()
+		from globalPlugins._speech_core import plugin_config
+		plugin_config._initClassicSpeechConfig()
+
+	def tearDown(self):
+		nvda_harness._reset_global_plugin_imports()
+
+	def test_edge_category_is_permanent_fourth_scrolled_panel_wired_to_live_apply(self):
+		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
+		self.assertIn("from .edge_notifications_config import (", dialog_source)
+		self.assertIn("from .edge_notifications_panel import EdgeNotificationsPanel", dialog_source)
+		self.assertIn('"Microsoft Edge Notifications",', dialog_source)
+		self.assertLess(
+			dialog_source.index('"Page Summary",'),
+			dialog_source.index('"Microsoft Edge Notifications",'),
+		)
+		self.assertIn("self.edgeNotificationsPanel = scrolledpanel.ScrolledPanel", dialog_source)
+		self.assertIn("self.edgeNotificationsEditor = EdgeNotificationsPanel(", dialog_source)
+		self.assertIn("onChange=self.onChanged", dialog_source)
+		self.assertIn("self.edgeNotificationsPanel.SetupScrolling(scroll_x=False)", dialog_source)
+		self.assertIn(
+			"self.dynamicPanels = [self.browseModePanel, self.webReportingPanel, self.pageSummaryPanel, self.edgeNotificationsPanel]",
+			dialog_source,
+		)
+		self.assertNotIn("msedge.exe", dialog_source)
+
+	def test_edge_checklist_defers_native_state_read_then_persists_pageloading_through_ok_and_reopen(self):
+		"""A CustomCheckListBox event precedes its checked-state mutation in Edge.
+
+		The callback must therefore wait until wx has finished native event handling
+		before Web dialog Apply/OK reads the panel's enabled Activity IDs.
+		"""
+		from globalPlugins._speech_core.settings import edge_notifications_config as edge_config
+		from globalPlugins._speech_core.settings import web_formatting_config
+		from globalPlugins._speech_core.settings import web_summary_config
+		from globalPlugins._speech_core.settings.edge_notifications_panel import EdgeNotificationsPanel
+		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+
+		class ValueControl:
+			def __init__(self, value):
+				self.value = value
+			def GetValue(self):
+				return self.value
+			def IsChecked(self):
+				return bool(self.value)
+
+		class CheckListControl:
+			def GetCheckedItems(self):
+				return []
+
+		class ChoiceControl:
+			def GetSelection(self):
+				return 0
+
+		class FeatureControl:
+			def saveCurrentValueToConf(self):
+				pass
+
+		class NativeOrderCheckList:
+			def __init__(self):
+				self.items = []
+				self.checked = []
+				self.selection = 0
+			def GetSelection(self):
+				return self.selection
+			def Clear(self):
+				self.items = []
+				self.checked = []
+			def Append(self, text):
+				self.items.append(text)
+			def Check(self, index, check=True):
+				while len(self.checked) <= index:
+					self.checked.append(False)
+				self.checked[index] = bool(check)
+			def SetString(self, index, text):
+				self.items[index] = text
+			def SetSelection(self, index):
+				self.selection = index
+			def SetFocus(self):
+				pass
+			def IsChecked(self, index):
+				return self.checked[index]
+
+		class ChecklistEvent:
+			def __init__(self, index):
+				self.index = index
+				self.skipCount = 0
+			def GetInt(self):
+				return self.index
+			def Skip(self):
+				self.skipCount += 1
+
+		def make_edge_panel(enabled_ids=()):
+			panel = EdgeNotificationsPanel.__new__(EdgeNotificationsPanel)
+			panel._activityIds = [activity.activity_id for activity in edge_config.EDGE_NOTIFICATION_ACTIVITIES]
+			panel._labels = list(panel._activityIds)
+			panel._workingRenames = {}
+			panel._workingMuted = set()
+			panel._displayLabels = {
+				activity.activity_id: activity.label
+				for activity in edge_config.EDGE_NOTIFICATION_ACTIVITIES
+			}
+			panel._onChange = None
+			panel._suspendEvents = False
+			panel._compactDisplay = True
+			panel._customDisplaySuffix = "custom message: {text}"
+			panel.listCtrl = NativeOrderCheckList()
+			panel.loadData(enabled_ids, {})
+			return panel
+
+		edge_config.set_enabled_activity_ids([])
+		edge_config.set_custom_messages({})
+		panel = make_edge_panel()
+		initial_enabled_ids = panel.getEnabledActivityIds()
+		self.assertNotIn("PageLoading", initial_enabled_ids)
+		changes = []
+		panel._onChange = lambda: changes.append(True)
+		wx = sys.modules["wx"]
+		queued = []
+		original_call_after = wx.CallAfter
+		wx.CallAfter = lambda callback, *args, **kwargs: queued.append((callback, args, kwargs))
+		self.addCleanup(setattr, wx, "CallAfter", original_call_after)
+		event = ChecklistEvent(panel._labels.index("PageLoading"))
+
+		# EVT_CHECKLISTBOX is delivered before native CustomCheckListBox flips.
+		panel.onChecklistToggled(event)
+		self.assertEqual(event.skipCount, 1)
+		self.assertEqual(changes, [])
+		self.assertEqual(panel.getEnabledActivityIds(), initial_enabled_ids)
+		self.assertEqual(len(queued), 1)
+		panel.listCtrl.checked[event.index] = True
+		callback, args, kwargs = queued.pop()
+		callback(*args, **kwargs)
+		self.assertEqual(changes, [True])
+		self.assertEqual(
+			set(panel.getEnabledActivityIds()),
+			set(initial_enabled_ids) | {"PageLoading"},
+		)
+
+		# A queued pre-flip callback belongs to the checklist generation that
+		# received the event. Repopulating/reloading before it runs must discard it
+		# rather than changing the new state or making the dialog dirty.
+		stalePanel = make_edge_panel()
+		staleChanges = []
+		stalePanel._onChange = lambda: staleChanges.append(True)
+		staleEvent = ChecklistEvent(stalePanel._labels.index("PageLoading"))
+		stalePanel.onChecklistToggled(staleEvent)
+		self.assertEqual(len(queued), 1)
+		stalePanel.listCtrl.checked[staleEvent.index] = True
+		stalePanel.loadData(initial_enabled_ids, {})
+		callback, args, kwargs = queued.pop()
+		callback(*args, **kwargs)
+		self.assertEqual(staleChanges, [])
+		self.assertEqual(stalePanel.getEnabledActivityIds(), initial_enabled_ids)
+
+		# Destruction also invalidates queued work. Running the previously queued
+		# callback must be harmless even though a real wx control is already gone.
+		stalePanel.onChecklistToggled(staleEvent)
+		self.assertEqual(len(queued), 1)
+		stalePanel._onChecklistDestroy(None)
+		callback, args, kwargs = queued.pop()
+		callback(*args, **kwargs)
+		self.assertEqual(staleChanges, [])
+		self.assertEqual(stalePanel.getEnabledActivityIds(), initial_enabled_ids)
+
+		dialog = object.__new__(WebBrowseSettingsDialog)
+		dialog.maxLengthEdit = ValueControl(80)
+		dialog.pageLinesEdit = ValueControl(40)
+		for attr in (
+			"useScreenLayoutCheckBox", "enableOnPageLoadCheckBox", "autoSayAllCheckBox",
+			"autoPassThroughOnFocusChangeCheckBox", "autoPassThroughOnCaretMoveCheckBox",
+			"passThroughAudioIndicationCheckBox", "trapNonCommandGesturesCheckBox",
+			"annotationDetailsCheckBox", "ariaDescriptionCheckBox", "layoutTablesCheckBox",
+			"headingsCheckBox", "linksCheckBox", "linkTypeCheckBox", "graphicsCheckBox",
+			"listsCheckBox", "blockQuotesCheckBox", "groupingsCheckBox", "landmarksCheckBox",
+			"articlesCheckBox", "framesCheckBox", "figuresCheckBox", "clickableCheckBox",
+		):
+			setattr(dialog, attr, ValueControl(False))
+		dialog._browseModeElements = []
+		dialog.browseModeTouchNavigationList = CheckListControl()
+		dialog.loadChromiumBusyCombo = FeatureControl()
+		dialog.brailleLiveRegionsCombo = FeatureControl()
+		dialog.notifyWhenPageReadyCheckBox = ValueControl(False)
+		dialog.pageReadyMessageEdit = ValueControl("Page ready")
+		dialog.pageLoadSummaryMode = ChoiceControl()
+		dialog._pageLoadSummaryModes = ("native", "afterReady", "orientation")
+		dialog._pageSummaryElements = []
+		dialog.pageSummaryElementList = CheckListControl()
+		dialog.edgeNotificationsEditor = panel
+		dialog._clearDirty = lambda: None
+		dialog.Destroy = lambda: setattr(dialog, "destroyed", True)
+		dialog._originalWebBrowse = web_formatting_config.capture_web_browse_state()
+		dialog._originalPageSummaryTypes = web_summary_config.get_included_element_types()
+		dialog._originalPageSummaryTitle = web_summary_config.get_include_document_title()
+		dialog._originalPageLoadSummaryMode = web_summary_config.get_page_load_summary_mode()
+		dialog._originalNotifyWhenPageReady = web_summary_config.get_notify_when_page_ready()
+		dialog._originalPageReadyMessage = web_summary_config.get_page_ready_message()
+		dialog._originalEdgeNotifications = edge_config.capture_edge_notification_state()
+
+		# Make the complete registry checked before the real Web dialog's Apply / OK
+		# lifecycle serializes it. The deferred-row coverage above has already
+		# proven the pre-native-flip route; this is the aggregate persistence gate
+		# that catches a dialog-level truncation or tuple/list serialization error.
+		all_activity_ids = tuple(activity.activity_id for activity in edge_config.EDGE_NOTIFICATION_ACTIVITIES)
+		for index in range(len(all_activity_ids)):
+			panel.listCtrl.checked[index] = True
+		panel._workingMuted.clear()
+
+		# The real Web dialog's Apply and OK handlers both save the now-current
+		# complete panel state; reopening reads every persisted selection.
+		self.assertTrue(dialog.onApply(None))
+		dialog.onOK(None)
+		self.assertTrue(dialog.destroyed)
+		self.assertEqual(edge_config.get_enabled_activity_ids(), all_activity_ids)
+
+		reopened = make_edge_panel(edge_config.get_enabled_activity_ids())
+		self.assertEqual(reopened.getEnabledActivityIds(), all_activity_ids)
+		self.assertTrue(all(reopened.listCtrl.checked))
+
+	def test_edge_apply_cancel_and_close_are_transactional_even_for_empty_values(self):
+		from globalPlugins._speech_core.settings import edge_notifications_config as edge_config
+		from globalPlugins._speech_core.settings import web_formatting_config
+		from globalPlugins._speech_core.settings import web_summary_config
+		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+
+		class ValueControl:
+			def __init__(self, value):
+				self.value = value
+			def GetValue(self):
+				return self.value
+			def IsChecked(self):
+				return bool(self.value)
+
+		class CheckListControl:
+			def GetCheckedItems(self):
+				return []
+
+		class ChoiceControl:
+			def GetSelection(self):
+				return 0
+
+		class FeatureControl:
+			def saveCurrentValueToConf(self):
+				pass
+
+		class EdgePanel:
+			def __init__(self, enabled_ids, messages):
+				self.enabled_ids = enabled_ids
+				self.messages = messages
+			def getEnabledActivityIds(self):
+				return self.enabled_ids
+			def getCustomMessages(self):
+				return self.messages
+
+		edge_config.set_enabled_activity_ids(["PageLoading"])
+		edge_config.set_custom_messages({"PageLoading": "Original"})
+		dialog = object.__new__(WebBrowseSettingsDialog)
+		dialog.maxLengthEdit = ValueControl(80)
+		dialog.pageLinesEdit = ValueControl(40)
+		for attr in (
+			"useScreenLayoutCheckBox", "enableOnPageLoadCheckBox", "autoSayAllCheckBox",
+			"autoPassThroughOnFocusChangeCheckBox", "autoPassThroughOnCaretMoveCheckBox",
+			"passThroughAudioIndicationCheckBox", "trapNonCommandGesturesCheckBox",
+			"annotationDetailsCheckBox", "ariaDescriptionCheckBox", "layoutTablesCheckBox",
+			"headingsCheckBox", "linksCheckBox", "linkTypeCheckBox", "graphicsCheckBox",
+			"listsCheckBox", "blockQuotesCheckBox", "groupingsCheckBox", "landmarksCheckBox",
+			"articlesCheckBox", "framesCheckBox", "figuresCheckBox", "clickableCheckBox",
+		):
+			setattr(dialog, attr, ValueControl(False))
+		dialog._browseModeElements = []
+		dialog.browseModeTouchNavigationList = CheckListControl()
+		dialog.loadChromiumBusyCombo = FeatureControl()
+		dialog.brailleLiveRegionsCombo = FeatureControl()
+		dialog.notifyWhenPageReadyCheckBox = ValueControl(False)
+		dialog.pageReadyMessageEdit = ValueControl("Page ready")
+		dialog.pageLoadSummaryMode = ChoiceControl()
+		dialog._pageLoadSummaryModes = ("native", "afterReady", "orientation")
+		dialog._pageSummaryElements = []
+		dialog.pageSummaryElementList = CheckListControl()
+		dialog.edgeNotificationsEditor = EdgePanel([], {})
+		dialog._originalWebBrowse = web_formatting_config.capture_web_browse_state()
+		dialog._originalPageSummaryTypes = web_summary_config.get_included_element_types()
+		dialog._originalPageSummaryTitle = web_summary_config.get_include_document_title()
+		dialog._originalPageLoadSummaryMode = web_summary_config.get_page_load_summary_mode()
+		dialog._originalNotifyWhenPageReady = web_summary_config.get_notify_when_page_ready()
+		dialog._originalPageReadyMessage = web_summary_config.get_page_ready_message()
+		dialog._originalEdgeNotifications = edge_config.capture_edge_notification_state()
+		dialog.Destroy = lambda: setattr(dialog, "destroyed", True)
+		dialog._saveTransaction()
+		self.assertEqual(edge_config.get_enabled_activity_ids(), ())
+		self.assertEqual(edge_config.get_custom_messages(), {})
+
+		# Apply moves the cancel baseline to the intentionally empty state.
+		dialog._clearDirty = lambda: None
+		dialog.onApply(None)
+		dialog.edgeNotificationsEditor = EdgePanel(["PageZoom"], {"PageZoom": "Zoomed"})
+		dialog._saveTransaction()
+		dialog.onCancel(None)
+		self.assertEqual(edge_config.get_enabled_activity_ids(), ())
+		self.assertEqual(edge_config.get_custom_messages(), {})
+
+		# Close likewise restores a captured empty baseline.
+		edge_config.set_enabled_activity_ids(["PageZoom"])
+		edge_config.set_custom_messages({"PageZoom": "Zoomed"})
+		dialog._releaseTransactionPopup = lambda: None
+		event = type("CloseEvent", (), {"Skip": lambda self: None})()
+		dialog.onClose(event)
+		self.assertEqual(edge_config.get_enabled_activity_ids(), ())
+		self.assertEqual(edge_config.get_custom_messages(), {})
+	def test_edge_cancel_and_close_remove_an_unpersisted_edge_baseline(self):
+		from globalPlugins._speech_core.settings import edge_notifications_config as edge_config
+		from globalPlugins._speech_core.settings import web_formatting_config
+		from globalPlugins._speech_core.settings import web_summary_config
+		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+
+		config.conf.profiles[0]["classicSpeech"] = {"unrelatedSetting": "keep me"}
+		section = config.conf.profiles[0]["classicSpeech"]
+		dialog = object.__new__(WebBrowseSettingsDialog)
+		dialog._originalWebBrowse = web_formatting_config.capture_web_browse_state()
+		dialog._originalPageSummaryTypes = web_summary_config.get_included_element_types()
+		dialog._originalPageSummaryTitle = web_summary_config.get_include_document_title()
+		dialog._originalPageLoadSummaryMode = web_summary_config.get_page_load_summary_mode()
+		dialog._originalNotifyWhenPageReady = web_summary_config.get_notify_when_page_ready()
+		dialog._originalPageReadyMessage = web_summary_config.get_page_ready_message()
+		dialog._originalEdgeNotifications = edge_config.capture_edge_notification_state()
+		dialog.Destroy = lambda: None
+
+		edge_config.set_enabled_activity_ids([])
+		edge_config.set_custom_messages({})
+		dialog.onCancel(None)
+		self.assertNotIn("edgeNotificationData", section)
+		self.assertEqual(section["unrelatedSetting"], "keep me")
+
+		edge_config.set_enabled_activity_ids(["PageZoom"])
+		edge_config.set_custom_messages({"PageZoom": "Zoomed"})
+		dialog._releaseTransactionPopup = lambda: None
+		event = type("CloseEvent", (), {"Skip": lambda self: None})()
+		dialog.onClose(event)
+		self.assertNotIn("edgeNotificationData", section)
+		self.assertEqual(section["unrelatedSetting"], "keep me")
+
+	def test_edge_transaction_uses_rebased_baseline_for_ok_close_apply_failure_and_cancel(self):
+		from globalPlugins._speech_core.settings import edge_notifications_config as edge_config
+		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+
+		class EdgePanel:
+			def __init__(self, enabled_ids, messages):
+				self.enabled_ids = enabled_ids
+				self.messages = messages
+
+			def getEnabledActivityIds(self):
+				return self.enabled_ids
+
+			def getCustomMessages(self):
+				return self.messages
+
+		def make_dialog(enabled_ids, messages):
+			dialog = object.__new__(WebBrowseSettingsDialog)
+			dialog.edgeNotificationsEditor = EdgePanel(enabled_ids, messages)
+			dialog._saveTransaction = lambda: (
+				edge_config.set_enabled_activity_ids(dialog.edgeNotificationsEditor.getEnabledActivityIds()),
+				edge_config.set_custom_messages(dialog.edgeNotificationsEditor.getCustomMessages()),
+			)
+			dialog._clearDirty = lambda: None
+			dialog.Destroy = lambda: setattr(dialog, "destroyed", True)
+			dialog._releaseTransactionPopup = lambda: None
+			dialog._captureTransactionBaseline()
+			return dialog
+
+		def close_event():
+			return type("CloseEvent", (), {
+				"skipped": False,
+				"Skip": lambda self: setattr(self, "skipped", True),
+			})()
+
+		# onOK applies, rebases, then Destroy's close restoration preserves the
+		# newly captured accepted Edge values without an accepted-close flag.
+		edge_config.set_enabled_activity_ids(["PageLoading"])
+		edge_config.set_custom_messages({"PageLoading": "Original"})
+		accepted = make_dialog(["PageZoom"], {"PageZoom": "Accepted zoom"})
+		accepted.onOK(None)
+		accepted_close = close_event()
+		accepted.onClose(accepted_close)
+		self.assertTrue(accepted.destroyed)
+		self.assertTrue(accepted_close.skipped)
+		self.assertEqual(edge_config.get_enabled_activity_ids(), ("PageZoom",))
+		self.assertEqual(edge_config.get_custom_messages(), {"PageZoom": "Accepted zoom"})
+
+		# A failed Apply leaves the old baseline intact; Close removes the live
+		# edit and does not Destroy the dialog prematurely.
+		edge_config.set_enabled_activity_ids(["PageLoading"])
+		edge_config.set_custom_messages({"PageLoading": "Original"})
+		failed = make_dialog(["PageZoom"], {"PageZoom": "Live zoom"})
+		failed._saveTransaction()
+		failed._saveTransaction = lambda: (_ for _ in ()).throw(RuntimeError("simulated Apply failure"))
+		failed.onOK(None)
+		self.assertFalse(failed.__dict__.get("destroyed", False))
+		failed_close = close_event()
+		failed.onClose(failed_close)
+		self.assertTrue(failed_close.skipped)
+		self.assertEqual(edge_config.get_enabled_activity_ids(), ("PageLoading",))
+		self.assertEqual(edge_config.get_custom_messages(), {"PageLoading": "Original"})
+
+		# Apply establishes a new baseline. A subsequent live edit is restored
+		# to that applied state when the window is closed.
+		rebased = make_dialog(["PageLoading"], {"PageLoading": "Applied loading"})
+		self.assertTrue(rebased.onApply(None))
+		rebased.edgeNotificationsEditor = EdgePanel(["PageZoom"], {"PageZoom": "Later zoom"})
+		rebased._saveTransaction()
+		rebased_close = close_event()
+		rebased.onClose(rebased_close)
+		self.assertTrue(rebased_close.skipped)
+		self.assertEqual(edge_config.get_enabled_activity_ids(), ("PageLoading",))
+		self.assertEqual(edge_config.get_custom_messages(), {"PageLoading": "Applied loading"})
+
+		# Cancel and its ensuing EVT_CLOSE both restore the same baseline.
+		cancelled = make_dialog(["PageZoom"], {"PageZoom": "Cancelled zoom"})
+		cancelled._saveTransaction()
+		cancelled.onCancel(None)
+		cancelled_close = close_event()
+		cancelled.onClose(cancelled_close)
+		self.assertTrue(cancelled.destroyed)
+		self.assertTrue(cancelled_close.skipped)
+		self.assertEqual(edge_config.get_enabled_activity_ids(), ("PageLoading",))
+		self.assertEqual(edge_config.get_custom_messages(), {"PageLoading": "Applied loading"})
+
+	def test_web_dialog_delegates_lifecycle_handlers_to_the_shared_transaction_mixin(self):
+		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
+		self.assertIn("SettingsDialogTransactionMixin", dialog_source)
+		self.assertIn("_initializeDialogTransaction()", dialog_source)
+		for handler in ("onApply", "onOK", "onCancel", "onClose"):
+			self.assertNotIn(f"def {handler}(self", dialog_source)
+		self.assertNotIn("_closeAfterOK", dialog_source)
 
 
 if __name__ == "__main__":

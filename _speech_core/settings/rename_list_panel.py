@@ -8,7 +8,25 @@ except Exception:
 
 
 class RenameListPanel(wx.Panel):
-	def __init__(self, parent, title, labels, renames, mutedLabels=None, onChange=None, displayLabels=None, helpText=None):
+	def __init__(
+		self,
+		parent,
+		title,
+		labels,
+		renames,
+		mutedLabels=None,
+		onChange=None,
+		displayLabels=None,
+		helpText=None,
+		compactDisplay=False,
+		renamePromptTitle=None,
+		renamePromptMessage=None,
+		renameMenuLabel="Rename	F2",
+		clearRenameMenuLabel="Clear Rename	Delete",
+		checkedActionCaption="Unmute",
+		uncheckedActionCaption="Mute",
+		customDisplaySuffix="renamed to {text}",
+	):
 		super().__init__(parent)
 
 		self._labels = list(labels)
@@ -17,6 +35,18 @@ class RenameListPanel(wx.Panel):
 		self._displayLabels = dict(displayLabels or {})
 		self._onChange = onChange
 		self._suspendEvents = False
+		# Deferred native checklist reads must belong to the current population.
+		# A queued callback may otherwise run after a dialog reload or destruction.
+		self._checklistSyncGeneration = 0
+		self._checklistSyncDestroyed = False
+		self._compactDisplay = bool(compactDisplay)
+		self._renamePromptTitle = renamePromptTitle
+		self._renamePromptMessage = renamePromptMessage
+		self._renameMenuLabel = renameMenuLabel
+		self._clearRenameMenuLabel = clearRenameMenuLabel
+		self._checkedActionCaption = checkedActionCaption
+		self._uncheckedActionCaption = uncheckedActionCaption
+		self._customDisplaySuffix = customDisplaySuffix
 
 		mainSizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -41,6 +71,7 @@ class RenameListPanel(wx.Panel):
 		self.listCtrl.Bind(wx.EVT_CHECKLISTBOX, self.onChecklistToggled)
 		self.listCtrl.Bind(wx.EVT_KEY_DOWN, self.onListKeyDown)
 		self.listCtrl.Bind(wx.EVT_CONTEXT_MENU, self.onListContextMenu)
+		self.Bind(wx.EVT_WINDOW_DESTROY, self._onChecklistDestroy)
 		self.populate()
 
 	def _statusFor(self, label):
@@ -62,11 +93,28 @@ class RenameListPanel(wx.Panel):
 		status = self._statusFor(label).lower()
 		display = self._spokenBaseFor(label)
 		rename = self._workingRenames.get(label, "").strip()
+		if self._compactDisplay:
+			if rename:
+				return f"{display}, {self._customDisplaySuffix.format(text=rename)}"
+			return display
 		if rename:
-			return f"{display}, {status}, renamed to {rename}"
+			return f"{display}, {status}, {self._customDisplaySuffix.format(text=rename)}"
 		return f"{display}, {status}"
 
+	def _invalidateChecklistSync(self):
+		self._checklistSyncGeneration = self.__dict__.get("_checklistSyncGeneration", 0) + 1
+
+	def _onChecklistDestroy(self, evt):
+		# EVT_WINDOW_DESTROY can be delivered while wx is tearing down the panel.
+		# Never let a callback queued before that point touch the dead checklist.
+		if evt is None or not hasattr(evt, "GetEventObject") or evt.GetEventObject() is self:
+			self._checklistSyncDestroyed = True
+			self._invalidateChecklistSync()
+		if evt is not None and hasattr(evt, "Skip"):
+			evt.Skip()
+
 	def populate(self):
+		self._invalidateChecklistSync()
 		selection = self.listCtrl.GetSelection()
 		self._suspendEvents = True
 		try:
@@ -82,6 +130,7 @@ class RenameListPanel(wx.Panel):
 			self._suspendEvents = False
 
 	def loadData(self, renames: dict, mutedLabels=None):
+		self._invalidateChecklistSync()
 		self._workingRenames = dict(renames)
 		self._workingMuted = set(mutedLabels or [])
 		self.populate()
@@ -110,10 +159,20 @@ class RenameListPanel(wx.Panel):
 	def _promptForRename(self, label):
 		current = self._workingRenames.get(label, "")
 		display = self._spokenBaseFor(label)
+		message = self._renamePromptMessage or "Rename the spoken label for '{display}'. Leave blank to clear the rename."
+		if callable(message):
+			message = message(display)
+		else:
+			message = message.format(display=display)
+		title = self._renamePromptTitle or f"Rename {display}"
+		if callable(title):
+			title = title(display)
+		else:
+			title = title.format(display=display)
 		dlg = wx.TextEntryDialog(
 			self,
-			f"Rename the spoken label for '{display}'. Leave blank to clear the rename.",
-			f"Rename {display}",
+			message,
+			title,
 			value=current,
 		)
 		try:
@@ -159,10 +218,10 @@ class RenameListPanel(wx.Panel):
 			return
 
 		menu = wx.Menu()
-		renameItem = menu.Append(wx.ID_ANY, "Rename	F2")
-		clearItem = menu.Append(wx.ID_ANY, "Clear Rename	Delete")
-		muteLabel = "Unmute" if label in self._workingMuted else "Mute"
-		muteItem = menu.Append(wx.ID_ANY, muteLabel)
+		renameItem = menu.Append(wx.ID_ANY, self._renameMenuLabel)
+		clearItem = menu.Append(wx.ID_ANY, self._clearRenameMenuLabel)
+		toggleLabel = self._checkedActionCaption if label in self._workingMuted else self._uncheckedActionCaption
+		muteItem = menu.Append(wx.ID_ANY, toggleLabel)
 
 		menu.Bind(wx.EVT_MENU, lambda e: self.onRenameFromList(None), renameItem)
 		menu.Bind(wx.EVT_MENU, lambda e: self.onClearRename(None), clearItem)
@@ -213,13 +272,45 @@ class RenameListPanel(wx.Panel):
 		self._notifyChanged()
 
 	def onChecklistToggled(self, evt):
+		# CustomCheckListBox also handles this event to emit NVDA accessibility
+		# state-change notifications. Propagate it even while programmatic updates
+		# are suspended; suspension only suppresses ClassicSpeech state changes.
+		if evt is not None and hasattr(evt, "Skip"):
+			evt.Skip()
 		if self._suspendEvents:
 			return
 		idx = evt.GetInt() if evt else self._getSelectedIndex()
+		# NVDA's CustomCheckListBox receives this event before its native checked
+		# state has flipped. Reading IsChecked here loses a just-checked item when
+		# the parent dialog saves its live transaction. Let the native handler run
+		# first, then synchronize ClassicSpeech state and notify exactly once.
+		generation = self.__dict__.get("_checklistSyncGeneration", 0)
+		wx.CallAfter(self._syncChecklistToggled, idx, generation)
+
+	def _syncChecklistToggled(self, idx, generation):
+		# Deferred work can outlive a repopulation, reload, or window teardown.
+		# Only the exact checklist generation that queued the work may synchronize.
+		if (
+			self.__dict__.get("_checklistSyncDestroyed", False)
+			or generation != self.__dict__.get("_checklistSyncGeneration", 0)
+			or self._suspendEvents
+		):
+			return
 		if idx == -1 or idx >= len(self._labels):
 			return
+		try:
+			checked = bool(self.listCtrl.IsChecked(idx))
+		except Exception:
+			# wx may have deleted the native control before its destroy event reaches
+			# this panel. A stale callback must not escape into the event loop.
+			return
+		if (
+			self.__dict__.get("_checklistSyncDestroyed", False)
+			or generation != self.__dict__.get("_checklistSyncGeneration", 0)
+			or self._suspendEvents
+		):
+			return
 		label = self._labels[idx]
-		checked = bool(self.listCtrl.IsChecked(idx))
 		if checked:
 			self._workingMuted.discard(label)
 		else:
