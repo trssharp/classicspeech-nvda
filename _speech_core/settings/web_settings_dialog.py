@@ -445,9 +445,11 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 	def _restoreTransactionBaseline(self):
 		try:
 			restore_web_browse_state(self._originalWebBrowse)
-			if hasattr(self, "_originalPageSummary"):
-				restore_page_summary_state(self._originalPageSummary)
+			page_summary = getattr(self, "_originalPageSummary", None)
+			if hasattr(page_summary, "get") and "hasPageSummaryData" in page_summary:
+				restore_page_summary_state(page_summary)
 			else:
+				# Compatibility for lightweight older dialog fakes / partial baselines.
 				set_included_element_types(self._originalPageSummaryTypes)
 				set_include_document_title(self._originalPageSummaryTitle)
 				set_page_load_summary_mode(self._originalPageLoadSummaryMode)
@@ -492,6 +494,8 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		set_web_document_formatting_setting("reportFrames", _is_checked(self.framesCheckBox))
 		set_web_document_formatting_setting("reportFigures", _is_checked(self.figuresCheckBox))
 		set_web_document_formatting_setting("reportClickable", _is_checked(self.clickableCheckBox))
+		if not hasattr(config.conf.get("braille"), "get"):
+			config.conf["braille"] = {}
 		self.brailleLiveRegionsCombo.saveCurrentValueToConf()
 		if hasattr(self, "notifyWhenPageReadyCheckBox"):
 			set_notify_when_page_ready(_is_checked(self.notifyWhenPageReadyCheckBox))

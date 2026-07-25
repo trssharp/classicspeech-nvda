@@ -267,6 +267,7 @@ class WebSummaryConfigTests(unittest.TestCase):
         self.assertEqual(self.summary_config.get_page_ready_message(), "Page ready")
 
     def test_page_ready_notification_stored_values_are_normalized_and_trimmed(self):
+        self.config.conf.profiles[0]["classicSpeech"] = {"pageSummaryData": {}}
         data = self.config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]
         data.update(
             {
@@ -279,6 +280,7 @@ class WebSummaryConfigTests(unittest.TestCase):
         self.assertEqual(self.summary_config.get_page_ready_message(), "Finished loading")
 
     def test_page_ready_notification_malformed_values_fail_safe_and_blank_messages_use_defaults(self):
+        self.config.conf.profiles[0]["classicSpeech"] = {"pageSummaryData": {}}
         data = self.config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]
         for saved_value in ("unexpected", 1, None, object()):
             data["notifyWhenPageReady"] = saved_value
@@ -288,6 +290,7 @@ class WebSummaryConfigTests(unittest.TestCase):
             self.assertEqual(self.summary_config.get_page_ready_message(), "Page ready")
 
     def test_page_ready_notification_setters_persist_independently(self):
+        self.config.conf.profiles[0]["classicSpeech"] = {"pageSummaryData": {}}
         data = self.config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]
         self.assertTrue(self.summary_config.set_notify_when_page_ready(" true "))
         self.assertEqual(self.summary_config.set_page_ready_message("  Ready custom  "), "Ready custom")
