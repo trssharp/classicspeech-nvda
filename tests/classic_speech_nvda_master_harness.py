@@ -821,6 +821,89 @@ class ClassicSpeechNVDAConfigStartupTests(unittest.TestCase):
 			plugin.terminate()
 			module.gui.mainFrame = original_main_frame
 
+	def test_hotkey_access_key_only_reads_base_config_when_layered_config_disagrees(self):
+		_import_classic_speech_like_nvda()
+		from globalPlugins._speech_core.base_processor.hotkeys import HotkeyProcessor
+
+		config.conf["classicSpeech"] = {"hotkeyDialogAccessKeyOnly": False}
+		config.conf.profiles[0]["classicSpeech"] = {"hotkeyDialogAccessKeyOnly": True}
+
+		processor = HotkeyProcessor()
+		self.assertTrue(processor._get_dialog_access_key_only())
+		self.assertEqual(processor._format_hotkey_text("Alt+F", "dialog"), "F")
+		config.conf.profiles[0]["classicSpeech"]["hotkeyDialogAccessKeyOnly"] = "False"
+		self.assertFalse(processor._get_dialog_access_key_only())
+		config.conf.profiles[0]["classicSpeech"].update({
+			"announceMenuOpen": "False", "speechHookEnabled": "False",
+			"textProcessingData": {"splitMixedCaseWords": "False"},
+		})
+		from globalPlugins._speech_core.settings.config_core import _ensure_classic_speech_section
+		normalized = _ensure_classic_speech_section()
+		self.assertIs(normalized["announceMenuOpen"], False)
+		self.assertIs(normalized["speechHookEnabled"], False)
+		self.assertIs(normalized["textProcessingData"]["splitMixedCaseWords"], False)
+
+	def test_hotkeys_apply_save_command_and_fresh_reload_preserve_every_control(self):
+		import copy
+		import queueHandler
+		import ui
+		from globalPlugins._speech_core.settings.hotkeys_panel import HotkeysPanel
+
+		module = _import_classic_speech_like_nvda()
+		original_main_frame = module.gui.mainFrame
+		original_save = getattr(config.conf, "save", None)
+		persisted = {}
+		ui.messages.clear()
+
+		class Control:
+			def __init__(self, value): self.value = value
+			def GetValue(self): return self.value
+			def GetSelection(self): return self.value
+
+		panel = types.SimpleNamespace(
+			hotkeyModeChoice=Control(3), hotkeyFormatChoice=Control(1),
+			hotkeyTypesChoice=Control(0), dialogAccessKeyOnlyCheck=Control(True),
+		)
+		panel._getModeFromChoice = lambda: HotkeysPanel._getModeFromChoice(panel)
+		panel._getFormatFromChoice = lambda: HotkeysPanel._getFormatFromChoice(panel)
+		panel._getTypesFromChoice = lambda: HotkeysPanel._getTypesFromChoice(panel)
+		HotkeysPanel.apply_live(panel)
+
+		def save():
+			persisted["base"] = copy.deepcopy(config.conf.profiles[0])
+
+		def native_save_command(event):
+			config.conf.save()
+			queueHandler.queueFunction(queueHandler.eventQueue, ui.message, "Configuration saved")
+
+		config.conf.save = save
+		module.gui.ui = ui
+		module.gui.mainFrame = types.SimpleNamespace(onSaveConfigurationCommand=native_save_command)
+		plugin = module.GlobalPlugin()
+		try:
+			module.gui.mainFrame.onSaveConfigurationCommand(None)
+			self.assertEqual(ui.messages, ["Configuration saved"])
+			config.conf.profiles[0].clear()
+			config.conf.profiles[0].update(copy.deepcopy(persisted["base"]))
+			config.conf["classicSpeech"] = {}
+			_reset_global_plugin_imports()
+			_import_classic_speech_like_nvda()
+			from globalPlugins._speech_core.settings.hotkeys_config import (
+				_get_hotkey_dialog_access_key_only, _get_hotkey_format,
+				_get_hotkey_mode, _get_hotkey_types,
+			)
+			self.assertEqual(_get_hotkey_mode(), "both")
+			self.assertEqual(_get_hotkey_format(), "expandedNoPlus")
+			self.assertEqual(_get_hotkey_types(), "access")
+			self.assertTrue(_get_hotkey_dialog_access_key_only())
+		finally:
+			plugin.terminate()
+			if original_save is None:
+				delattr(config.conf, "save")
+			else:
+				config.conf.save = original_save
+			module.gui.mainFrame = original_main_frame
+
 	def test_classic_speech_config_spec_declares_every_written_hook_timing_and_hotkey_key(self):
 		module = _import_classic_speech_like_nvda()
 		plugin = module.GlobalPlugin()

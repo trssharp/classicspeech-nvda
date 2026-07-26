@@ -106,9 +106,12 @@ def _set_hotkey_types(types_value: str):
 def _get_hotkey_dialog_access_key_only():
 	conf = _ensure_classic_speech_section()
 	try:
-		return bool(conf.get("hotkeyDialogAccessKeyOnly", False))
+		value = conf.get("hotkeyDialogAccessKeyOnly", False)
 	except Exception:
 		return False
+	if isinstance(value, str):
+		return value.strip().lower() in {"1", "true", "yes", "on"}
+	return bool(value)
 
 
 def _set_hotkey_dialog_access_key_only(enabled):
