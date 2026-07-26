@@ -11,6 +11,7 @@ from .web_summary_config import (
     PAGE_LOAD_SUMMARY_MODE_NATIVE,
     PAGE_LOAD_SUMMARY_MODE_ORIENTATION,
     get_page_load_summary_mode,
+    get_page_entry_summary_delay_seconds,
     get_notify_when_page_ready,
     get_page_ready_message,
     get_included_element_types,
@@ -18,6 +19,7 @@ from .web_summary_config import (
     capture_page_summary_state,
     restore_page_summary_state,
     set_page_load_summary_mode,
+    set_page_entry_summary_delay_seconds,
     set_notify_when_page_ready,
     set_page_ready_message,
     set_included_element_types,
@@ -335,7 +337,26 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		self.pageLoadSummaryMode.SetSelection(
 		    self._pageLoadSummaryModes.index(get_page_load_summary_mode())
 		)
-		self.pageLoadSummaryMode.Bind(wx.EVT_CHOICE, self.onChanged)
+		self.pageLoadSummaryMode.Bind(wx.EVT_CHOICE, self.onPageLoadSummaryModeChanged)
+		self._pageEntrySummaryDelaySeconds = (0, 1, 2, 3, 4, 5)
+		self.pageEntrySummaryDelayChoice = group.addLabeledControl(
+			"Automatic page-entry summary delay:",
+			wx.Choice,
+			choices=(
+				"No additional delay",
+				"1 second",
+				"2 seconds",
+				"3 seconds",
+				"4 seconds",
+				"5 seconds",
+			),
+		)
+		self.pageEntrySummaryDelayChoice.SetName("Automatic page-entry summary delay")
+		self.pageEntrySummaryDelayChoice.SetSelection(
+			self._pageEntrySummaryDelaySeconds.index(get_page_entry_summary_delay_seconds())
+		)
+		self.pageEntrySummaryDelayChoice.Bind(wx.EVT_CHOICE, self.onChanged)
+		self._update_page_entry_summary_delay_enabled()
 		self._pageSummaryElements = [("documentTitle", "Title")] + [
 			(item.item_type, item.plural_label)
 			for item in SUMMARY_ITEM_TYPES
@@ -423,6 +444,17 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		self.panelHost.Layout()
 		self.Layout()
 
+	def _update_page_entry_summary_delay_enabled(self):
+		try:
+			mode = self._pageLoadSummaryModes[self.pageLoadSummaryMode.GetSelection()]
+			self.pageEntrySummaryDelayChoice.Enable(mode != PAGE_LOAD_SUMMARY_MODE_NATIVE)
+		except Exception:
+			pass
+
+	def onPageLoadSummaryModeChanged(self, evt=None):
+		self._update_page_entry_summary_delay_enabled()
+		self.onChanged(evt)
+
 	def _releaseTransactionPopup(self):
 		if self._popupReleased:
 			return
@@ -505,6 +537,12 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		    set_page_load_summary_mode(
 		        self._pageLoadSummaryModes[self.pageLoadSummaryMode.GetSelection()]
 		    )
+		delayChoice = self.__dict__.get("pageEntrySummaryDelayChoice")
+		delaySeconds = self.__dict__.get("_pageEntrySummaryDelaySeconds")
+		if delayChoice is not None and delaySeconds is not None:
+			set_page_entry_summary_delay_seconds(
+				delaySeconds[delayChoice.GetSelection()]
+			)
 		if hasattr(self, "pageSummaryElementList"):
 			selectedTypes = [
 				itemType

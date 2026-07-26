@@ -79,6 +79,7 @@ _CLASSIC_SPEECH_SPEC = {
         "includeDocumentTitle": "boolean(default=False)",
         "automaticReportOnPageLoad": "boolean(default=False)",
         "pageLoadSummaryMode": "string(default='native')",
+        "pageEntrySummaryDelaySeconds": "integer(default=2, min=0, max=5)",
         "notifyWhenPageReady": "boolean(default=False)",
         "pageReadyMessage": "string(default='Page ready')",
     },
