@@ -378,8 +378,8 @@ class ClassicSpeechNVDAConfigStartupTests(unittest.TestCase):
 	def test_text_processing_panel_imports_and_category_is_registered(self):
 		module = _import_classic_speech_like_nvda()
 		from globalPlugins._speech_core.settings.dialog import ClassicSpeechDialog
-		from globalPlugins._speech_core.settings import text_processing_panel
-		from globalPlugins._speech_core.settings.text_processing_panel import TextProcessingPanel
+		from globalPlugins._speech_core.settings.text import panel as text_processing_panel
+		from globalPlugins._speech_core.settings.text.panel import TextProcessingPanel
 
 		self.assertIn("Text Processing", ClassicSpeechDialog.CATEGORY_NAMES)
 		self.assertTrue(hasattr(TextProcessingPanel, "apply_live"))

@@ -106,7 +106,7 @@ class GeneralPanelContractTests(unittest.TestCase):
         self.assertEqual(section["menuBarLeaveMessage"], "Leave custom")
 
     def test_text_processing_panel_persists_every_control(self):
-        from globalPlugins._speech_core.settings.text_processing_panel import TextProcessingPanel
+        from globalPlugins._speech_core.settings.text.panel import TextProcessingPanel
 
         panel = types.SimpleNamespace(
             announceNewLinesDuringSayAll=Control(True),

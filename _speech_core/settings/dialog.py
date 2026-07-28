@@ -50,7 +50,7 @@ from .menus_panel import MenusPanel
 from .misc_panel import MiscPanel
 from .number_processing_panel import NumberProcessingPanel
 from .speech_timing_panel import SpeechTimingPanel
-from .text_processing_panel import TextProcessingPanel
+from .text.panel import TextProcessingPanel
 from .token_editor_panel import TokenEditorPanel
 from .verbosity_panel import VerbosityPanel
 
