@@ -14,9 +14,12 @@ INCLUDE_DOCUMENT_TITLE_KEY = "includeDocumentTitle"
 # Legacy setting retained only for migration from the released Automatic Summary.
 AUTOMATIC_REPORT_ON_PAGE_LOAD_KEY = "automaticReportOnPageLoad"
 PAGE_LOAD_SUMMARY_MODE_KEY = "pageLoadSummaryMode"
+PAGE_ENTRY_SUMMARY_DELAY_SECONDS_KEY = "pageEntrySummaryDelaySeconds"
 NOTIFY_WHEN_PAGE_READY_KEY = "notifyWhenPageReady"
 PAGE_READY_MESSAGE_KEY = "pageReadyMessage"
 
+DEFAULT_PAGE_ENTRY_SUMMARY_DELAY_SECONDS = 2
+PAGE_ENTRY_SUMMARY_DELAY_SECONDS = range(0, 6)
 DEFAULT_NOTIFY_WHEN_PAGE_READY = False
 DEFAULT_PAGE_READY_MESSAGE = "Page ready"
 
@@ -197,6 +200,32 @@ def set_page_load_summary_mode(mode: object) -> str:
     data[PAGE_LOAD_SUMMARY_MODE_KEY] = normalized
     # Retain a coherent legacy value for old config readers and downgrade paths.
     data[AUTOMATIC_REPORT_ON_PAGE_LOAD_KEY] = normalized == PAGE_LOAD_SUMMARY_MODE_AFTER_READY
+    return normalized
+
+
+def _normalize_page_entry_summary_delay_seconds(value: object) -> int:
+    """Return the configured extra wait, constrained to the exposed choices."""
+    if isinstance(value, bool):
+        return DEFAULT_PAGE_ENTRY_SUMMARY_DELAY_SECONDS
+    if isinstance(value, str):
+        try:
+            value = int(value.strip())
+        except (TypeError, ValueError):
+            return DEFAULT_PAGE_ENTRY_SUMMARY_DELAY_SECONDS
+    if not isinstance(value, int) or value not in PAGE_ENTRY_SUMMARY_DELAY_SECONDS:
+        return DEFAULT_PAGE_ENTRY_SUMMARY_DELAY_SECONDS
+    return value
+
+
+def get_page_entry_summary_delay_seconds() -> int:
+    data = _get_page_summary_data()
+    saved = data.get(PAGE_ENTRY_SUMMARY_DELAY_SECONDS_KEY) if data is not None else None
+    return _normalize_page_entry_summary_delay_seconds(saved)
+
+
+def set_page_entry_summary_delay_seconds(seconds: object) -> int:
+    normalized = _normalize_page_entry_summary_delay_seconds(seconds)
+    _ensure_page_summary_data()[PAGE_ENTRY_SUMMARY_DELAY_SECONDS_KEY] = normalized
     return normalized
 
 

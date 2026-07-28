@@ -312,6 +312,28 @@ class WebSummaryConfigTests(unittest.TestCase):
         section = self.config.conf.profiles[0]["classicSpeech"]
         self.assertEqual(section["pageSummaryData"]["includedElementTypes"], [])
 
+    def test_page_entry_summary_delay_defaults_to_two_seconds_and_normalizes_zero_to_five(self):
+        self.assertEqual(self.summary_config.get_page_entry_summary_delay_seconds(), 2)
+        self.config.conf.profiles[0]["classicSpeech"] = {"pageSummaryData": {}}
+        data = self.config.conf.profiles[0]["classicSpeech"]["pageSummaryData"]
+        for saved_value, expected in (
+            (0, 0),
+            (5, 5),
+            ("3", 3),
+            (" 4 ", 4),
+            (-1, 2),
+            (6, 2),
+            (True, 2),
+            ("unexpected", 2),
+            (None, 2),
+        ):
+            data["pageEntrySummaryDelaySeconds"] = saved_value
+            self.assertEqual(self.summary_config.get_page_entry_summary_delay_seconds(), expected)
+        self.assertEqual(self.summary_config.set_page_entry_summary_delay_seconds(" 1 "), 1)
+        self.assertEqual(data["pageEntrySummaryDelaySeconds"], 1)
+        self.assertEqual(self.summary_config.set_page_entry_summary_delay_seconds(99), 2)
+        self.assertEqual(data["pageEntrySummaryDelaySeconds"], 2)
+
 
 class WebSummaryCommandTests(unittest.TestCase):
     def setUp(self):
@@ -415,6 +437,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
             set_notify_when_page_ready,
             set_page_ready_message,
             set_page_orientation_enabled,
+            set_page_entry_summary_delay_seconds,
         )
 
         self.api = api
@@ -426,6 +449,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.module.wx.CallLater = self._call_later
         set_automatic_reporting_enabled(False)
         set_page_orientation_enabled(False)
+        set_page_entry_summary_delay_seconds(0)
         set_notify_when_page_ready(False)
         set_page_ready_message("Page ready")
         set_included_element_types(["heading", "link"])
@@ -479,6 +503,25 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(len(self.laters), 1)
         self.laters.pop(0).run()
         self.assertEqual(self.ui.messages, ["Finished loading"])
+
+    def test_configured_settling_delay_defers_summary_build_until_after_readiness(self):
+        from globalPlugins._speech_core.settings.web_summary_config import (
+            set_automatic_reporting_enabled,
+            set_page_entry_summary_delay_seconds,
+        )
+
+        document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
+        set_automatic_reporting_enabled(True)
+        set_page_entry_summary_delay_seconds(2)
+        _plugin, _focus, _target = self._start_event(document)
+
+        self.assertEqual([later.delay for later in self.laters], [50])
+        self.laters.pop(0).run()
+        self.assertEqual(self.ui.messages, [])
+        self.assertEqual([later.delay for later in self.laters], [2000])
+        self.laters.pop(0).run()
+        self.assertEqual(self.ui.messages, ["1 heading."])
+
 
     def test_ready_message_precedes_automatic_summary_for_the_same_ready_cycle(self):
         from globalPlugins._speech_core.settings.web_summary_config import (

@@ -138,11 +138,18 @@ def _install_target(plugin, target):
             do_say_all = config.conf["virtualBuffers"]["autoSayAllOnPageLoad"]
             document._hadFirstGainFocus = True
 
-            reported = plugin._report_page_orientation_for_document(document)
+            continuation = (
+                (lambda: sayAll.SayAllHandler.readText(sayAll.CURSOR.CARET))
+                if do_say_all else None
+            )
+            fallback = lambda: _emit_native_initial_presentation(
+                document, had_first_gain_focus, do_say_all
+            )
+            reported = plugin._report_page_orientation_for_document(
+                document, continuation, fallback
+            )
             if not reported:
                 _emit_native_initial_presentation(document, had_first_gain_focus, do_say_all)
-            elif do_say_all:
-                sayAll.SayAllHandler.readText(sayAll.CURSOR.CARET)
 
             browseMode.reportPassThrough(document)
             braille.handler.handleGainFocus(document)

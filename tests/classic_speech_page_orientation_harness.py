@@ -70,8 +70,10 @@ class _Plugin:
         self.events = events
         self.report = report
 
-    def _report_page_orientation_for_document(self, document):
+    def _report_page_orientation_for_document(self, document, on_summary=None, on_fallback=None):
         self.events.append("summary")
+        if self.report and on_summary is not None:
+            on_summary()
         return self.report
 
     def _debug_log(self, message):

@@ -398,7 +398,9 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			'"Replace initial page speech with summary"',
 		):
 			self.assertIn(choice, dialog_source)
-		self.assertIn("self.pageLoadSummaryMode.Bind(wx.EVT_CHOICE, self.onChanged)", dialog_source)
+		self.assertIn("self.pageLoadSummaryMode.Bind(wx.EVT_CHOICE, self.onPageLoadSummaryModeChanged)", dialog_source)
+		self.assertIn('"Automatic page-entry summary delay:"', dialog_source)
+		self.assertIn("self.pageEntrySummaryDelayChoice.Enable(mode != PAGE_LOAD_SUMMARY_MODE_NATIVE)", dialog_source)
 		self.assertLess(
 			dialog_source.index("self.pageLoadSummaryMode"),
 			dialog_source.index('"Page Summary choices:"'),

@@ -62,6 +62,7 @@ from ._speech_core.settings.web_summary_config import (
     get_automatic_reporting_enabled,
     get_included_element_types,
     get_include_document_title,
+    get_page_entry_summary_delay_seconds,
     get_page_orientation_enabled,
     get_notify_when_page_ready,
     get_page_ready_message,
@@ -1268,32 +1269,54 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 log.debugWarning("ClassicSpeech: unable to read Page Summary document title", exc_info=True)
         ui.message(format_summary_with_document_title(document_title, summary))
 
-    def _report_page_orientation_for_document(self, document):
-        """Speak the ready current document's summary for Page Orientation.
-
-        Returns true only when the replacement was safely spoken. The runtime
-        wrapper falls back to NVDA's native presentation on every false result.
-        """
+    def _report_page_orientation_for_document(self, document, on_summary=None, on_fallback=None):
+        """Own the Page Orientation presentation, possibly after its delay."""
         try:
-            if not get_page_orientation_enabled():
+            if (
+                not get_page_orientation_enabled()
+                or self._automatic_summary_document_for_event(document) is not document
+                or getattr(document, "isReady", False) is not True
+            ):
                 return False
-            if self._automatic_summary_document_for_event(document) is not document:
-                return False
-            if getattr(document, "isReady", False) is not True:
-                return False
-            if get_notify_when_page_ready():
-                cycle_marker = self._automatic_summary_load_cycle_marker(document)
-                if getattr(self, "_automaticSummaryReported", None) != (document, cycle_marker):
-                    # Page Orientation owns this ready presentation cycle. Mark
-                    # it before the summary so a later duplicate load-complete
-                    # callback cannot repeat either message.
-                    self._automaticSummaryReported = (document, cycle_marker)
-                    ui.message(get_page_ready_message())
+            cycle_marker = self._automatic_summary_load_cycle_marker(document)
+            if get_notify_when_page_ready() and getattr(self, "_automaticSummaryReported", None) != (document, cycle_marker):
+                ui.message(get_page_ready_message())
+            delay_ms = get_page_entry_summary_delay_seconds() * 1000
+            if delay_ms:
+                self._queue_page_orientation_summary(document, cycle_marker, delay_ms, on_summary, on_fallback)
+                return True
+            self._automaticSummaryReported = (document, cycle_marker)
             self._report_page_summary_for_document(document)
+            if on_summary is not None:
+                on_summary()
             return True
         except Exception:
             log.debug("ClassicSpeech: Page Orientation summary failed", exc_info=True)
             return False
+
+    def _queue_page_orientation_summary(self, document, cycle_marker, delay_ms, on_summary, on_fallback):
+        def callback():
+            pending = getattr(self, "_pageOrientationSummaryPending", None)
+            self._pageOrientationSummaryPending = None
+            is_current_document = self._automatic_summary_document_for_event(document) is document
+            if (
+                pending is None
+                or pending[0] is not document
+                or pending[1] != cycle_marker
+                or not get_page_orientation_enabled()
+                or not is_current_document
+                or getattr(document, "isReady", False) is not True
+                or self._automatic_summary_load_cycle_marker(document) != cycle_marker
+            ):
+                if is_current_document and on_fallback is not None:
+                    on_fallback()
+                return
+            self._automaticSummaryReported = (document, cycle_marker)
+            self._report_page_summary_for_document(document)
+            if on_summary is not None:
+                on_summary()
+        later = wx.CallLater(delay_ms, callback)
+        self._pageOrientationSummaryPending = (document, cycle_marker, later)
 
     def _automatic_summary_document_for_event(self, obj):
         try:
@@ -1326,15 +1349,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         return ("event", id(event_obj)) if event_obj is not None else None
 
     def _stop_automatic_page_summary_pending(self):
-        """Cancel the only deferred report before it can become stale."""
+        """Cancel deferred automatic reports before they can become stale."""
         pending = getattr(self, "_automaticSummaryPending", None)
+        orientation_pending = getattr(self, "_pageOrientationSummaryPending", None)
         self._automaticSummaryPending = None
-        if pending is None:
-            return
-        try:
-            pending[2].Stop()
-        except Exception:
-            pass
+        self._pageOrientationSummaryPending = None
+        for pending_item in (pending, orientation_pending):
+            if pending_item is None:
+                continue
+            try:
+                pending_item[2].Stop()
+            except Exception:
+                pass
 
     def _cancel_automatic_page_summaries(self):
         self._automaticSummaryTerminated = True
@@ -1343,7 +1369,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def _cancel_automatic_page_summary_if_focus_changed(self, focus):
         """Discard deferred automatic work as soon as focus leaves its document."""
-        pending = getattr(self, "_automaticSummaryPending", None)
+        pending = getattr(self, "_automaticSummaryPending", None) or getattr(self, "_pageOrientationSummaryPending", None)
         if pending is None:
             return
         try:
@@ -1353,23 +1379,28 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if pending[0] is not focus_document:
             self._stop_automatic_page_summary_pending()
 
-    def _queue_automatic_page_summary(self, document, cycle_marker, attempt=0):
+    def _queue_automatic_page_summary(self, document, cycle_marker, attempt=0, settling=False):
         def callback():
-            self._run_automatic_page_summary(document, cycle_marker, attempt)
+            self._run_automatic_page_summary(document, cycle_marker, attempt, settling)
         try:
-            later = wx.CallLater(self._AUTOMATIC_PAGE_SUMMARY_RETRY_DELAY_MS, callback)
+            delay_ms = (
+                get_page_entry_summary_delay_seconds() * 1000
+                if settling else self._AUTOMATIC_PAGE_SUMMARY_RETRY_DELAY_MS
+            )
+            later = wx.CallLater(delay_ms, callback)
         except Exception:
             log.debug("ClassicSpeech: failed to defer automatic page summary", exc_info=True)
             return
-        self._automaticSummaryPending = (document, cycle_marker, later, attempt)
+        self._automaticSummaryPending = (document, cycle_marker, later, attempt, settling)
 
-    def _run_automatic_page_summary(self, document, cycle_marker, attempt):
+    def _run_automatic_page_summary(self, document, cycle_marker, attempt, settling=False):
         pending = getattr(self, "_automaticSummaryPending", None)
         if (
             pending is None
             or pending[0] is not document
             or pending[1] != cycle_marker
             or pending[3] != attempt
+            or pending[4] != settling
         ):
             return
         self._automaticSummaryPending = None
@@ -1400,6 +1431,13 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             # event-fallback marker must be allowed to acquire the first handle.
             if cycle_marker[0] == "buffer" and ready_cycle_marker != cycle_marker:
                 return
+            if not settling and summary_enabled and get_page_entry_summary_delay_seconds() > 0:
+                # The Page Ready notification remains tied to real readiness;
+                # only the optional count summary waits for late page content.
+                if ready_enabled:
+                    ui.message(get_page_ready_message())
+                self._queue_automatic_page_summary(document, ready_cycle_marker, settling=True)
+                return
             if getattr(self, "_automaticSummaryReported", None) == (document, ready_cycle_marker):
                 return
             self._automaticSummaryReported = (document, ready_cycle_marker)
@@ -1407,7 +1445,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             # a disabled notification cannot leak from an earlier schedule.
             # Keep the ready notification ahead of the existing automatic
             # summary for the same virtual-buffer generation.
-            if ready_enabled:
+            if ready_enabled and not settling:
                 ui.message(get_page_ready_message())
             if summary_enabled:
                 self._report_page_summary_for_document(document)
