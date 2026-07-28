@@ -33,6 +33,27 @@ def _to_plain_data(value):
 		return value
 
 
+def _normalize_late_registered_boolean_values(section, spec):
+	"""Convert ConfigObj's late-schema ``"True"``/``"False"`` leaves safely.
+
+	NVDA may expose values in an add-on section registered after configuration
+	loading as strings. Only schema-declared Boolean leaves are converted: custom
+	messages and user-provided text are never interpreted as Boolean values.
+	"""
+	if not hasattr(section, "get") or not hasattr(spec, "items"):
+		return
+	for key, key_spec in spec.items():
+		try:
+			value = section.get(key)
+		except Exception:
+			continue
+		if str(key_spec).strip().lower().startswith("boolean("):
+			if isinstance(value, str):
+				section[key] = value.strip().lower() in {"1", "true", "yes", "on"}
+		elif hasattr(key_spec, "items"):
+			_normalize_late_registered_boolean_values(value, key_spec)
+
+
 def _ensure_classic_speech_section():
 	"""Return the base ClassicSpeech config section.
 
@@ -48,6 +69,14 @@ def _ensure_classic_speech_section():
 	if "classicSpeech" not in baseConf:
 		baseConf["classicSpeech"] = {}
 	conf = baseConf["classicSpeech"]
+	try:
+		spec = config.conf.spec.get("classicSpeech", {})
+		if not spec:
+			from ..plugin_config import _CLASSIC_SPEECH_SPEC
+			spec = _CLASSIC_SPEECH_SPEC
+		_normalize_late_registered_boolean_values(conf, spec)
+	except Exception:
+		log.debug("ClassicSpeech: could not normalize late Boolean config values", exc_info=True)
 
 	if "profileData" not in conf:
 		conf["profileData"] = {}

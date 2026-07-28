@@ -1,4 +1,3 @@
-import config
 import logHandler
 
 from .debug import should_debug_log
@@ -17,6 +16,12 @@ from ..settings import (
 	HOTKEY_TYPES_COMMAND,
 	HOTKEY_TYPES_BOTH,
 )
+from ..settings.hotkeys_config import (
+	_get_hotkey_dialog_access_key_only as _read_dialog_access_key_only,
+	_get_hotkey_format as _read_hotkey_format,
+	_get_hotkey_mode as _read_hotkey_mode,
+	_get_hotkey_types as _read_hotkey_types,
+)
 from ..tokens import TOKEN_HOTKEY
 
 log = logHandler.log
@@ -24,21 +29,7 @@ log = logHandler.log
 
 class HotkeyProcessor:
 	def _get_hotkey_mode(self):
-		try:
-			mode = str(
-				config.conf["classicSpeech"].get("hotkeyMode", HOTKEY_MODE_BOTH)
-			).strip().lower()
-		except Exception:
-			mode = HOTKEY_MODE_BOTH
-
-		if mode not in {
-			HOTKEY_MODE_OFF,
-			HOTKEY_MODE_DIALOGS,
-			HOTKEY_MODE_MENUS,
-			HOTKEY_MODE_BOTH,
-		}:
-			return HOTKEY_MODE_BOTH
-		return mode
+		return _read_hotkey_mode()
 
 	def _hotkey_allowed_in_context(self, context, mode_override=None):
 		mode = mode_override if mode_override is not None else self._get_hotkey_mode()
@@ -84,20 +75,7 @@ class HotkeyProcessor:
 		return [c for c in commands if not isinstance(c, CharacterModeCommand)]
 
 	def _get_hotkey_types(self):
-		try:
-			types_value = str(
-				config.conf["classicSpeech"].get("hotkeyTypes", HOTKEY_TYPES_BOTH)
-			).strip()
-		except Exception:
-			types_value = HOTKEY_TYPES_BOTH
-
-		if types_value not in {
-			HOTKEY_TYPES_ACCESS,
-			HOTKEY_TYPES_COMMAND,
-			HOTKEY_TYPES_BOTH,
-		}:
-			return HOTKEY_TYPES_BOTH
-		return types_value
+		return _read_hotkey_types()
 
 	def _is_access_key_hotkey(self, hotkey_text):
 		modifiers, key = self._split_hotkey_parts(hotkey_text)
@@ -128,26 +106,10 @@ class HotkeyProcessor:
 		return filtered
 
 	def _get_hotkey_format(self):
-		try:
-			format_value = str(
-				config.conf["classicSpeech"].get("hotkeyFormat", HOTKEY_FORMAT_NATIVE)
-			).strip()
-		except Exception:
-			format_value = HOTKEY_FORMAT_NATIVE
-
-		if format_value not in {
-			HOTKEY_FORMAT_NATIVE,
-			HOTKEY_FORMAT_EXPANDED_NO_PLUS,
-			HOTKEY_FORMAT_ABBREVIATED_NO_PLUS,
-		}:
-			return HOTKEY_FORMAT_NATIVE
-		return format_value
+		return _read_hotkey_format()
 
 	def _get_dialog_access_key_only(self):
-		try:
-			return bool(config.conf["classicSpeech"].get("hotkeyDialogAccessKeyOnly", False))
-		except Exception:
-			return False
+		return _read_dialog_access_key_only()
 
 	def _split_hotkey_parts(self, hotkey_text):
 		text = str(hotkey_text or "").strip()
