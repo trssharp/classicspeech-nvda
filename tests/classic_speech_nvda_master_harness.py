@@ -441,7 +441,7 @@ class ClassicSpeechNVDAConfigStartupTests(unittest.TestCase):
 
 	def test_text_processing_setting_helpers_update_config(self):
 		_import_classic_speech_like_nvda()
-		from globalPlugins._speech_core.settings.config import (
+		from globalPlugins._speech_core.settings.text.config import (
 			_get_announce_new_lines_during_say_all_enabled,
 			_get_list_item_state_reporting_mode,
 			_get_new_line_message,
@@ -613,7 +613,7 @@ class ClassicSpeechNVDAConfigStartupTests(unittest.TestCase):
 	def test_text_processing_reads_base_config_when_layered_config_disagrees(self):
 		_import_classic_speech_like_nvda()
 		from globalPlugins._speech_core.processors.text import TextProcessor
-		from globalPlugins._speech_core.settings.config import _get_repeated_character_mode
+		from globalPlugins._speech_core.settings.text.config import _get_repeated_character_mode
 
 		config.conf["classicSpeech"] = {
 			"textProcessingData": {"repeatedCharacterMode": "3"},
