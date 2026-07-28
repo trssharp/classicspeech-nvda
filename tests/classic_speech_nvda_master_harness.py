@@ -776,6 +776,7 @@ class ClassicSpeechNVDAConfigStartupTests(unittest.TestCase):
 			panel = types.SimpleNamespace(
 				debugLogging=Control(True),
 				speechHookEnabled=Control(False),
+				geckoBusyExperiment=Control(False),
 				announceSpeechHookLoaded=Control(True),
 				speechHookLoadedMessage=Control("Ready for testing"),
 			)
@@ -784,6 +785,7 @@ class ClassicSpeechNVDAConfigStartupTests(unittest.TestCase):
 			section = config.conf.profiles[0]["classicSpeech"]
 			self.assertTrue(section["debugLogging"])
 			self.assertFalse(section["speechHookEnabled"])
+			self.assertFalse(section["suppressGeckoInitialBusyStatePresentation"])
 			self.assertTrue(section["announceSpeechHookLoaded"])
 			self.assertEqual(section["speechHookLoadedMessage"], "Ready for testing")
 			self.assertFalse(plugin._speechHookRegistered)

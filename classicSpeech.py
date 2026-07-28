@@ -41,11 +41,13 @@ from ._speech_core.prosody_routing import (
     wrap_system_notification_sequence,
 )
 from ._speech_core.key_labels import get_key_label_runtime
+from ._speech_core.gecko_busy_patch import GeckoBusyPresentationPatch
 from ._speech_core.processors.core_ui import CoreUISpeechProcessor
 from ._speech_core.settings import (
     ClassicSpeechDialog,
     get_announce_speech_hook_loaded_enabled,
     get_debug_logging_enabled,
+    get_gecko_initial_busy_state_presentation_suppressed,
     get_query_object_source,
     get_object_navigation_processing_enabled,
     get_speech_hook_enabled,
@@ -622,6 +624,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._install_system_notification_profile_routes()
         self._install_configuration_save_revert_system_routes()
         self._install_remote_speech_compatibility()
+        self._geckoBusyPresentationPatch = GeckoBusyPresentationPatch(
+            get_gecko_initial_busy_state_presentation_suppressed,
+        )
+        self.set_gecko_initial_busy_state_presentation_suppressed(
+            get_gecko_initial_busy_state_presentation_suppressed(),
+        )
         self._pendingContainerSequence = None
         self._pendingContainerFlush = None
         self._flushingPendingContainer = False
@@ -640,6 +648,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._cancel_automatic_page_summaries()
         restore_page_orientation(self, getattr(self, "_pageOrientationRoutes", ()))
         self._pageOrientationRoutes = []
+        try:
+            self._geckoBusyPresentationPatch.restore()
+        except Exception:
+            log.debug("ClassicSpeech: failed to restore Firefox Busy experiment patch", exc_info=True)
         self._unregister_speech_hook()
         self._restore_remote_speech_compatibility()
         self._restore_windows_toast_system_route()
@@ -678,6 +690,20 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 log.info(f"ClassicSpeech debug: {message}")
         except Exception:
             pass
+
+
+    def set_gecko_initial_busy_state_presentation_suppressed(self, enabled):
+        """Live-apply the opt-in Firefox initial Busy presentation experiment."""
+        patch = getattr(self, "_geckoBusyPresentationPatch", None)
+        if patch is None:
+            return False
+        if enabled is True:
+            installed = patch.install()
+            if not installed:
+                self._debug_log("Firefox Busy experiment unavailable; left native focus reporting unchanged")
+            return installed
+        patch.restore()
+        return False
 
 
     def _announce_speech_hook_loaded(self):
