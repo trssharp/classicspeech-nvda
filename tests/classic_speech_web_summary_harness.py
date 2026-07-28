@@ -44,9 +44,9 @@ class FakeBrowseDocument:
 
 class WebSummaryModelTests(unittest.TestCase):
     def setUp(self):
-        from _speech_core import web_summary
+        from _speech_core.processors.web import summary
 
-        self.summary = web_summary
+        self.summary = summary
 
     def test_requested_nvda_quick_nav_keys_are_exposed_in_stable_order(self):
         expected = [
@@ -219,7 +219,7 @@ class WebSummaryConfigTests(unittest.TestCase):
         self.assertTrue(self.summary_config.set_include_document_title(" true "))
         self.assertTrue(self.summary_config.get_include_document_title())
         self.assertFalse(self.summary_config.set_include_document_title("unexpected"))
-        from _speech_core.web_summary import format_summary_with_document_title
+        from _speech_core.processors.web.summary import format_summary_with_document_title
         self.assertEqual(
             format_summary_with_document_title("  Example\npage  ", "1 heading."),
             "Example page. 1 heading.",

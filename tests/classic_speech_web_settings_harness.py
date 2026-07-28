@@ -247,7 +247,7 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		for index, attr in enumerate(web_attrs):
 			setattr(dialog, attr, ValueControl(index % 2 == 0))
 		dialog.brailleLiveRegionsCombo = FeatureControl("braille", "reportLiveRegions", "ENABLED")
-		from globalPlugins._speech_core.web_summary import SUMMARY_ITEM_TYPES
+		from globalPlugins._speech_core.processors.web.summary import SUMMARY_ITEM_TYPES
 		dialog._pageSummaryElements = [("documentTitle", "Title")] + [
 			(item.item_type, item.plural_label)
 			for item in SUMMARY_ITEM_TYPES

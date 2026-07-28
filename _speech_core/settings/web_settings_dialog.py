@@ -5,7 +5,7 @@ import logHandler
 from gui import guiHelper, nvdaControls
 from wx.lib import scrolledpanel
 
-from ..web_summary import SUMMARY_ITEM_TYPES
+from ..processors.web.summary import SUMMARY_ITEM_TYPES
 from .web_summary_config import (
     PAGE_LOAD_SUMMARY_MODE_AFTER_READY,
     PAGE_LOAD_SUMMARY_MODE_NATIVE,

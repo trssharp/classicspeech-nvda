@@ -6,7 +6,7 @@ from collections.abc import Iterable
 
 import config
 
-from ..web_summary import normalize_selected_item_types
+from ..processors.web.summary import normalize_selected_item_types
 
 PAGE_SUMMARY_DATA_KEY = "pageSummaryData"
 INCLUDED_ELEMENT_TYPES_KEY = "includedElementTypes"
