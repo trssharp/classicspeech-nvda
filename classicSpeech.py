@@ -57,7 +57,10 @@ from ._speech_core.history import SpeechHistoryBuffer, consume_history_native_pa
 from ._speech_core.history_viewer import show_history_dialog, is_history_list_focus
 from ._speech_core.interrupt_control import SpeechInterruptController
 from ._speech_core.processors.web.summary import build_summary, format_summary_with_document_title
-from .page_orientation_runtime import install as install_page_orientation, restore as restore_page_orientation
+from ._speech_core.processors.web.page_entry import (
+    install as install_page_orientation,
+    restore as restore_page_orientation,
+)
 from ._speech_core.settings.web_summary_config import (
     get_automatic_reporting_enabled,
     get_included_element_types,

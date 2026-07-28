@@ -21,7 +21,7 @@ from speech import sayAll
 package = types.ModuleType("globalPlugins")
 package.__path__ = [str(ROOT)]
 sys.modules["globalPlugins"] = package
-from globalPlugins import page_orientation_runtime as page_orientation
+from globalPlugins._speech_core.processors.web import page_entry as page_orientation
 from _speech_core.settings.web_summary_config import (
     PAGE_LOAD_SUMMARY_MODE_NATIVE,
     PAGE_LOAD_SUMMARY_MODE_ORIENTATION,
