@@ -968,5 +968,49 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.ui.messages, [])
 
 
+class WebPageLifecycleDelegationTests(unittest.TestCase):
+    """Regression contract for the extracted automatic web lifecycle."""
+
+    def test_lifecycle_is_a_separate_web_collaborator_with_narrow_dependencies(self):
+        from _speech_core.processors.web.lifecycle import WebPageLifecycle
+
+        self.assertTrue(callable(WebPageLifecycle))
+        source = (ROOT / "classicSpeech.py").read_text(encoding="utf-8")
+        self.assertIn("WebPageLifecycle(", source)
+        self.assertIn("._get_web_page_lifecycle().handle_document_load_complete", source)
+        self.assertIn("._get_web_page_lifecycle().handle_focus_change", source)
+        self.assertIn("._get_web_page_lifecycle().cancel", source)
+
+    def test_global_plugin_event_facades_call_native_next_handler_once_then_delegate(self):
+        import classic_speech_nvda_master_harness as nvda_harness
+
+        nvda_harness.ClassicSpeechNVDAConfigStartupTests().setUp()
+        try:
+            module = nvda_harness._import_classic_speech_like_nvda()
+            plugin = object.__new__(module.GlobalPlugin)
+            calls = []
+            plugin._webPageLifecycle = type(
+                "Lifecycle",
+                (), {
+                    "handle_document_load_complete": lambda _self, obj: calls.append(("load", obj)),
+                    "handle_focus_change": lambda _self, obj: calls.append(("focus", obj)),
+                },
+            )()
+
+            target = object()
+            plugin.event_documentLoadComplete(target, lambda: calls.append(("native-load", target)))
+            plugin.event_gainFocus(target, lambda: calls.append(("native-focus", target)))
+
+            self.assertEqual(
+                calls,
+                [
+                    ("native-load", target), ("load", target),
+                    ("native-focus", target), ("focus", target),
+                ],
+            )
+        finally:
+            nvda_harness._reset_global_plugin_imports()
+
+
 if __name__ == "__main__":
     unittest.main()
