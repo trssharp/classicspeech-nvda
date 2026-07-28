@@ -165,7 +165,7 @@ class WebSummaryConfigTests(unittest.TestCase):
         nvda_harness._import_classic_speech_like_nvda()
         import config
         from globalPlugins._speech_core import plugin_config
-        from globalPlugins._speech_core.settings import web_summary_config
+        from globalPlugins._speech_core.settings.web import summary_config as web_summary_config
 
         plugin_config._initClassicSpeechConfig()
         self.config = config
@@ -343,7 +343,7 @@ class WebSummaryCommandTests(unittest.TestCase):
         self.module = nvda_harness._import_classic_speech_like_nvda()
         import api
         import ui
-        from globalPlugins._speech_core.settings.web_summary_config import set_included_element_types
+        from globalPlugins._speech_core.settings.web.summary_config import set_included_element_types
         self.api = api
         self.ui = ui
         self.ui.messages.clear()
@@ -431,7 +431,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         import api
         import speech.extensions
         import ui
-        from globalPlugins._speech_core.settings.web_summary_config import (
+        from globalPlugins._speech_core.settings.web.summary_config import (
             set_automatic_reporting_enabled,
             set_included_element_types,
             set_notify_when_page_ready,
@@ -490,7 +490,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertFalse(getattr(plugin, "_automaticSummaryPending", {}))
 
     def test_ready_only_native_mode_speaks_the_normalized_custom_message_once(self):
-        from globalPlugins._speech_core.settings.web_summary_config import (
+        from globalPlugins._speech_core.settings.web.summary_config import (
             set_notify_when_page_ready,
             set_page_ready_message,
         )
@@ -505,7 +505,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.ui.messages, ["Finished loading"])
 
     def test_configured_settling_delay_defers_summary_build_until_after_readiness(self):
-        from globalPlugins._speech_core.settings.web_summary_config import (
+        from globalPlugins._speech_core.settings.web.summary_config import (
             set_automatic_reporting_enabled,
             set_page_entry_summary_delay_seconds,
         )
@@ -524,7 +524,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
 
 
     def test_ready_message_precedes_automatic_summary_for_the_same_ready_cycle(self):
-        from globalPlugins._speech_core.settings.web_summary_config import (
+        from globalPlugins._speech_core.settings.web.summary_config import (
             set_automatic_reporting_enabled,
             set_notify_when_page_ready,
         )
@@ -538,7 +538,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.ui.messages, ["Page ready", "1 heading."])
 
     def test_ready_message_precedes_page_orientation_summary_without_a_duplicate_callback(self):
-        from globalPlugins._speech_core.settings.web_summary_config import (
+        from globalPlugins._speech_core.settings.web.summary_config import (
             set_notify_when_page_ready,
             set_page_orientation_enabled,
         )
@@ -558,7 +558,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.ui.messages, ["Page ready", "1 heading."])
 
     def test_orientation_mode_owns_ready_presentation_even_when_document_load_completes_first(self):
-        from globalPlugins._speech_core.settings.web_summary_config import (
+        from globalPlugins._speech_core.settings.web.summary_config import (
             set_notify_when_page_ready,
             set_page_orientation_enabled,
         )
@@ -578,7 +578,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.ui.messages, ["Page ready", "1 heading."])
 
     def test_loading_ready_only_document_never_speaks_early_then_reports_once_when_ready(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_notify_when_page_ready
+        from globalPlugins._speech_core.settings.web.summary_config import set_notify_when_page_ready
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]}, is_ready=False)
         set_notify_when_page_ready(True)
@@ -592,7 +592,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.ui.messages, ["Page ready"])
 
     def test_replaced_buffer_handle_during_pending_ready_retry_is_discarded(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_notify_when_page_ready
+        from globalPlugins._speech_core.settings.web.summary_config import set_notify_when_page_ready
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]}, is_ready=False)
         set_notify_when_page_ready(True)
@@ -608,7 +608,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.laters, [])
 
     def test_initially_unavailable_buffer_handle_can_report_when_it_arrives(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_notify_when_page_ready
+        from globalPlugins._speech_core.settings.web.summary_config import set_notify_when_page_ready
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]}, is_ready=False)
         document.VBufHandle = None
@@ -625,7 +625,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.laters, [])
 
     def test_repeated_load_events_dedupe_ready_only_notifications(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_notify_when_page_ready
+        from globalPlugins._speech_core.settings.web.summary_config import set_notify_when_page_ready
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
         set_notify_when_page_ready(True)
@@ -639,7 +639,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.laters, [])
 
     def test_disabling_ready_after_schedule_preserves_enabled_summary(self):
-        from globalPlugins._speech_core.settings.web_summary_config import (
+        from globalPlugins._speech_core.settings.web.summary_config import (
             set_automatic_reporting_enabled,
             set_notify_when_page_ready,
         )
@@ -654,7 +654,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.ui.messages, ["1 heading."])
 
     def test_disabling_summary_after_schedule_preserves_enabled_ready_notification(self):
-        from globalPlugins._speech_core.settings.web_summary_config import (
+        from globalPlugins._speech_core.settings.web.summary_config import (
             set_automatic_reporting_enabled,
             set_notify_when_page_ready,
         )
@@ -669,7 +669,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.ui.messages, ["Page ready"])
 
     def test_next_handler_runs_first_before_ready_setting_is_observed(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_notify_when_page_ready
+        from globalPlugins._speech_core.settings.web.summary_config import set_notify_when_page_ready
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
         focus = type("Focus", (), {"treeInterceptor": document})()
@@ -682,7 +682,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(len(self.laters), 1)
 
     def test_ready_current_document_reports_once_with_one_native_message_and_no_mutation(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+        from globalPlugins._speech_core.settings.web.summary_config import set_automatic_reporting_enabled
 
         heading = FakeQuickNavItem()
         link = FakeQuickNavItem()
@@ -708,7 +708,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertIsNone(getattr(plugin, "_automaticSummaryPending", None))
 
     def test_loading_document_never_speaks_early_then_reports_once_when_ready(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+        from globalPlugins._speech_core.settings.web.summary_config import set_automatic_reporting_enabled
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]}, is_ready=False)
         set_automatic_reporting_enabled(True)
@@ -724,7 +724,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.laters, [])
 
     def test_focus_change_discards_pending_work_silently(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+        from globalPlugins._speech_core.settings.web.summary_config import set_automatic_reporting_enabled
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
         set_automatic_reporting_enabled(True)
@@ -737,7 +737,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.laters, [])
 
     def test_focus_change_discards_pending_ready_notification_silently(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_notify_when_page_ready
+        from globalPlugins._speech_core.settings.web.summary_config import set_notify_when_page_ready
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
         set_notify_when_page_ready(True)
@@ -749,7 +749,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.laters, [])
 
     def test_focus_leaving_pending_document_stops_and_clears_callback_before_it_runs(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+        from globalPlugins._speech_core.settings.web.summary_config import set_automatic_reporting_enabled
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
         set_automatic_reporting_enabled(True)
@@ -767,7 +767,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.ui.messages, [])
 
     def test_non_browse_focus_immediately_cancels_pending_callback(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+        from globalPlugins._speech_core.settings.web.summary_config import set_automatic_reporting_enabled
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
         set_automatic_reporting_enabled(True)
@@ -784,7 +784,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.ui.messages, [])
 
     def test_focus_within_pending_document_preserves_callback(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+        from globalPlugins._speech_core.settings.web.summary_config import set_automatic_reporting_enabled
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
         set_automatic_reporting_enabled(True)
@@ -802,7 +802,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.ui.messages, ["1 heading."])
 
     def test_repeated_document_load_events_dedupe_pending_and_reported_cycles(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+        from globalPlugins._speech_core.settings.web.summary_config import set_automatic_reporting_enabled
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
         set_automatic_reporting_enabled(True)
@@ -817,7 +817,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.laters, [])
 
     def test_reused_tree_interceptor_reports_again_for_a_new_buffer_load_cycle(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+        from globalPlugins._speech_core.settings.web.summary_config import set_automatic_reporting_enabled
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
         set_automatic_reporting_enabled(True)
@@ -834,7 +834,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.ui.messages, ["1 heading.", "1 heading."])
 
     def test_next_handler_runs_before_automatic_setting_is_observed(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+        from globalPlugins._speech_core.settings.web.summary_config import set_automatic_reporting_enabled
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
         focus = type("Focus", (), {"treeInterceptor": document})()
@@ -847,7 +847,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(len(self.laters), 1)
 
     def test_disabling_after_schedule_discards_callback_and_cleans_pending_state(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+        from globalPlugins._speech_core.settings.web.summary_config import set_automatic_reporting_enabled
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
         set_automatic_reporting_enabled(True)
@@ -859,7 +859,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertIsNone(getattr(plugin, "_automaticSummaryPending", None))
 
     def test_retry_exhaustion_discards_state_without_speaking(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+        from globalPlugins._speech_core.settings.web.summary_config import set_automatic_reporting_enabled
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]}, is_ready=False)
         set_automatic_reporting_enabled(True)
@@ -871,7 +871,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertIsNone(getattr(plugin, "_automaticSummaryPending", None))
 
     def test_unsupported_callback_document_is_discarded_silently(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+        from globalPlugins._speech_core.settings.web.summary_config import set_automatic_reporting_enabled
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]})
         set_automatic_reporting_enabled(True)
@@ -883,7 +883,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertIsNone(getattr(plugin, "_automaticSummaryPending", None))
 
     def test_new_current_document_stops_old_callback_and_reports_only_current_document(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+        from globalPlugins._speech_core.settings.web.summary_config import set_automatic_reporting_enabled
 
         old_document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]}, is_ready=False)
         current_document = FakeBrowseDocument({"link": [FakeQuickNavItem()]})
@@ -906,7 +906,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
 
 
     def test_automatic_report_is_count_only_even_when_the_document_has_a_title(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+        from globalPlugins._speech_core.settings.web.summary_config import set_automatic_reporting_enabled
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]}, root_name="Ready page")
         set_automatic_reporting_enabled(True)
@@ -917,7 +917,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.ui.messages, ["1 heading."])
 
     def test_terminate_cancels_and_clears_pending_callbacks(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_automatic_reporting_enabled
+        from globalPlugins._speech_core.settings.web.summary_config import set_automatic_reporting_enabled
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]}, is_ready=False)
         set_automatic_reporting_enabled(True)
@@ -943,7 +943,7 @@ class AutomaticWebSummaryRuntimeTests(unittest.TestCase):
         self.assertEqual(self.ui.messages, [])
 
     def test_terminate_cancels_pending_ready_notification(self):
-        from globalPlugins._speech_core.settings.web_summary_config import set_notify_when_page_ready
+        from globalPlugins._speech_core.settings.web.summary_config import set_notify_when_page_ready
 
         document = FakeBrowseDocument({"heading": [FakeQuickNavItem()]}, is_ready=False)
         set_notify_when_page_ready(True)

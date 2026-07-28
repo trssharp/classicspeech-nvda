@@ -20,7 +20,7 @@ class SettingsDialogTransactionTests(unittest.TestCase):
 		nvda_harness._import_classic_speech_like_nvda()
 		from globalPlugins._speech_core.settings.dialog import ClassicSpeechDialog
 		from globalPlugins._speech_core.settings.dialog_transactions import SettingsDialogTransactionMixin
-		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+		from globalPlugins._speech_core.settings.web.dialog import WebBrowseSettingsDialog
 
 		self.dialog_types = (ClassicSpeechDialog, WebBrowseSettingsDialog)
 		self.transaction_mixin = SettingsDialogTransactionMixin

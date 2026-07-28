@@ -51,7 +51,7 @@ from ._speech_core.settings import (
     QUERY_OBJECT_SOURCE_NATIVE,
     QUERY_OBJECT_SOURCE_NAVIGATOR,
 )
-from ._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+from ._speech_core.settings.web import WebBrowseSettingsDialog
 from ._speech_core.settings.voice_profiles_dialog import VoiceProfilesDialog
 from ._speech_core.history import SpeechHistoryBuffer, consume_history_native_passthrough
 from ._speech_core.history_viewer import show_history_dialog, is_history_list_focus
@@ -61,7 +61,7 @@ from ._speech_core.processors.web.page_entry import (
     install as install_page_orientation,
     restore as restore_page_orientation,
 )
-from ._speech_core.settings.web_summary_config import (
+from ._speech_core.settings.web.summary_config import (
     get_automatic_reporting_enabled,
     get_included_element_types,
     get_include_document_title,

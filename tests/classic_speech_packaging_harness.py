@@ -63,6 +63,13 @@ class PackageVersioningTests(unittest.TestCase):
             "globalPlugins/_speech_core/processors/web/page_entry.py", members
         )
         self.assertNotIn("globalPlugins/page_orientation_runtime.py", members)
+        self.assertIn("globalPlugins/_speech_core/settings/web/__init__.py", members)
+        self.assertIn("globalPlugins/_speech_core/settings/web/formatting_config.py", members)
+        self.assertIn("globalPlugins/_speech_core/settings/web/summary_config.py", members)
+        self.assertIn("globalPlugins/_speech_core/settings/web/dialog.py", members)
+        self.assertNotIn("globalPlugins/_speech_core/settings/web_formatting_config.py", members)
+        self.assertNotIn("globalPlugins/_speech_core/settings/web_summary_config.py", members)
+        self.assertNotIn("globalPlugins/_speech_core/settings/web_settings_dialog.py", members)
 
 
 if __name__ == "__main__":

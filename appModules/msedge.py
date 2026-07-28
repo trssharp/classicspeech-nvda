@@ -11,7 +11,7 @@ import appModuleHandler
 import ui
 
 from globalPlugins._speech_core.settings import edge_notifications_config
-from globalPlugins._speech_core.settings.web_summary_config import get_notify_when_page_ready
+from globalPlugins._speech_core.settings.web.summary_config import get_notify_when_page_ready
 
 
 _PAGE_LOADING_ACTIVITY_ID = "PageLoading"

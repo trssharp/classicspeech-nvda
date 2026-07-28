@@ -513,7 +513,7 @@ class EdgeNotificationRuntimeTests(unittest.TestCase):
         plugin_config._initClassicSpeechConfig()
         self.edge = edge_notifications_config
         self.messages = []
-        from globalPlugins._speech_core.settings.web_summary_config import set_notify_when_page_ready
+        from globalPlugins._speech_core.settings.web.summary_config import set_notify_when_page_ready
         self.set_notify_when_page_ready = set_notify_when_page_ready
         self.set_notify_when_page_ready(False)
         app_module_handler = types.ModuleType("appModuleHandler")

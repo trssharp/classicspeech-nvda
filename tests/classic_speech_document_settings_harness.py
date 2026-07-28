@@ -177,8 +177,16 @@ class DocumentReadingProofingPanelSourceTests(unittest.TestCase):
     def setUp(self):
         nvda_harness.ClassicSpeechNVDAConfigStartupTests().setUp()
 
+    def test_web_settings_modules_are_grouped_under_the_web_domain(self):
+        web_settings = ROOT / "_speech_core" / "settings" / "web"
+        self.assertTrue((web_settings / "__init__.py").is_file())
+        self.assertTrue((web_settings / "formatting_config.py").is_file())
+        self.assertTrue((web_settings / "summary_config.py").is_file())
+        self.assertTrue((web_settings / "dialog.py").is_file())
+
     def tearDown(self):
         nvda_harness._reset_global_plugin_imports()
+
 
     def test_panel_imports_and_category_is_registered(self):
         nvda_harness._import_classic_speech_like_nvda()
