@@ -332,7 +332,13 @@ class DocumentReadingProofingPanelSourceTests(unittest.TestCase):
         self.assertTrue(config.conf["documentFormatting"]["ignoreBlankLinesForRLI"])
 
     def test_v3_does_not_add_document_processing_hooks(self):
+        web_processor_root = ROOT / "_speech_core" / "processors" / "web"
         for path in sorted((ROOT / "_speech_core").rglob("*.py")):
+            # Page-entry presentation belongs to the opt-in Web processor. It
+            # deliberately mirrors NVDA's native Browse Mode line presentation
+            # on fallback; that is not a generic document speech processor.
+            if path.is_relative_to(web_processor_root):
+                continue
             text = path.read_text(encoding="utf-8")
             self.assertNotIn("speakTextInfo", text, path)
             self.assertNotIn("getTextInfoSpeech", text, path)
