@@ -378,10 +378,12 @@ class ClassicSpeechNVDAConfigStartupTests(unittest.TestCase):
 	def test_text_processing_panel_imports_and_category_is_registered(self):
 		module = _import_classic_speech_like_nvda()
 		from globalPlugins._speech_core.settings.dialog import ClassicSpeechDialog
+		from globalPlugins._speech_core.settings.text import TextProcessingPanel as ExportedTextProcessingPanel
 		from globalPlugins._speech_core.settings.text import panel as text_processing_panel
 		from globalPlugins._speech_core.settings.text.panel import TextProcessingPanel
 
 		self.assertIn("Text Processing", ClassicSpeechDialog.CATEGORY_NAMES)
+		self.assertIs(ExportedTextProcessingPanel, TextProcessingPanel)
 		self.assertTrue(hasattr(TextProcessingPanel, "apply_live"))
 		self.assertEqual(text_processing_panel._LIST_ITEM_STATE_REPORTING_CHOICES[0], ("NVDA native", "native"))
 		self.assertIn(("Say not selected", "notSelected"), text_processing_panel._LIST_ITEM_STATE_REPORTING_CHOICES)
@@ -425,7 +427,7 @@ class ClassicSpeechNVDAConfigStartupTests(unittest.TestCase):
 			r"self\.(\w+)\s*=\s*wx\.(Choice|ComboBox|TextCtrl|ListBox|CheckListBox)\b"
 		)
 		unnamed = []
-		for path in sorted(settings_dir.glob("*.py")):
+		for path in sorted(settings_dir.rglob("*.py")):
 			lines = path.read_text(encoding="utf-8").splitlines()
 			for index, line in enumerate(lines):
 				match = widget_pattern.search(line)
@@ -436,7 +438,7 @@ class ClassicSpeechNVDAConfigStartupTests(unittest.TestCase):
 				# immediately after construction but before the next control.
 				window = "\n".join(lines[index:index + 20])
 				if f"self.{control_name}.SetName(" not in window:
-					unnamed.append(f"{path.name}:{index + 1}:{control_name}")
+					unnamed.append(f"{path.relative_to(settings_dir)}:{index + 1}:{control_name}")
 		self.assertEqual([], unnamed)
 
 	def test_text_processing_setting_helpers_update_config(self):
