@@ -387,6 +387,22 @@ class ClassicSpeechNVDAConfigStartupTests(unittest.TestCase):
 		finally:
 			plugin.terminate()
 
+	def test_startup_normalizes_late_false_dynamic_profile_boolean_value(self):
+		config.conf.profiles[0]["classicSpeech"] = {
+			"defaultProfile": "Beginner",
+			"profileData": {
+				"Beginner": {
+					"enabledTokens": {"name": "False"},
+				},
+			},
+		}
+		module = _import_classic_speech_like_nvda()
+		plugin = module.GlobalPlugin()
+		try:
+			self.assertIs(plugin.processor.verbosity.profile_data["enabledTokens"]["name"], False)
+		finally:
+			plugin.terminate()
+
 	def test_text_processing_panel_imports_and_category_is_registered(self):
 		module = _import_classic_speech_like_nvda()
 		from globalPlugins._speech_core.settings.dialog import ClassicSpeechDialog

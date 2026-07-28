@@ -43,6 +43,18 @@ def _normalize_late_registered_boolean_values(section, spec):
 	if not hasattr(section, "get") or not hasattr(spec, "items"):
 		return
 	for key, key_spec in spec.items():
+		if key == "__many__":
+			try:
+				dynamic_keys = list(section.keys())
+			except Exception:
+				dynamic_keys = []
+			for dynamic_key in dynamic_keys:
+				try:
+					dynamic_value = section.get(dynamic_key)
+				except Exception:
+					continue
+				_normalize_late_registered_boolean_values(dynamic_value, key_spec)
+			continue
 		try:
 			value = section.get(key)
 		except Exception:
