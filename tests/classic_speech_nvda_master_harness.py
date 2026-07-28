@@ -375,6 +375,18 @@ class ClassicSpeechNVDAConfigStartupTests(unittest.TestCase):
 		finally:
 			plugin.terminate()
 
+	def test_startup_normalizes_late_false_default_button_value(self):
+		config.conf.profiles[0]["classicSpeech"] = {
+			"defaultProfile": "Beginner",
+			"announceDefaultButton": "False",
+		}
+		module = _import_classic_speech_like_nvda()
+		plugin = module.GlobalPlugin()
+		try:
+			self.assertIs(plugin.processor.verbosity.announce_default_button, False)
+		finally:
+			plugin.terminate()
+
 	def test_text_processing_panel_imports_and_category_is_registered(self):
 		module = _import_classic_speech_like_nvda()
 		from globalPlugins._speech_core.settings.dialog import ClassicSpeechDialog
