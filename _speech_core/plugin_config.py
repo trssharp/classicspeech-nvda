@@ -141,8 +141,17 @@ def _initClassicSpeechConfig():
     # add-on section is safe to register in ``config.conf.spec`` here, but
     # manually assigning its ConfigObj configspec and calling ``validate`` on
     # the already-materialized section is not: NVDA may expose schema leaves as
-    # strings at this point. Defaults are supplied by our getters until NVDA
-    # reloads its base configuration normally.
+    # strings at this point. Normalize existing Boolean leaves before any
+    # startup runtime reads them; otherwise a persisted ``"False"`` is truthy
+    # until a settings panel live-applies the value.
+    try:
+        from .settings.config_core import _normalize_late_registered_boolean_values
+
+        _normalize_late_registered_boolean_values(
+            _getClassicSpeechSection(), _CLASSIC_SPEECH_SPEC
+        )
+    except Exception:
+        log.debug("ClassicSpeech: could not normalize late Boolean config values", exc_info=True)
 
 
 def _getClassicSpeechSection():
