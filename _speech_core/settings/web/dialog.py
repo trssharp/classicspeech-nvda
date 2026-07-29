@@ -5,8 +5,8 @@ import logHandler
 from gui import guiHelper, nvdaControls
 from wx.lib import scrolledpanel
 
-from ..web_summary import SUMMARY_ITEM_TYPES
-from .web_summary_config import (
+from ...processors.web.summary import SUMMARY_ITEM_TYPES
+from .summary_config import (
     PAGE_LOAD_SUMMARY_MODE_AFTER_READY,
     PAGE_LOAD_SUMMARY_MODE_NATIVE,
     PAGE_LOAD_SUMMARY_MODE_ORIENTATION,
@@ -25,7 +25,7 @@ from .web_summary_config import (
     set_included_element_types,
     set_include_document_title,
 )
-from .web_formatting_config import (
+from .formatting_config import (
 	WEB_DOCUMENT_FORMATTING_KEYS,
 	capture_web_browse_state,
 	get_annotation_setting,
@@ -36,7 +36,7 @@ from .web_formatting_config import (
 	set_virtual_buffer_setting,
 	set_web_document_formatting_setting,
 )
-from .edge_notifications_config import (
+from ..edge_notifications_config import (
 	capture_edge_notification_state,
 	get_custom_messages,
 	get_enabled_activity_ids,
@@ -44,8 +44,8 @@ from .edge_notifications_config import (
 	set_custom_messages,
 	set_enabled_activity_ids,
 )
-from .edge_notifications_panel import EdgeNotificationsPanel
-from .dialog_transactions import SettingsDialogTransactionMixin
+from ..edge_notifications_panel import EdgeNotificationsPanel
+from ..dialog_transactions import SettingsDialogTransactionMixin
 
 log = logHandler.log
 

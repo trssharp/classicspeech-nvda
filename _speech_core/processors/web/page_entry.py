@@ -19,7 +19,7 @@ import speech
 import textInfos
 from speech import sayAll
 
-from ._speech_core.settings.web_summary_config import get_page_orientation_enabled
+from ...settings.web.summary_config import get_page_orientation_enabled
 
 _METHOD = "event_treeInterceptor_gainFocus"
 _MARKER = "_classicSpeechPageOrientationRoute"

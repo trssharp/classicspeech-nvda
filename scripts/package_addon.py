@@ -10,10 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
-RUNTIME_FILES = (
-    "classicSpeech.py",
-    "page_orientation_runtime.py",
-)
+RUNTIME_FILES = ("classicSpeech.py",)
 RUNTIME_DIRECTORIES = ("_speech_core",)
 APP_MODULE_DIRECTORIES = ("appModules",)
 RELEASE_NOTES = "EDGE-NOTIFICATIONS-RC-V26.md"
@@ -117,11 +114,13 @@ def main() -> None:
         required = {
             "manifest.ini",
             "globalPlugins/classicSpeech.py",
-            "globalPlugins/page_orientation_runtime.py",
+            "globalPlugins/_speech_core/processors/web/page_entry.py",
             "appModules/msedge.py",
         }
         if not required.issubset(members):
             raise SystemExit(f"Missing required package files: {sorted(required - members)}")
+        if "globalPlugins/page_orientation_runtime.py" in members:
+            raise SystemExit("Package contains loose Page Orientation runtime")
         if any("__pycache__" in name or name.endswith((".pyc", ".pyo")) for name in members):
             raise SystemExit("Package contains Python cache files")
 

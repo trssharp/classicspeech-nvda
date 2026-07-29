@@ -22,7 +22,7 @@ from .rename_list_panel import RenameListPanel
 from .speech_timing_panel import SpeechTimingPanel
 from .token_editor_panel import TokenEditorPanel
 from .verbosity_panel import VerbosityPanel
-from .web_settings_dialog import WebBrowseSettingsDialog, WebSettingsDialog
+from .web import WebBrowseSettingsDialog, WebSettingsDialog
 from .voice_profiles_dialog import VoiceProfilesDialog
 
 __all__ = [

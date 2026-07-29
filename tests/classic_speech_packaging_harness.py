@@ -3,8 +3,12 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tempfile
 import unittest
+import zipfile
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "package_addon.py"
@@ -41,6 +45,31 @@ class PackageVersioningTests(unittest.TestCase):
             self.packager.package_filename("20260724.16", "build unsafe")
         with self.assertRaises(ValueError):
             self.packager.build_version("2026-07-24", "zero")
+
+    def test_package_keeps_page_entry_runtime_inside_web_processors(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            output_directory = Path(temporary_directory)
+            arguments = SimpleNamespace(version="20260728.1", label="layout")
+            with mock.patch.object(self.packager, "DIST", output_directory), mock.patch.object(
+                self.packager, "_parse_args", return_value=arguments
+            ):
+                self.packager.main()
+
+            package_path = output_directory / "ClassicSpeech-20260728.1-layout.nvda-addon"
+            with zipfile.ZipFile(package_path) as archive:
+                members = set(archive.namelist())
+
+        self.assertIn(
+            "globalPlugins/_speech_core/processors/web/page_entry.py", members
+        )
+        self.assertNotIn("globalPlugins/page_orientation_runtime.py", members)
+        self.assertIn("globalPlugins/_speech_core/settings/web/__init__.py", members)
+        self.assertIn("globalPlugins/_speech_core/settings/web/formatting_config.py", members)
+        self.assertIn("globalPlugins/_speech_core/settings/web/summary_config.py", members)
+        self.assertIn("globalPlugins/_speech_core/settings/web/dialog.py", members)
+        self.assertNotIn("globalPlugins/_speech_core/settings/web_formatting_config.py", members)
+        self.assertNotIn("globalPlugins/_speech_core/settings/web_summary_config.py", members)
+        self.assertNotIn("globalPlugins/_speech_core/settings/web_settings_dialog.py", members)
 
 
 if __name__ == "__main__":

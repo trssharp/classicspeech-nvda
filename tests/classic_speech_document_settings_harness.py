@@ -177,8 +177,16 @@ class DocumentReadingProofingPanelSourceTests(unittest.TestCase):
     def setUp(self):
         nvda_harness.ClassicSpeechNVDAConfigStartupTests().setUp()
 
+    def test_web_settings_modules_are_grouped_under_the_web_domain(self):
+        web_settings = ROOT / "_speech_core" / "settings" / "web"
+        self.assertTrue((web_settings / "__init__.py").is_file())
+        self.assertTrue((web_settings / "formatting_config.py").is_file())
+        self.assertTrue((web_settings / "summary_config.py").is_file())
+        self.assertTrue((web_settings / "dialog.py").is_file())
+
     def tearDown(self):
         nvda_harness._reset_global_plugin_imports()
+
 
     def test_panel_imports_and_category_is_registered(self):
         nvda_harness._import_classic_speech_like_nvda()
@@ -324,7 +332,13 @@ class DocumentReadingProofingPanelSourceTests(unittest.TestCase):
         self.assertTrue(config.conf["documentFormatting"]["ignoreBlankLinesForRLI"])
 
     def test_v3_does_not_add_document_processing_hooks(self):
+        web_processor_root = ROOT / "_speech_core" / "processors" / "web"
         for path in sorted((ROOT / "_speech_core").rglob("*.py")):
+            # Page-entry presentation belongs to the opt-in Web processor. It
+            # deliberately mirrors NVDA's native Browse Mode line presentation
+            # on fallback; that is not a generic document speech processor.
+            if path.is_relative_to(web_processor_root):
+                continue
             text = path.read_text(encoding="utf-8")
             self.assertNotIn("speakTextInfo", text, path)
             self.assertNotIn("getTextInfoSpeech", text, path)

@@ -73,7 +73,7 @@ class WebBrowseConfigHelperTests(unittest.TestCase):
 
 	def test_helpers_wrap_exact_native_web_browse_key_sets(self):
 		nvda_harness._import_classic_speech_like_nvda()
-		from globalPlugins._speech_core.settings import web_formatting_config as web_config
+		from globalPlugins._speech_core.settings.web import formatting_config as web_config
 
 		self.assertEqual(set(web_config.VIRTUAL_BUFFER_KEYS), set(VIRTUAL_BUFFER_SAMPLE))
 		self.assertEqual(set(web_config.WEB_DOCUMENT_FORMATTING_KEYS), set(WEB_DOCUMENT_FORMATTING_SAMPLE))
@@ -92,7 +92,7 @@ class WebBrowseConfigHelperTests(unittest.TestCase):
 
 	def test_helpers_read_write_and_coerce_native_buckets(self):
 		nvda_harness._import_classic_speech_like_nvda()
-		from globalPlugins._speech_core.settings import web_formatting_config as web_config
+		from globalPlugins._speech_core.settings.web import formatting_config as web_config
 
 		self.assertEqual(web_config.get_virtual_buffer_setting("maxLineLength"), 80)
 		self.assertEqual(web_config.get_virtual_buffer_setting("browseModeTouchNavigationElements"), [
@@ -115,7 +115,7 @@ class WebBrowseConfigHelperTests(unittest.TestCase):
 
 	def test_capture_restore_supports_cancel_and_apply_semantics(self):
 		nvda_harness._import_classic_speech_like_nvda()
-		from globalPlugins._speech_core.settings import web_formatting_config as web_config
+		from globalPlugins._speech_core.settings.web import formatting_config as web_config
 
 		snapshot = web_config.capture_web_browse_state()
 		web_config.set_virtual_buffer_setting("linesPerPage", 55)
@@ -137,7 +137,7 @@ class WebBrowseConfigHelperTests(unittest.TestCase):
 
 class WebBrowseNativeFidelityTests(unittest.TestCase):
 	def test_dialog_source_preserves_native_browse_mode_labels_and_controls(self):
-		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
+		dialog_source = (ROOT / "_speech_core" / "settings" / "web" / "dialog.py").read_text(encoding="utf-8")
 		for expected in [
 			"&Maximum number of characters on one line",
 			"&Number of lines per page",
@@ -168,7 +168,7 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 
 	def test_all_dialog_control_families_apply_and_transaction(self):
 		nvda_harness._import_classic_speech_like_nvda()
-		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+		from globalPlugins._speech_core.settings.web.dialog import WebBrowseSettingsDialog
 
 		class ValueControl:
 			def __init__(self, value):
@@ -247,7 +247,7 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		for index, attr in enumerate(web_attrs):
 			setattr(dialog, attr, ValueControl(index % 2 == 0))
 		dialog.brailleLiveRegionsCombo = FeatureControl("braille", "reportLiveRegions", "ENABLED")
-		from globalPlugins._speech_core.web_summary import SUMMARY_ITEM_TYPES
+		from globalPlugins._speech_core.processors.web.summary import SUMMARY_ITEM_TYPES
 		dialog._pageSummaryElements = [("documentTitle", "Title")] + [
 			(item.item_type, item.plural_label)
 			for item in SUMMARY_ITEM_TYPES
@@ -272,7 +272,7 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 
 
 		dialog._originalWebBrowse = __import__(
-			"globalPlugins._speech_core.settings.web_formatting_config", fromlist=["capture_web_browse_state"]
+			"globalPlugins._speech_core.settings.web.formatting_config", fromlist=["capture_web_browse_state"]
 		).capture_web_browse_state()
 		dialog.onChanged()
 		self.assertEqual(config.conf["virtualBuffers"]["maxLineLength"], 120)
@@ -342,7 +342,7 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		)
 
 	def test_touch_navigation_uses_checklist_event_and_propagating_handler(self):
-		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
+		dialog_source = (ROOT / "_speech_core" / "settings" / "web" / "dialog.py").read_text(encoding="utf-8")
 		self.assertIn(
 			"self.browseModeTouchNavigationList.Bind(wx.EVT_CHECKLISTBOX, self.onTouchNavigationChanged)",
 			dialog_source,
@@ -354,7 +354,7 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 
 	def test_touch_navigation_handler_propagates_and_marks_dialog_dirty(self):
 		nvda_harness._import_classic_speech_like_nvda()
-		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+		from globalPlugins._speech_core.settings.web.dialog import WebBrowseSettingsDialog
 
 		dialog = object.__new__(WebBrowseSettingsDialog)
 		calls = []
@@ -372,7 +372,7 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 	def test_general_document_panel_still_excludes_web_keys(self):
 		nvda_harness._import_classic_speech_like_nvda()
 		from globalPlugins._speech_core.settings import document_formatting_config as doc_config
-		from globalPlugins._speech_core.settings import web_formatting_config as web_config
+		from globalPlugins._speech_core.settings.web import formatting_config as web_config
 
 		self.assertTrue(
 			set(doc_config.DOCUMENT_READING_PROOFING_KEYS).isdisjoint(web_config.WEB_DOCUMENT_FORMATTING_KEYS)
@@ -386,7 +386,7 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		self.assertIn("Web / Browse Mode Settings...", classic_speech)
 		self.assertIn("_openWebBrowseSettings", classic_speech)
 	def test_page_summary_category_uses_accessible_checklist_and_propagating_handler(self):
-		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
+		dialog_source = (ROOT / "_speech_core" / "settings" / "web" / "dialog.py").read_text(encoding="utf-8")
 		self.assertIn('self._pageSummaryElements = [("documentTitle", "Title")]', dialog_source)
 		self.assertIn("choices=[label for _itemType, label in self._pageSummaryElements]", dialog_source)
 		self.assertIn("get_include_document_title", dialog_source)
@@ -424,7 +424,7 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			self.assertIn(expected, dialog_source)
 
 	def test_page_ready_controls_are_hidden_as_one_native_row_and_refresh_scrolling(self):
-		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
+		dialog_source = (ROOT / "_speech_core" / "settings" / "web" / "dialog.py").read_text(encoding="utf-8")
 		self.assertIn('"Notify when page is ready"', dialog_source)
 		self.assertIn('"Page ready message:"', dialog_source)
 		self.assertIn("wx.TextCtrl", dialog_source)
@@ -446,7 +446,7 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 
 	def test_page_ready_handler_updates_visibility_then_live_applies(self):
 		nvda_harness._import_classic_speech_like_nvda()
-		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+		from globalPlugins._speech_core.settings.web.dialog import WebBrowseSettingsDialog
 
 		class CheckBox:
 			def IsChecked(self):
@@ -474,9 +474,9 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 
 	def test_page_ready_close_restores_its_baseline(self):
 		nvda_harness._import_classic_speech_like_nvda()
-		from globalPlugins._speech_core.settings import web_formatting_config
-		from globalPlugins._speech_core.settings import web_summary_config
-		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+		from globalPlugins._speech_core.settings.web import formatting_config as web_formatting_config
+		from globalPlugins._speech_core.settings.web import summary_config as web_summary_config
+		from globalPlugins._speech_core.settings.web.dialog import WebBrowseSettingsDialog
 
 		dialog = object.__new__(WebBrowseSettingsDialog)
 		dialog._originalWebBrowse = web_formatting_config.capture_web_browse_state()
@@ -498,7 +498,7 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 
 	def test_page_summary_handler_propagates_and_marks_dialog_dirty(self):
 		nvda_harness._import_classic_speech_like_nvda()
-		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+		from globalPlugins._speech_core.settings.web.dialog import WebBrowseSettingsDialog
 
 		dialog = object.__new__(WebBrowseSettingsDialog)
 		calls = []
@@ -525,9 +525,9 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		nvda_harness._reset_global_plugin_imports()
 
 	def test_edge_category_is_permanent_fourth_scrolled_panel_wired_to_live_apply(self):
-		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
-		self.assertIn("from .edge_notifications_config import (", dialog_source)
-		self.assertIn("from .edge_notifications_panel import EdgeNotificationsPanel", dialog_source)
+		dialog_source = (ROOT / "_speech_core" / "settings" / "web" / "dialog.py").read_text(encoding="utf-8")
+		self.assertIn("from ..edge_notifications_config import (", dialog_source)
+		self.assertIn("from ..edge_notifications_panel import EdgeNotificationsPanel", dialog_source)
 		self.assertIn('"Microsoft Edge Notifications",', dialog_source)
 		self.assertLess(
 			dialog_source.index('"Page Summary",'),
@@ -550,10 +550,10 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		before Web dialog Apply/OK reads the panel's enabled Activity IDs.
 		"""
 		from globalPlugins._speech_core.settings import edge_notifications_config as edge_config
-		from globalPlugins._speech_core.settings import web_formatting_config
-		from globalPlugins._speech_core.settings import web_summary_config
+		from globalPlugins._speech_core.settings.web import formatting_config as web_formatting_config
+		from globalPlugins._speech_core.settings.web import summary_config as web_summary_config
 		from globalPlugins._speech_core.settings.edge_notifications_panel import EdgeNotificationsPanel
-		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+		from globalPlugins._speech_core.settings.web.dialog import WebBrowseSettingsDialog
 
 		class ValueControl:
 			def __init__(self, value):
@@ -738,9 +738,9 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 
 	def test_edge_apply_cancel_and_close_are_transactional_even_for_empty_values(self):
 		from globalPlugins._speech_core.settings import edge_notifications_config as edge_config
-		from globalPlugins._speech_core.settings import web_formatting_config
-		from globalPlugins._speech_core.settings import web_summary_config
-		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+		from globalPlugins._speech_core.settings.web import formatting_config as web_formatting_config
+		from globalPlugins._speech_core.settings.web import summary_config as web_summary_config
+		from globalPlugins._speech_core.settings.web.dialog import WebBrowseSettingsDialog
 
 		class ValueControl:
 			def __init__(self, value):
@@ -828,9 +828,9 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		self.assertEqual(edge_config.get_custom_messages(), {})
 	def test_edge_cancel_and_close_remove_an_unpersisted_edge_baseline(self):
 		from globalPlugins._speech_core.settings import edge_notifications_config as edge_config
-		from globalPlugins._speech_core.settings import web_formatting_config
-		from globalPlugins._speech_core.settings import web_summary_config
-		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+		from globalPlugins._speech_core.settings.web import formatting_config as web_formatting_config
+		from globalPlugins._speech_core.settings.web import summary_config as web_summary_config
+		from globalPlugins._speech_core.settings.web.dialog import WebBrowseSettingsDialog
 
 		config.conf.profiles[0]["classicSpeech"] = {"unrelatedSetting": "keep me"}
 		section = config.conf.profiles[0]["classicSpeech"]
@@ -860,7 +860,7 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 
 	def test_edge_transaction_uses_rebased_baseline_for_ok_close_apply_failure_and_cancel(self):
 		from globalPlugins._speech_core.settings import edge_notifications_config as edge_config
-		from globalPlugins._speech_core.settings.web_settings_dialog import WebBrowseSettingsDialog
+		from globalPlugins._speech_core.settings.web.dialog import WebBrowseSettingsDialog
 
 		class EdgePanel:
 			def __init__(self, enabled_ids, messages):
@@ -944,7 +944,7 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		self.assertEqual(edge_config.get_custom_messages(), {"PageLoading": "Applied loading"})
 
 	def test_web_dialog_delegates_lifecycle_handlers_to_the_shared_transaction_mixin(self):
-		dialog_source = (ROOT / "_speech_core" / "settings" / "web_settings_dialog.py").read_text(encoding="utf-8")
+		dialog_source = (ROOT / "_speech_core" / "settings" / "web" / "dialog.py").read_text(encoding="utf-8")
 		self.assertIn("SettingsDialogTransactionMixin", dialog_source)
 		self.assertIn("_initializeDialogTransaction()", dialog_source)
 		for handler in ("onApply", "onOK", "onCancel", "onClose"):
