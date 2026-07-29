@@ -1,6 +1,6 @@
 """Text-processing settings helpers for ClassicSpeech."""
 
-from .config_core import _ensure_classic_speech_section
+from ..config_core import _ensure_classic_speech_section
 
 
 def _ensure_text_processing_section():
@@ -217,5 +217,3 @@ def _set_repeated_character_limit(value):
 	if value in {3, 4, 5, 6}:
 		_set_repeated_character_mode(str(value))
 	return value
-
-

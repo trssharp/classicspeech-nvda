@@ -70,6 +70,11 @@ class PackageVersioningTests(unittest.TestCase):
         self.assertNotIn("globalPlugins/_speech_core/settings/web_formatting_config.py", members)
         self.assertNotIn("globalPlugins/_speech_core/settings/web_summary_config.py", members)
         self.assertNotIn("globalPlugins/_speech_core/settings/web_settings_dialog.py", members)
+        self.assertIn("globalPlugins/_speech_core/settings/text/__init__.py", members)
+        self.assertIn("globalPlugins/_speech_core/settings/text/config.py", members)
+        self.assertIn("globalPlugins/_speech_core/settings/text/panel.py", members)
+        self.assertNotIn("globalPlugins/_speech_core/settings/text_processing_config.py", members)
+        self.assertNotIn("globalPlugins/_speech_core/settings/text_processing_panel.py", members)
 
 
 if __name__ == "__main__":

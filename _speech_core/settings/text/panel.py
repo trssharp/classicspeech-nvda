@@ -1,8 +1,8 @@
 import wx
 import logHandler
 
-from .accessibility import _set_panel_description
-from .text_processing_config import (
+from ..accessibility import _set_panel_description
+from .config import (
 	_get_announce_new_lines_during_say_all_enabled,
 	_get_list_item_state_reporting_mode,
 	_get_new_line_message,

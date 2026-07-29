@@ -5,7 +5,7 @@ from .debug import should_debug_log
 
 from .context import ROOT_MENU_NAV_MARKER_ROLES
 from ..dialog_helpers import object_is_in_dialog
-from ..settings.text_processing_config import (
+from ..settings.text.config import (
 	LIST_ITEM_STATE_REPORTING_BOTH,
 	LIST_ITEM_STATE_REPORTING_NATIVE,
 	LIST_ITEM_STATE_REPORTING_NONE,

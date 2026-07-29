@@ -97,7 +97,7 @@ from .misc_config import (
 	get_query_object_source,
 )
 
-from .text_processing_config import (
+from .text.config import (
 	LIST_ITEM_STATE_REPORTING_BOTH,
 	LIST_ITEM_STATE_REPORTING_MODES,
 	LIST_ITEM_STATE_REPORTING_NONE,

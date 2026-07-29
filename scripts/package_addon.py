@@ -115,12 +115,21 @@ def main() -> None:
             "manifest.ini",
             "globalPlugins/classicSpeech.py",
             "globalPlugins/_speech_core/processors/web/page_entry.py",
+            "globalPlugins/_speech_core/settings/text/__init__.py",
+            "globalPlugins/_speech_core/settings/text/config.py",
+            "globalPlugins/_speech_core/settings/text/panel.py",
             "appModules/msedge.py",
         }
         if not required.issubset(members):
             raise SystemExit(f"Missing required package files: {sorted(required - members)}")
         if "globalPlugins/page_orientation_runtime.py" in members:
             raise SystemExit("Package contains loose Page Orientation runtime")
+        obsolete_text_members = {
+            "globalPlugins/_speech_core/settings/text_processing_config.py",
+            "globalPlugins/_speech_core/settings/text_processing_panel.py",
+        }
+        if obsolete_text_members & members:
+            raise SystemExit("Package contains obsolete flat Text Processing settings modules")
         if any("__pycache__" in name or name.endswith((".pyc", ".pyo")) for name in members):
             raise SystemExit("Package contains Python cache files")
 
