@@ -1,6 +1,6 @@
 # Edge Notification Controls Implementation Plan
 
-> **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
+> **Status: historical implementation plan.** See [`docs/ROADMAP-STATUS.md`](../ROADMAP-STATUS.md) for current boundaries. This file preserves rationale and test intent; it is not an active implementation instruction.
 
 **Goal:** Replace the notification-management portion of MSEdgeDiscardAnnouncements with a permanent, accessible ClassicSpeech Edge panel using the established Token Editor checklist interaction.
 

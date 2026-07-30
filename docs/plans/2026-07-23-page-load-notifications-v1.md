@@ -1,6 +1,6 @@
 # Page Ready Notification v1 Implementation Plan
 
-> **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
+> **Status: historical implementation plan.** See [`docs/ROADMAP-STATUS.md`](../ROADMAP-STATUS.md) for current boundaries. This file preserves rationale and test intent; it is not an active implementation instruction.
 
 **Goal:** Add one default-off, user-configurable Browse Mode notification when the current focused virtual buffer becomes ready.
 

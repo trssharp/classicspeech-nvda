@@ -1,6 +1,6 @@
 # Web Buffer Load Research — NVDA Master Verified
 
-**Status:** research only. No ClassicSpeech Web Processor code has been added.
+**Status:** historical source research. It does not authorize a ClassicSpeech virtual-buffer patch, buffer mutation, or structural-line insertion. The supported add-on API has no virtual-buffer write path; such work requires a separately approved NVDA-core design.
 
 ## Scope
 
@@ -43,9 +43,9 @@ This is a source-backed reason Firefox can expose a busier/earlier load lifecycl
 - `Refreshed` is emitted after a completed refresh if the buffer has previously gained focus.
 - `busy` is NVDA's display string for `controlTypes.State.BUSY`.
 
-## Recommended first Web Processor pass
+## Historical recommendation and current boundary
 
-Provide only optional, additive lifecycle announcements:
+The recommended additive lifecycle work was limited to optional page-loading and page-ready orientation. It must not be read as authorization for structural-buffer changes:
 
 - **Announce page loading**: delayed, so fast navigations remain quiet.
 - **Announce page ready**: only when the focused document's buffer is ready/complete.
@@ -67,4 +67,4 @@ Do not initially:
 
 ## Design conclusion
 
-The safest first feature is consistent optional `Loading page` / `Page ready` orientation. It should be additive and buffer-identity scoped, not a blanket speech suppression system.
+Optional page-ready orientation remains separate from virtual-buffer manipulation. It is additive and buffer-identity scoped, not a blanket speech suppression system; it does not insert lines, alter buffer semantics, or suppress native structural speech.

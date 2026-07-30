@@ -1,6 +1,6 @@
 # Web Summary v0 Implementation Plan
 
-> **For Hermes:** Implement this plan task-by-task on the local `feat/web-summary-v0` branch. Do not push, deploy to scratchpad, or merge without Tim's approval after review and verification.
+> **Status: historical implementation plan.** See [`docs/ROADMAP-STATUS.md`](../ROADMAP-STATUS.md) for current boundaries. This file preserves rationale and test intent; it is not an active implementation instruction.
 
 **Goal:** Add an on-demand ClassicSpeech Web Summary command on `NVDA+Shift+U` that reports counts for user-selected Browse Mode quick-navigation element types without moving focus or the browse cursor.
 

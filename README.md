@@ -6,7 +6,7 @@ ClassicSpeech is an NVDA add-on for experimenting with configurable speech verbo
 
 ## What it does
 
-ClassicSpeech can format selected NVDA object-speech details as semantic tokens, such as name, role, value, state, position, description, and hotkey. It also offers same-synth Voice Profiles for selected speech categories.
+ClassicSpeech can format selected NVDA object-speech details as semantic tokens, such as name, role, value, state, position, description, hotkey, and tooltip. It also offers same-synth Voice Profiles for selected speech categories. Tooltip timing is intentionally not exposed: current tooltip routes do not provide reliable timing for a full orderable/timed token, and the existing behavior is retained unchanged.
 
 Current Voice Profile categories are:
 

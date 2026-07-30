@@ -1,6 +1,6 @@
 # Automatic Page Summary v1 Implementation Plan
 
-> **For Hermes:** Use `subagent-driven-development` to implement this plan task-by-task with a fresh review after each task.
+> **Status: historical implementation plan.** See [`docs/ROADMAP-STATUS.md`](../ROADMAP-STATUS.md) for current boundaries. This file preserves rationale and test intent; it is not an active implementation instruction.
 
 **Goal:** Add an accessible, opt-in automatic Page Summary that speaks once for each newly loaded, ready Browse Mode document without changing normal browser speech, focus, review position, or the manual command.
 

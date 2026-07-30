@@ -14,7 +14,7 @@
 - Keep changes narrow and preserve native NVDA behavior unless the specification explicitly changes it.
 - Preserve native literal/review/caret/Say All behavior. Do not route ordinary document text through ClassicSpeech processing without a defined, tested requirement.
 - The token editor owns speech-token ordering and placement. Text Processing owns reporting/filtering transformations; do not move token-placement policy into it.
-- Keep `sequence_merger.py`; do not remove it without Tim's explicit approval.
+- `sequence_merger.py` was removed after an audit confirmed it had no active dependents. Do not reintroduce sequence-merging behavior without a defined, tested requirement.
 
 ## Accessibility and settings
 

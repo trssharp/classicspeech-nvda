@@ -62,6 +62,9 @@ from ._speech_core.processors.web.page_entry import (
     install as install_page_orientation,
     restore as restore_page_orientation,
 )
+from ._speech_core.processors.web.heading_continuity import (
+    install as install_heading_continuity,
+)
 from ._speech_core.settings.web.summary_config import (
     get_included_element_types,
     get_include_document_title,
@@ -621,6 +624,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             self._report_page_summary_for_document, self._log_web_page_lifecycle
         )
         self._pageOrientationRoutes = install_page_orientation(self)
+        self._headingContinuityRuntime = install_heading_continuity(log)
 
         self._installClassicSpeechMenu()
         self.set_speech_hook_enabled(get_speech_hook_enabled())
@@ -631,6 +635,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._get_web_page_lifecycle().cancel()
         restore_page_orientation(self, getattr(self, "_pageOrientationRoutes", ()))
         self._pageOrientationRoutes = []
+        headingContinuityRuntime = getattr(self, "_headingContinuityRuntime", None)
+        if headingContinuityRuntime is not None:
+            headingContinuityRuntime.restore()
+        self._headingContinuityRuntime = None
         self._unregister_speech_hook()
         self._restore_remote_speech_compatibility()
         self._restore_windows_toast_system_route()

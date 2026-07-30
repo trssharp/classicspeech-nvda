@@ -1,6 +1,6 @@
 # Page Orientation Presentation Research Plan
 
-> **Status:** Research only. This plan authorizes no runtime patch, NVDA-core change, scratchpad deployment, package, or release.
+> **Status: archived research, not an active implementation plan.** No ClassicSpeech runtime patch was shipped from this research. The supported add-on API cannot mutate virtual-buffer content or insert synthetic structural lines. Any future work would require a separately approved NVDA-core design; do not use the remaining historical investigation steps as implementation authorization.
 
 **Goal:** Determine whether an explicit, opt-in ClassicSpeech Page Orientation mode can preserve NVDA Browse Mode buffer loading, focus handling, caret initialization, braille/vision updates, and user-selected Auto Say All behavior while replacing only the initial root-document/title and first-line presentation with one concise ClassicSpeech page summary.
 

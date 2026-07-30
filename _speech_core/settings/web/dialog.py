@@ -36,6 +36,12 @@ from .formatting_config import (
 	set_virtual_buffer_setting,
 	set_web_document_formatting_setting,
 )
+from .heading_continuity_config import (
+	capture_heading_continuity_state,
+	get_heading_continuity_enabled,
+	restore_heading_continuity_state,
+	set_heading_continuity_enabled,
+)
 from ..edge_notifications_config import (
 	capture_edge_notification_state,
 	get_custom_messages,
@@ -238,6 +244,17 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 			conf=config.conf,
 			onChoiceEventHandler=self.onChanged,
 		)
+		experimentalGroup, experimentalBox = self._add_static_box_group(
+			panel, sHelper, "Experimental heading presentation"
+		)
+		self.headingContinuityCheckBox = experimentalGroup.addItem(
+			wx.CheckBox(
+				experimentalBox,
+				label="Reduce repeated heading levels on continuation lines",
+			)
+		)
+		self.headingContinuityCheckBox.SetValue(get_heading_continuity_enabled())
+		self.headingContinuityCheckBox.Bind(wx.EVT_CHECKBOX, self.onChanged)
 		panel.SetSizer(mainSizer)
 		panel.SetupScrolling(scroll_x=False)
 
@@ -466,6 +483,8 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 
 	def _captureTransactionBaseline(self):
 		self._originalWebBrowse = capture_web_browse_state()
+		self._originalHeadingContinuity = capture_heading_continuity_state()
+		self._originalHeadingContinuityEnabled = get_heading_continuity_enabled()
 		self._originalPageSummary = capture_page_summary_state()
 		self._originalPageSummaryTypes = get_included_element_types()
 		self._originalPageSummaryTitle = get_include_document_title()
@@ -477,6 +496,11 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 	def _restoreTransactionBaseline(self):
 		try:
 			restore_web_browse_state(self._originalWebBrowse)
+			heading_continuity = self.__dict__.get("_originalHeadingContinuity")
+			if hasattr(heading_continuity, "get") and "hasHeadingContinuityData" in heading_continuity:
+				restore_heading_continuity_state(heading_continuity)
+			elif "_originalHeadingContinuityEnabled" in self.__dict__:
+				set_heading_continuity_enabled(self.__dict__["_originalHeadingContinuityEnabled"])
 			page_summary = getattr(self, "_originalPageSummary", None)
 			if hasattr(page_summary, "get") and "hasPageSummaryData" in page_summary:
 				restore_page_summary_state(page_summary)
@@ -511,6 +535,9 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 			],
 		)
 		self.loadChromiumBusyCombo.saveCurrentValueToConf()
+		headingContinuityCheckBox = self.__dict__.get("headingContinuityCheckBox")
+		if headingContinuityCheckBox is not None:
+			set_heading_continuity_enabled(_is_checked(headingContinuityCheckBox))
 		set_annotation_setting("reportDetails", _is_checked(self.annotationDetailsCheckBox))
 		set_annotation_setting("reportAriaDescription", _is_checked(self.ariaDescriptionCheckBox))
 		set_web_document_formatting_setting("includeLayoutTables", _is_checked(self.layoutTablesCheckBox))

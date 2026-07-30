@@ -187,7 +187,7 @@ A documentation-only correction may use a `docs/` branch and skip live NVDA test
 ## Safety rules
 
 - Never delete or overwrite historical ClassicSpeech snapshots without explicit approval.
-- Never delete `sequence_merger.py` without explicit approval.
+- `sequence_merger.py` was removed with explicit approval after a repository-wide dependency audit found no active source or packaging dependency. Do not restore its delayed speech-merging behavior without a concrete, tested requirement.
 - Never automatically switch the active NVDA synthesizer.
 - Keep same-synth Voice Profile settings limited to driver-supported public settings.
 - Preserve native NVDA behavior outside the explicitly owned ClassicSpeech speech route.

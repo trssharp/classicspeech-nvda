@@ -83,6 +83,9 @@ _CLASSIC_SPEECH_SPEC = {
         "notifyWhenPageReady": "boolean(default=False)",
         "pageReadyMessage": "string(default='Page ready')",
     },
+    "headingContinuityData": {
+        "enabled": "boolean(default=False)",
+    },
     "edgeNotificationData": {
         "enabledActivityIds": f"string_list(default=list({_EDGE_NOTIFICATION_DEFAULT_IDS_SPEC}))",
         "customMessages": {
