@@ -452,7 +452,19 @@ class KeyboardEntryVoiceProfileTests(unittest.TestCase):
 
     def test_nvda_master_braille_input_reaches_the_shared_typed_entry_path(self):
         nvda_source = nvda_harness.NVDA_SOURCE
-        braille_input = (nvda_source / "brailleInput.py").read_text(encoding="utf-8")
+        braille_input_path = next(
+            (
+                path
+                for path in (
+                    nvda_source / "brailleInput.py",
+                    nvda_source / "braille" / "input" / "inputHandler.py",
+                )
+                if path.is_file()
+            ),
+            None,
+        )
+        self.assertIsNotNone(braille_input_path, "NVDA braille input source was not found")
+        braille_input = braille_input_path.read_text(encoding="utf-8")
         nvda_object = (nvda_source / "NVDAObjects" / "__init__.py").read_text(encoding="utf-8")
         self.assertIn("focusObj.event_typedCharacter(ch=ch)", braille_input)
         self.assertIn("speech.speakTypedCharacters(ch)", nvda_object)
