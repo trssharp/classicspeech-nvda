@@ -1,4 +1,6 @@
-# ClassicSpeech — Page Orientation RC v25
+# Historical: ClassicSpeech — Page Orientation RC v25
+
+> This is a preserved RC v25 release note. It is not the current release candidate or the current `main` feature reference. See `../README.md` and `ROADMAP-STATUS.md` for the current baseline.
 
 ## Purpose
 

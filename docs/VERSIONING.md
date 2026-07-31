@@ -1,5 +1,9 @@
 # ClassicSpeech versioning and CI artifact identity
 
+## Workflow triggers
+
+The `Verify and package ClassicSpeech` workflow runs on pull requests, pushes to `main`, and manual workflow dispatches. Every completed run without an explicit release version produces a unique date-and-run artifact.
+
 ## Generated numeric version
 
 Every GitHub Actions workflow run generates the package manifest version:
@@ -40,4 +44,4 @@ For an official release, run the workflow manually and fill in **Release version
 ClassicSpeech-4.0.0.nvda-addon
 ```
 
-Leave **Release version** blank for all ordinary branch, pull-request, and manual test builds. Those continue to use the generated UTC-date-and-run version.
+Leave **Release version** blank for all ordinary main, pull-request, and manual test builds. Those continue to use the generated UTC-date-and-run version.

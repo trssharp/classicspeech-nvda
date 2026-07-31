@@ -1,12 +1,36 @@
 # ClassicSpeech
 
-ClassicSpeech is an NVDA add-on for experimenting with configurable speech verbosity, semantic token formatting, and same-synth Voice Profiles.
+ClassicSpeech is an NVDA add-on development project for configurable speech verbosity, conservative text and number processing, Web / Browse Mode tools, and same-synth Voice Profiles.
 
-> **Release status:** Early release candidate / development project. Test with a known-good NVDA configuration and report problems with enough detail to reproduce them.
+> **Development status:** `main` is the current automated-test baseline, not a published release candidate. Use a known-good NVDA configuration for manual testing and report problems with reproducible steps.
+
+## Settings access
+
+All ClassicSpeech settings are available from **NVDA menu → Preferences → ClassicSpeech**:
+
+- **General Settings**
+- **Web / Browse Mode Settings**
+- **Voice Profiles**
+
+The same three commands appear in NVDA's **Input Gestures** dialog under the **ClassicSpeech** category. They intentionally have **no default gestures**, so they do not compete with gestures supplied by other add-ons. Assign a gesture there only if it suits your configuration.
 
 ## What it does
 
-ClassicSpeech can format selected NVDA object-speech details as semantic tokens, such as name, role, value, state, position, description, hotkey, and tooltip. It also offers same-synth Voice Profiles for selected speech categories. Tooltip timing is intentionally not exposed: current tooltip routes do not provide reliable timing for a full orderable/timed token, and the existing behavior is retained unchanged.
+### Speech verbosity and formatting
+
+ClassicSpeech can format selected NVDA object-speech details as semantic tokens, including name, role, value, state, position, description, hotkey, and tooltip. The **Spoken object details** checklist uses native NVDA checkbox announcements. Tooltip timing is intentionally unchanged because current speech routes cannot provide reliable full-token timing.
+
+Position announcements are separate from the Position token and are set per verbosity profile:
+
+| Profile | Default position behavior |
+| --- | --- |
+| Beginner | Announce on every move |
+| Intermediate | Announce only the first item in a container |
+| Advanced | Off |
+
+The Intermediate profile leaves Description and Hotkey off by default. You can change these choices in **General Settings → Verbosity**.
+
+### Voice Profiles
 
 Current Voice Profile categories are:
 
@@ -17,6 +41,22 @@ Current Voice Profile categories are:
 
 A Voice Profile may select an exposed Voice or Variant and supported synthesizer settings. ClassicSpeech applies a profile only to an owned complete speech sequence, then restores the active synthesizer settings.
 
+### Web / Browse Mode tools
+
+Web / Browse Mode Settings provide ClassicSpeech's Web, Page Summary, Page Ready, heading-continuity, and supported Microsoft Edge notification options alongside the relevant native Browse Mode settings.
+
+**Audio indication of focus and browse modes** is enabled by default and preserves NVDA's native audio indication. When you clear it, **Browse mode message** and **Focus mode message** become available:
+
+- Their initial wording is NVDA's native text: `Browse mode` and `Focus mode`.
+- Each message can be customized independently.
+- Clearing a custom message restores the native wording for that mode.
+
+### Conservative number processing
+
+Number Processing is opt-in. It changes only standalone whole-number groups, with or without comma separators. Dates, times, currency, phone numbers, fractions, alphanumeric identifiers, and other combined tokens remain native.
+
+For example, `5'5` remains literal rather than becoming `five'five`.
+
 ## Safety boundaries
 
 - ClassicSpeech does **not** automatically change NVDA's selected synthesizer.
@@ -25,36 +65,13 @@ A Voice Profile may select an exposed Voice or Variant and supported synthesizer
 - Reset all Voice Profile overrides clears every ClassicSpeech profile override for the active synthesizer, returning all categories to native NVDA Voice Settings.
 - System routing is source-scoped. ClassicSpeech does not route every NVDA message through a System profile.
 - Windows can place notifications in Notification Center without sending NVDA a live accessibility event. ClassicSpeech can only route notification speech that NVDA receives.
+- ClassicSpeech does not mutate NVDA virtual buffers or replace native Browse Mode presentation.
 
-## Position announcement defaults
+## Installation and manual testing
 
-Position announcement behavior is separate from the Position token and is set per verbosity profile:
+The source manifest currently supports NVDA 2025.1 through 2026.1. A tested package can be installed by opening its `.nvda-addon` file and accepting NVDA's add-on installation prompt; restart NVDA when prompted.
 
-| Profile | Default behavior |
-| --- | --- |
-| Beginner | Announce on every move |
-| Intermediate | Announce only the first item in a container |
-| Advanced | Off |
-
-You can change this at **NVDA menu → Preferences → ClassicSpeech → Verbosity → Position announcements**.
-
-## Installation
-
-1. Download a `.nvda-addon` file from the project’s GitHub Releases page.
-2. Open the downloaded file in Windows Explorer.
-3. Accept NVDA’s add-on installation prompt.
-4. Restart NVDA when prompted.
-
-The current local release candidate is built for NVDA 2025.1 through 2026.1.
-
-## Current RC verification
-
-The current RC has been verified with:
-
-- ClassicSpeech’s complete local harness gate;
-- package-structure and compilation checks;
-- scratchpad deployment source/runtime comparison;
-- live Voice Profile, System notification, and NVDA Remote checks.
+For a manual development test, deploy only a verified source tree to the scratchpad using the process in the [development workflow](docs/DEVELOPMENT-WORKFLOW.md). Do not edit the scratchpad copy as the source of a change.
 
 ## Reporting a problem
 
@@ -62,24 +79,26 @@ Please include:
 
 1. NVDA version and Windows version;
 2. active synthesizer and voice/variant;
-3. which ClassicSpeech verbosity profile and Voice Profile category were active;
+3. active ClassicSpeech verbosity profile and Voice Profile category, when relevant;
 4. exact steps to reproduce;
 5. expected versus actual speech;
-6. a relevant NVDA log excerpt, with personal data removed.
+6. a relevant NVDA log excerpt with personal data removed.
 
 Do not include passwords, API keys, access tokens, or private account data in an issue or log.
 
-## Development
+## Development and verification
 
-The source is organized as an NVDA global plugin with an `_speech_core` package. Local harness scripts live under `tests/` and are intentionally excluded from release archives. Follow the [development workflow](docs/DEVELOPMENT-WORKFLOW.md) for planning, branches, verification, scratchpad deployment, and date-named RC builds.
+The source is organized as an NVDA global plugin with an `_speech_core` package. Local harness scripts live under `tests/` and are intentionally excluded from release archives.
 
-Before opening or merging a change, run the project harnesses from the active source folder:
+Run the local harness gate from the active source folder:
 
 ```bash
 for test in tests/*harness.py; do python "$test"; done
 ```
 
-A GitHub Actions workflow can run these Python checks and build a `.nvda-addon` archive on every tagged release. It cannot replace live NVDA/synthesizer validation, but it can make the package reproducible and prevent malformed release uploads.
+GitHub Actions runs on pull requests, pushes to `main`, and manual workflow dispatches. It compiles the source, runs every harness against a fresh NVDA source checkout, builds a `.nvda-addon` archive, and uploads the archive with its SHA-256 sidecar. CI does not replace live NVDA or synthesizer validation.
+
+See the [development workflow](docs/DEVELOPMENT-WORKFLOW.md), [current status](docs/ROADMAP-STATUS.md), and [versioning guide](docs/VERSIONING.md).
 
 ## License
 

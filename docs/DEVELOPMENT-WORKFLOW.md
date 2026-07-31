@@ -125,8 +125,18 @@ Research items end with a recommendation before any feature branch is created. D
    ```
 
 8. Push the branch and open a pull request into `main`.
-9. Review the pull-request diff and wait for GitHub Actions.
+9. Review the pull-request diff and wait for the specific GitHub Actions run to finish successfully. Report a failed or pending CI result plainly; never report a branch as verified from local results alone.
 10. Deploy that verified branch to scratchpad only when live NVDA testing is needed.
+
+## GitHub Actions triggers
+
+The `Verify and package ClassicSpeech` workflow runs for:
+
+- every pull request;
+- every push to `main`;
+- a manual workflow dispatch.
+
+It checks out a fresh NVDA source tree for compatibility harnesses, compiles the add-on and tests, runs every `tests/*harness.py` script, builds an add-on archive, and uploads the archive with its SHA-256 sidecar. A green local harness gate is useful pre-push evidence, but the completed GitHub Actions result is the CI gate.
 
 ## Verification ladder
 
@@ -166,14 +176,14 @@ Merge to `main` only when:
 - required live NVDA validation is complete;
 - documentation and release notes are updated when user-visible behavior changed.
 
-Use the creation date for tested packages:
+For ordinary CI builds, use the generated artifact identity described in `VERSIONING.md`:
 
 ```text
-ClassicSpeech-YYYY-MM-DD.nvda-addon
-ClassicSpeech-YYYY-MM-DD.nvda-addon.sha256
+ClassicSpeech-YYYYMMDD.RUN-gCOMMIT.nvda-addon
+ClassicSpeech-YYYYMMDD.RUN-gCOMMIT.nvda-addon.sha256
 ```
 
-If more than one release-quality build is needed on one day, retain the date-based package name from CI and distinguish the GitHub release/tag description with a short suffix such as `2026-07-20-02`.
+For an official release, manually provide the numeric release version. The resulting package is named `ClassicSpeech-<version>.nvda-addon`.
 
 ## Fast path for tiny documentation changes
 

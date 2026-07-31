@@ -1,4 +1,6 @@
-# ClassicSpeech Voice Profiles — RC v24
+# Historical: ClassicSpeech Voice Profiles — RC v24
+
+> This is a preserved RC v24 release note. It is not the current release candidate or the current `main` feature reference. See `../README.md` and `ROADMAP-STATUS.md` for the current baseline.
 
 ## Purpose
 
