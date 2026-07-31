@@ -254,6 +254,34 @@ class ClassicSpeechNVDAConfigStartupTests(unittest.TestCase):
 		self.assertTrue(old_item.destroyed)
 		self.assertIsNone(plugin._classicSpeechMenu)
 
+	def test_settings_dialog_scripts_are_available_but_have_no_default_gestures(self):
+		module = _import_classic_speech_like_nvda()
+		gestures = module.GlobalPlugin._GlobalPlugin__gestures
+		for script_name in (
+			"openClassicSpeechSettings",
+			"openClassicSpeechWebBrowseSettings",
+			"openClassicSpeechVoiceProfiles",
+		):
+			with self.subTest(script_name=script_name):
+				self.assertNotIn(script_name, gestures.values())
+
+		queued = []
+		module.queueHandler.queueFunction = lambda queue, function: queued.append(function)
+		plugin = object.__new__(module.GlobalPlugin)
+		def open_settings(): pass
+		def open_web_browse_settings(): pass
+		def open_voice_profiles(): pass
+		plugin._openSettings = open_settings
+		plugin._openWebBrowseSettings = open_web_browse_settings
+		plugin._openVoiceProfiles = open_voice_profiles
+		plugin.script_openClassicSpeechSettings(None)
+		plugin.script_openClassicSpeechWebBrowseSettings(None)
+		plugin.script_openClassicSpeechVoiceProfiles(None)
+		self.assertEqual(
+			queued,
+			[open_settings, open_web_browse_settings, open_voice_profiles],
+		)
+
 	def setUp(self):
 		# Reset the stub config to an NVDA-like shape before importing the plugin.
 		config.conf.clear()

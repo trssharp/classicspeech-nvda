@@ -91,7 +91,6 @@ from ._speech_core.plugin_config import (
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     __gestures = {
-        "kb:NVDA+Shift+C": "openClassicSpeechSettings",
         "kb:NVDA+Tab": "queryCurrentObject",
         "kb:NVDA+E": "announceDefaultButton",
         "kb:Shift+F11": "previousSpeechHistory",
@@ -1276,6 +1275,20 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     )
     def script_openClassicSpeechSettings(self, gesture):
         queueHandler.queueFunction(queueHandler.eventQueue, self._openSettings)
+
+    @scriptHandler.script(
+        description="Opens ClassicSpeech Web / Browse Mode Settings",
+        category="ClassicSpeech",
+    )
+    def script_openClassicSpeechWebBrowseSettings(self, gesture):
+        queueHandler.queueFunction(queueHandler.eventQueue, self._openWebBrowseSettings)
+
+    @scriptHandler.script(
+        description="Opens ClassicSpeech Voice Profiles",
+        category="ClassicSpeech",
+    )
+    def script_openClassicSpeechVoiceProfiles(self, gesture):
+        queueHandler.queueFunction(queueHandler.eventQueue, self._openVoiceProfiles)
 
 
     def _report_page_summary_for_document(self, document):
