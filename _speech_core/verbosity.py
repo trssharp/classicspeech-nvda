@@ -129,9 +129,9 @@ class VerbosityManager:
                 TOKEN_VALUE: True,
                 TOKEN_STATE: True,
                 TOKEN_POSITION: True,
-                TOKEN_DESCRIPTION: True,
+                TOKEN_DESCRIPTION: False,
                 TOKEN_TOOLTIP: False,
-                TOKEN_HOTKEY: True,
+                TOKEN_HOTKEY: False,
             },
         ),
         "Advanced": _profile(

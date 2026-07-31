@@ -2,9 +2,6 @@ import wx
 import logHandler
 
 from .misc_config import (
-	_choice_string_to_fallback_delay,
-	_fallback_delay_to_choice_string,
-	_get_automatic_speech_interrupt_fallback_ms,
 	_get_default_button_enabled,
 	_get_guess_object_position_information_when_unavailable,
 	_get_object_navigation_processing_enabled,
@@ -12,7 +9,6 @@ from .misc_config import (
 	_get_query_object_source,
 	_get_speech_interrupt_for_enter_enabled,
 	_get_speech_interrupt_for_typed_characters_enabled,
-	_set_automatic_speech_interrupt_fallback_ms,
 	_set_default_button_enabled,
 	_set_guess_object_position_information_when_unavailable,
 	_set_object_navigation_processing_enabled,
@@ -21,7 +17,7 @@ from .misc_config import (
 	_set_speech_interrupt_for_enter_enabled,
 	_set_speech_interrupt_for_typed_characters_enabled,
 )
-from .constants import _FALLBACK_SPEECH_DELAY_CHOICES, QUERY_OBJECT_SOURCE_CHOICES
+from .constants import QUERY_OBJECT_SOURCE_CHOICES
 
 log = logHandler.log
 
@@ -96,23 +92,6 @@ class MiscPanel(wx.Panel):
 		self.speechInterruptForEnter.SetValue(_get_speech_interrupt_for_enter_enabled())
 		mainSizer.Add(self.speechInterruptForEnter, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
-		fallbackSizer = wx.BoxSizer(wx.HORIZONTAL)
-		fallbackLabel = wx.StaticText(
-			self,
-			label="Fallback speech delay when completion is unavailable, milliseconds",
-		)
-		fallbackSizer.Add(fallbackLabel, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-		self.automaticSpeechInterruptFallbackMs = wx.Choice(
-			self,
-			choices=[f"{value} ms" for value in _FALLBACK_SPEECH_DELAY_CHOICES],
-		)
-		self.automaticSpeechInterruptFallbackMs.SetStringSelection(
-			_fallback_delay_to_choice_string(_get_automatic_speech_interrupt_fallback_ms())
-		)
-		self.automaticSpeechInterruptFallbackMs.SetName("Fallback speech delay")
-		fallbackSizer.Add(self.automaticSpeechInterruptFallbackMs, 0, wx.ALIGN_CENTER_VERTICAL)
-		mainSizer.Add(fallbackSizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
-
 		self.SetSizer(mainSizer)
 
 		self.announceDefaultButton.Bind(wx.EVT_CHECKBOX, self.onChanged)
@@ -122,7 +101,6 @@ class MiscPanel(wx.Panel):
 		self.preventAutomaticSpeechInterrupt.Bind(wx.EVT_CHECKBOX, self.onChanged)
 		self.speechInterruptForCharacters.Bind(wx.EVT_CHECKBOX, self.onChanged)
 		self.speechInterruptForEnter.Bind(wx.EVT_CHECKBOX, self.onChanged)
-		self.automaticSpeechInterruptFallbackMs.Bind(wx.EVT_CHOICE, self.onChanged)
 
 	def onChanged(self, evt=None):
 		try:
@@ -141,9 +119,7 @@ class MiscPanel(wx.Panel):
 		prevent_interrupt = self.preventAutomaticSpeechInterrupt.GetValue()
 		interrupt_for_characters = self.speechInterruptForCharacters.GetValue()
 		interrupt_for_enter = self.speechInterruptForEnter.GetValue()
-		fallback_ms = _choice_string_to_fallback_delay(
-			self.automaticSpeechInterruptFallbackMs.GetStringSelection()
-		)
+
 		_set_default_button_enabled(default_button)
 		_set_guess_object_position_information_when_unavailable(guess_position)
 		_set_query_object_source(query_source)
@@ -151,6 +127,6 @@ class MiscPanel(wx.Panel):
 		_set_prevent_automatic_speech_interrupt_enabled(prevent_interrupt)
 		_set_speech_interrupt_for_typed_characters_enabled(interrupt_for_characters)
 		_set_speech_interrupt_for_enter_enabled(interrupt_for_enter)
-		_set_automatic_speech_interrupt_fallback_ms(fallback_ms)
+
 		if save:
 			return

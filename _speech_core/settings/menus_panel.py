@@ -72,6 +72,7 @@ class MenusPanel(wx.Panel):
 		barLeaveGrid.Add(self.menuBarLeaveMessage, 1, wx.EXPAND)
 		mainSizer.Add(barLeaveGrid, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 		self.SetSizer(mainSizer)
+		self._syncMessageAvailability()
 
 		for ctrl in (
 			self.announceMenuOpen,
@@ -90,12 +91,22 @@ class MenusPanel(wx.Panel):
 
 	def onChanged(self, evt=None):
 		try:
+			self._syncMessageAvailability()
 			self.apply_live(save=False)
 			dlg = wx.GetTopLevelParent(self)
 			if hasattr(dlg, "_markDirty"):
 				dlg._markDirty()
 		except Exception:
 			log.exception("ClassicSpeech menu settings live apply failed")
+
+	def _syncMessageAvailability(self):
+		for announcement, message in (
+			(self.announceMenuOpen, self.menuOpenMessage),
+			(self.announceMenuClose, self.menuCloseMessage),
+			(self.announceMenuBarFocus, self.menuBarFocusMessage),
+			(self.announceMenuBarLeave, self.menuBarLeaveMessage),
+		):
+			message.Enable(announcement.GetValue())
 
 	def apply_live(self, save=True):
 		open_enabled = self.announceMenuOpen.GetValue()

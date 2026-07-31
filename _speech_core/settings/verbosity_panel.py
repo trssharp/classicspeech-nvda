@@ -3,6 +3,11 @@ import copy
 import wx
 import logHandler
 
+try:
+	from gui import nvdaControls
+except Exception:
+	nvdaControls = None
+
 from .accessibility import _set_panel_description
 from .profile_config import (
 	_apply_profile_behavior_runtime,
@@ -28,6 +33,7 @@ log = logHandler.log
 
 class VerbosityPanel(wx.Panel):
 	TOKEN_DEFS = [
+		("name", "Name"),
 		("role", "Role"),
 		("state", "State"),
 		("description", "Description"),
@@ -65,20 +71,16 @@ class VerbosityPanel(wx.Panel):
 
 		mainSizer.Add(grid, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
-		tokenInfo = wx.StaticText(
-			self,
-			label="Select the items you want spoken for the selected profile.",
-		)
+		tokenInfo = wx.StaticText(self, label="Spoken object details:")
 		mainSizer.Add(tokenInfo, 0, wx.LEFT | wx.RIGHT | wx.TOP | wx.EXPAND, 8)
 
-		self.tokenChecks = {}
-		tokenGrid = wx.GridSizer(rows=0, cols=2, vgap=6, hgap=20)
-		for tokenKind, label in self.TOKEN_DEFS:
-			chk = wx.CheckBox(self, label=label)
-			self.tokenChecks[tokenKind] = chk
-			tokenGrid.Add(chk, 0, wx.EXPAND)
-
-		mainSizer.Add(tokenGrid, 0, wx.ALL | wx.EXPAND, 8)
+		checkListClass = nvdaControls.CustomCheckListBox if nvdaControls else wx.CheckListBox
+		self.tokenList = checkListClass(
+			self,
+			choices=[label for _tokenKind, label in self.TOKEN_DEFS],
+		)
+		self.tokenList.SetName("Spoken object details")
+		mainSizer.Add(self.tokenList, 0, wx.ALL | wx.EXPAND, 8)
 
 		positionGrid = wx.FlexGridSizer(cols=2, vgap=8, hgap=10)
 		positionGrid.AddGrowableCol(1, 1)
@@ -101,8 +103,7 @@ class VerbosityPanel(wx.Panel):
 
 		self.activeProfileChoice.Bind(wx.EVT_CHOICE, self.onActiveProfileChanged)
 		self.positionModeChoice.Bind(wx.EVT_CHOICE, self.onInlineProfileChanged)
-		for chk in self.tokenChecks.values():
-			chk.Bind(wx.EVT_CHECKBOX, self.onInlineProfileChanged)
+		self.tokenList.Bind(wx.EVT_CHECKLISTBOX, self.onTokenListChanged)
 
 	def _getPositionModeFromChoice(self):
 		selection = self.positionModeChoice.GetSelection()
@@ -124,11 +125,11 @@ class VerbosityPanel(wx.Panel):
 	def _refreshWorkingConfigFromControls(self):
 		profile = copy.deepcopy(self.profileConfig)
 		enabled = dict(profile.get("enabledTokens", {}))
-		enabled["name"] = True
 		enabled["position"] = True
 		enabled["value"] = True
-		for tokenKind, chk in self.tokenChecks.items():
-			enabled[tokenKind] = chk.GetValue()
+		checkedItems = set(self.tokenList.GetCheckedItems())
+		for index, (tokenKind, _label) in enumerate(VerbosityPanel.TOKEN_DEFS):
+			enabled[tokenKind] = index in checkedItems
 		profile["enabledTokens"] = enabled
 		self.profileConfig = profile
 
@@ -138,8 +139,8 @@ class VerbosityPanel(wx.Panel):
 
 	def _loadEditorsFromProfileConfig(self):
 		enabled = self.profileConfig.get("enabledTokens", {})
-		for tokenKind, chk in self.tokenChecks.items():
-			chk.SetValue(bool(enabled.get(tokenKind, True)))
+		for index, (tokenKind, _label) in enumerate(VerbosityPanel.TOKEN_DEFS):
+			self.tokenList.Check(index, check=bool(enabled.get(tokenKind, True)))
 
 		self._loadPositionModeChoice()
 
@@ -173,6 +174,14 @@ class VerbosityPanel(wx.Panel):
 				dlg._markDirty()
 		except Exception:
 			log.exception("ClassicSpeech verbosity settings live apply failed")
+
+	def onTokenListChanged(self, evt=None):
+		# Preserve CustomCheckListBox's accessibility state-change notification.
+		if evt is not None and hasattr(evt, "Skip"):
+			evt.Skip()
+		# NVDA's checklist updates its checked state after this event. Defer the
+		# live profile update so it reads the new state, not the previous state.
+		wx.CallAfter(self.onInlineProfileChanged)
 
 	def apply_live(self, save=True):
 		self.currentEditProfile = self.activeProfileChoice.GetStringSelection()

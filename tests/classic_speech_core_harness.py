@@ -503,6 +503,16 @@ class PluginStartupTests(unittest.TestCase):
             plugin.terminate()
 
 
+class VerbosityDefaultProfileTests(unittest.TestCase):
+    def test_intermediate_profile_omits_description_and_hotkey_by_default(self):
+        from _speech_core.verbosity import VerbosityManager
+
+        enabled = VerbosityManager.PROFILES["Intermediate"]["enabledTokens"]
+
+        self.assertFalse(enabled["description"])
+        self.assertFalse(enabled[TOKEN_HOTKEY])
+
+
 class BaseProcessorExtractionTests(unittest.TestCase):
     def tearDown(self):
         api.getFocusObject = lambda: None

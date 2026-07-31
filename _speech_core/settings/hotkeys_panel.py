@@ -82,6 +82,7 @@ class HotkeysPanel(wx.Panel):
 		self.SetSizer(mainSizer)
 
 		self._loadControlsFromConfig()
+		self._syncDependentControlsAvailability()
 		self.hotkeyModeChoice.Bind(wx.EVT_CHOICE, self.onInlineChanged)
 		self.hotkeyFormatChoice.Bind(wx.EVT_CHOICE, self.onInlineChanged)
 		self.hotkeyTypesChoice.Bind(wx.EVT_CHOICE, self.onInlineChanged)
@@ -135,6 +136,7 @@ class HotkeysPanel(wx.Panel):
 	def onInlineChanged(self, evt=None):
 		try:
 			self.hotkeyMode = self._getModeFromChoice()
+			self._syncDependentControlsAvailability()
 			self.hotkeyFormat = self._getFormatFromChoice()
 			self.hotkeyTypes = self._getTypesFromChoice()
 			self.dialogAccessKeyOnly = self.dialogAccessKeyOnlyCheck.GetValue()
@@ -144,6 +146,15 @@ class HotkeysPanel(wx.Panel):
 				dlg._markDirty()
 		except Exception:
 			log.exception("ClassicSpeech hotkey settings live apply failed")
+
+	def _syncDependentControlsAvailability(self):
+		enabled = self._getModeFromChoice() != "off"
+		for control in (
+			self.hotkeyFormatChoice,
+			self.hotkeyTypesChoice,
+			self.dialogAccessKeyOnlyCheck,
+		):
+			control.Enable(enabled)
 
 	def apply_live(self, save=True):
 		self.hotkeyMode = self._getModeFromChoice()

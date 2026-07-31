@@ -30,13 +30,6 @@ class AdvancedPanel(wx.Panel):
 
 		mainSizer = wx.BoxSizer(wx.VERTICAL)
 
-		self.debugLogging = wx.CheckBox(
-			self,
-			label="Enable ClassicSpeech diagnostic logging",
-		)
-		self.debugLogging.SetValue(_get_debug_logging_enabled())
-		mainSizer.Add(self.debugLogging, 0, wx.ALL | wx.EXPAND, 8)
-
 		self.speechHookEnabled = wx.CheckBox(
 			self,
 			label="Enable ClassicSpeech speech processing hook",
@@ -75,7 +68,15 @@ class AdvancedPanel(wx.Panel):
 		)
 		mainSizer.Add(note, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
+		self.debugLogging = wx.CheckBox(
+			self,
+			label="Enable ClassicSpeech diagnostic logging",
+		)
+		self.debugLogging.SetValue(_get_debug_logging_enabled())
+		mainSizer.Add(self.debugLogging, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+
 		self.SetSizer(mainSizer)
+		self._syncSpeechHookLoadedMessageAvailability()
 		self.debugLogging.Bind(wx.EVT_CHECKBOX, self.onChanged)
 		self.speechHookEnabled.Bind(wx.EVT_CHECKBOX, self.onChanged)
 		self.announceSpeechHookLoaded.Bind(wx.EVT_CHECKBOX, self.onChanged)
@@ -83,12 +84,16 @@ class AdvancedPanel(wx.Panel):
 
 	def onChanged(self, evt=None):
 		try:
+			self._syncSpeechHookLoadedMessageAvailability()
 			self.apply_live(save=False)
 			dlg = wx.GetTopLevelParent(self)
 			if hasattr(dlg, "_markDirty"):
 				dlg._markDirty()
 		except Exception:
 			log.exception("ClassicSpeech advanced settings live apply failed")
+
+	def _syncSpeechHookLoadedMessageAvailability(self):
+		self.speechHookLoadedMessage.Enable(self.announceSpeechHookLoaded.GetValue())
 
 	def apply_live(self, save=True):
 		_set_debug_logging_enabled(self.debugLogging.GetValue())

@@ -36,6 +36,12 @@ class Control:
     def GetStringSelection(self):
         return self.value
 
+    def Enable(self, enabled=True):
+        self.enabled = bool(enabled)
+
+    def IsEnabled(self):
+        return getattr(self, "enabled", True)
+
 
 class GeneralPanelContractTests(unittest.TestCase):
     def setUp(self):
@@ -73,6 +79,23 @@ class GeneralPanelContractTests(unittest.TestCase):
         self.assertEqual(section["hotkeyTypes"], "access")
         self.assertTrue(section["hotkeyDialogAccessKeyOnly"])
 
+    def test_hotkeys_off_disables_dependent_controls(self):
+        from globalPlugins._speech_core.settings.hotkeys_panel import HotkeysPanel
+
+        panel = types.SimpleNamespace(
+            hotkeyModeChoice=Control(0),
+            hotkeyFormatChoice=Control(0),
+            hotkeyTypesChoice=Control(0),
+            dialogAccessKeyOnlyCheck=Control(False),
+        )
+        panel._getModeFromChoice = lambda: HotkeysPanel._getModeFromChoice(panel)
+
+        HotkeysPanel._syncDependentControlsAvailability(panel)
+
+        self.assertFalse(panel.hotkeyFormatChoice.IsEnabled())
+        self.assertFalse(panel.hotkeyTypesChoice.IsEnabled())
+        self.assertFalse(panel.dialogAccessKeyOnlyCheck.IsEnabled())
+
     def test_menus_panel_persists_every_toggle_and_message(self):
         from globalPlugins._speech_core.settings.menus_panel import MenusPanel
 
@@ -104,6 +127,27 @@ class GeneralPanelContractTests(unittest.TestCase):
         self.assertEqual(section["menuCloseMessage"], "Close custom")
         self.assertEqual(section["menuBarFocusMessage"], "Focus custom")
         self.assertEqual(section["menuBarLeaveMessage"], "Leave custom")
+
+    def test_menus_disable_messages_for_unchecked_announcements(self):
+        from globalPlugins._speech_core.settings.menus_panel import MenusPanel
+
+        panel = types.SimpleNamespace(
+            announceMenuOpen=Control(False),
+            menuOpenMessage=Control("Open custom"),
+            announceMenuClose=Control(True),
+            menuCloseMessage=Control("Close custom"),
+            announceMenuBarFocus=Control(False),
+            menuBarFocusMessage=Control("Focus custom"),
+            announceMenuBarLeave=Control(True),
+            menuBarLeaveMessage=Control("Leave custom"),
+        )
+
+        MenusPanel._syncMessageAvailability(panel)
+
+        self.assertFalse(panel.menuOpenMessage.IsEnabled())
+        self.assertTrue(panel.menuCloseMessage.IsEnabled())
+        self.assertFalse(panel.menuBarFocusMessage.IsEnabled())
+        self.assertTrue(panel.menuBarLeaveMessage.IsEnabled())
 
     def test_text_processing_panel_persists_every_control(self):
         from globalPlugins._speech_core.settings.text.panel import TextProcessingPanel
@@ -176,8 +220,8 @@ class GeneralPanelContractTests(unittest.TestCase):
             preventAutomaticSpeechInterrupt=Control(True),
             speechInterruptForCharacters=Control(False),
             speechInterruptForEnter=Control(True),
-            automaticSpeechInterruptFallbackMs=Control("2000 ms"),
         )
+        self._section()["automaticSpeechInterruptFallbackMs"] = 2000
         MiscPanel.apply_live(panel)
 
         section = self._section()
@@ -239,17 +283,19 @@ class GeneralPanelContractTests(unittest.TestCase):
     def test_verbosity_panel_persists_selected_profile_tokens_and_position_mode(self):
         from globalPlugins._speech_core.settings.verbosity_panel import VerbosityPanel
 
+        class CheckedList:
+            def __init__(self, checked_items):
+                self.checked_items = checked_items
+
+            def GetCheckedItems(self):
+                return self.checked_items
+
         panel = types.SimpleNamespace(
             currentEditProfile="Beginner",
             profileConfig={"enabledTokens": {"name": True, "position": True, "value": True}},
             profileBehavior={},
             activeProfileChoice=Control("Advanced"),
-            tokenChecks={
-                "role": Control(False),
-                "state": Control(True),
-                "description": Control(False),
-                "tooltip": Control(True),
-            },
+            tokenList=CheckedList([2, 4]),
             positionModeChoice=Control(1),
         )
         panel.activeProfileChoice.GetStringSelection = lambda: panel.activeProfileChoice.value
@@ -263,13 +309,25 @@ class GeneralPanelContractTests(unittest.TestCase):
         self.assertEqual(panel.currentEditProfile, "Advanced")
         self.assertEqual(
             profile["enabledTokens"],
-            {"name": True, "position": True, "value": True, "role": False, "state": True, "description": False, "tooltip": True},
+            {"name": False, "position": True, "value": True, "role": False, "state": True, "description": False, "tooltip": True},
         )
         self.assertEqual(behavior["positionMode"], "first")
         saved = self._section()["profileData"]["Advanced"]
         self.assertFalse(saved["enabledTokens"]["role"])
         self.assertTrue(saved["enabledTokens"]["tooltip"])
         self.assertEqual(self._section()["profileBehaviorData"]["Advanced"]["positionMode"], "first")
+
+    def test_advanced_hook_message_is_disabled_when_announcement_is_off(self):
+        from globalPlugins._speech_core.settings.advanced_panel import AdvancedPanel
+
+        panel = types.SimpleNamespace(
+            announceSpeechHookLoaded=Control(False),
+            speechHookLoadedMessage=Control("ClassicSpeech hook loaded"),
+        )
+
+        AdvancedPanel._syncSpeechHookLoadedMessageAvailability(panel)
+
+        self.assertFalse(panel.speechHookLoadedMessage.IsEnabled())
 
     def test_token_editor_persists_order_renames_and_muted_labels(self):
         from globalPlugins._speech_core.settings.token_editor_panel import TokenEditorPanel
