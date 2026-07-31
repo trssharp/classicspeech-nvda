@@ -1,8 +1,8 @@
 # ClassicSpeech
 
-ClassicSpeech is an NVDA add-on development project for configurable speech verbosity, conservative text and number processing, Web / Browse Mode tools, and same-synth Voice Profiles.
+ClassicSpeech is an NVDA add-on for configurable speech verbosity, conservative text and number processing, Web / Browse Mode tools, and same-synth Voice Profiles.
 
-> **Development status:** `main` is the current automated-test baseline, not a published release candidate. Use a known-good NVDA configuration for manual testing and report problems with reproducible steps.
+> **Current release:** [ClassicSpeech 1.0](https://github.com/trssharp/classicspeech-nvda/releases/tag/v1.0) is the latest stable release. The `main` branch remains active development; commits after a release may not yet have completed live NVDA validation.
 
 ## Settings access
 
@@ -69,13 +69,13 @@ For example, `5'5` remains literal rather than becoming `five'five`.
 
 ## Installation and manual testing
 
-The source manifest currently supports NVDA 2025.1 through 2026.1. A tested package can be installed by opening its `.nvda-addon` file and accepting NVDA's add-on installation prompt; restart NVDA when prompted.
+The source manifest currently supports NVDA 2025.1 through 2026.1. Download the `.nvda-addon` from the [latest release](https://github.com/trssharp/classicspeech-nvda/releases/latest), open it in Windows Explorer, and accept NVDA's add-on installation prompt. Restart NVDA when prompted.
 
 For a manual development test, deploy only a verified source tree to the scratchpad using the process in the [development workflow](docs/DEVELOPMENT-WORKFLOW.md). Do not edit the scratchpad copy as the source of a change.
 
 ## Reporting a problem
 
-Please include:
+For ordinary problems, use the [bug-report template](https://github.com/trssharp/classicspeech-nvda/issues/new?template=bug_report.md). Please include:
 
 1. NVDA version and Windows version;
 2. active synthesizer and voice/variant;
@@ -84,7 +84,7 @@ Please include:
 5. expected versus actual speech;
 6. a relevant NVDA log excerpt with personal data removed.
 
-Do not include passwords, API keys, access tokens, or private account data in an issue or log.
+Do not include passwords, API keys, access tokens, private account data, or unredacted sensitive logs in an issue. See [SUPPORT.md](SUPPORT.md) for support boundaries and [SECURITY.md](SECURITY.md) for security reporting.
 
 ## Development and verification
 
