@@ -11,7 +11,7 @@
 
 Do **not** report a suspected vulnerability in a public GitHub issue, release comment, or log excerpt.
 
-Before this repository is made public, maintainers must enable GitHub private vulnerability reporting in the repository's **Security** settings. Once that setting is enabled, report a vulnerability from the repository's **Security** tab using **Report a vulnerability**.
+This public repository has GitHub private vulnerability reporting enabled. Report a vulnerability from the repository's **Security** tab using **Report a vulnerability**.
 
 A useful private report includes:
 
