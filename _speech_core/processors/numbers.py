@@ -99,7 +99,10 @@ _TOLL_FREE_PREFIX_WORDS = {
 	"844": "eight forty four",
 	"833": "eight thirty three",
 }
-_NUMBER_TOKEN_RE = re.compile(r"\d+(?:,\d+)*")
+# A whole-number group may contain commas only between digit runs. The boundary
+# assertions prevent partially processing malformed comma groups such as
+# ``1,,2``.
+_NUMBER_TOKEN_RE = re.compile(r"(?<![\d,])\d+(?:,\d+)*(?![\d,])")
 _ORDINAL_TOKEN_RE = re.compile(r"(?<![\w/-])(\d+(?:,\d+)*)(st|nd|rd|th)(?![\w/-])", re.IGNORECASE)
 _PAREN_PHONE_RE = re.compile(r"(?<![\w/-])\((\d{3})\)\s*(\d{3})[- ]?(\d{4})(?![\w/-])")
 _SEPARATED_PHONE_RE = re.compile(r"(?<![\w/-])(?:(1)[- .])?(\d{3})[- .](\d{3})[- .](\d{4})(?![\w/-])")
@@ -111,7 +114,10 @@ _PARTIAL_DATE_RE = re.compile(r"(?<![\w/-])(\d{1,2})([-/])(\d{1,2})(?![\w/-])")
 _MAX_FULL_NUMBER_DIGITS = 18
 _SCALE_WORDS = ["", "thousand", "million", "billion", "trillion", "quadrillion"]
 _CURRENCY_PREFIXES = "$€£¥₹¢"
-_PROTECTED_ADJACENT_CHARS = set("-:/.\\") | set(_CURRENCY_PREFIXES)
+# Any of these characters makes an adjacent digit run part of a larger token,
+# rather than a standalone whole-number group. In particular, a height such as
+# ``5'5`` must stay literal rather than becoming ``five'five``.
+_PROTECTED_ADJACENT_CHARS = set("-:/.\\_'’′%#@+=*~^|&<>") | set(_CURRENCY_PREFIXES)
 _MONTH_NAMES = [
 	"",
 	"January",
