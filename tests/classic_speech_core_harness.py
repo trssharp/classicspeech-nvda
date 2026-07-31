@@ -445,7 +445,7 @@ import config
 from _speech_core.base_classifier import classify_tokens
 from _speech_core.base_processor import BaseSpeechProcessor
 from _speech_core.formatter import SpeechFormatter
-from _speech_core.history import sequence_to_text
+from _speech_core.history import SpeechHistoryBuffer, sequence_to_text
 from _speech_core.processors.text import TextProcessor
 
 from _speech_core.hotkey_extractor import (
@@ -861,6 +861,15 @@ class FormatterTests(unittest.TestCase):
 class HistoryHelpersTests(unittest.TestCase):
     def test_sequence_to_text_ignores_commands(self):
         self.assertEqual(sequence_to_text(["Save", BreakCommand(time=80), "button"]), "Save button")
+
+    def test_copy_does_not_suppress_the_next_real_announcement(self):
+        history = SpeechHistoryBuffer()
+        history.append_sequence(["Start", "button"])
+
+        self.assertTrue(history.copy_current())
+        history.append_sequence(["Recycle Bin"])
+
+        self.assertEqual(history.items(), ["Recycle Bin", "Start button"])
 
 
 if __name__ == "__main__":

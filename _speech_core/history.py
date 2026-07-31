@@ -56,19 +56,11 @@ class SpeechHistoryBuffer:
     def __init__(self, maxlen=DEFAULT_MAX_HISTORY_ENTRIES):
         self._history = deque(maxlen=maxlen)
         self._pos = 0
-        self._suppress_next_append = False
 
     def __len__(self):
         return len(self._history)
 
-    def suppress_next_append(self):
-        self._suppress_next_append = True
-
     def append_sequence(self, sequence):
-        if self._suppress_next_append:
-            self._suppress_next_append = False
-            return
-
         text = sequence_to_text(sequence)
         if not text:
             return
@@ -135,7 +127,6 @@ class SpeechHistoryBuffer:
     def speak_text(self, text):
         if not text:
             return
-        self.suppress_next_append()
         mark_history_native_passthrough()
         speech.speak([text])
 
@@ -176,7 +167,6 @@ class SpeechHistoryBuffer:
             ui.message("No speech history")
             return False
         if api.copyToClip(text):
-            self.suppress_next_append()
             mark_history_native_passthrough()
             speech.speak([text, "copied"])
             return True
