@@ -65,6 +65,14 @@ from ._speech_core.processors.web.page_entry import (
 from ._speech_core.processors.web.heading_continuity import (
     install as install_heading_continuity,
 )
+from ._speech_core.processors.web.mode_indication import (
+    install as install_mode_indication,
+    restore as restore_mode_indication,
+)
+from ._speech_core.settings.web.mode_indication_config import (
+    get_custom_browse_mode_message,
+    get_custom_focus_mode_message,
+)
 from ._speech_core.settings.web.summary_config import (
     get_included_element_types,
     get_include_document_title,
@@ -625,6 +633,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         )
         self._pageOrientationRoutes = install_page_orientation(self)
         self._headingContinuityRuntime = install_heading_continuity(log)
+        self._modeIndicationRoute = install_mode_indication(
+            self,
+            get_browse_mode_message=get_custom_browse_mode_message,
+            get_focus_mode_message=get_custom_focus_mode_message,
+        )
 
         self._installClassicSpeechMenu()
         self.set_speech_hook_enabled(get_speech_hook_enabled())
@@ -635,6 +648,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._get_web_page_lifecycle().cancel()
         restore_page_orientation(self, getattr(self, "_pageOrientationRoutes", ()))
         self._pageOrientationRoutes = []
+        restore_mode_indication(self, getattr(self, "_modeIndicationRoute", None))
+        self._modeIndicationRoute = None
         headingContinuityRuntime = getattr(self, "_headingContinuityRuntime", None)
         if headingContinuityRuntime is not None:
             headingContinuityRuntime.restore()

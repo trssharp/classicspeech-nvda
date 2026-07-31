@@ -42,6 +42,14 @@ from .heading_continuity_config import (
 	restore_heading_continuity_state,
 	set_heading_continuity_enabled,
 )
+from .mode_indication_config import (
+	capture_mode_indication_state,
+	get_browse_mode_message,
+	get_focus_mode_message,
+	restore_mode_indication_state,
+	set_browse_mode_message,
+	set_focus_mode_message,
+)
 from ..edge_notifications_config import (
 	capture_edge_notification_state,
 	get_custom_messages,
@@ -220,6 +228,19 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		self.autoPassThroughOnFocusChangeCheckBox = self._add_browse_checkbox(group, box, "Automatic focus mode for focus changes", "autoPassThroughOnFocusChange")
 		self.autoPassThroughOnCaretMoveCheckBox = self._add_browse_checkbox(group, box, "Automatic focus mode for caret movement", "autoPassThroughOnCaretMove")
 		self.passThroughAudioIndicationCheckBox = self._add_browse_checkbox(group, box, "Audio indication of focus and browse modes", "passThroughAudioIndication")
+		self.browseModeMessageEdit = group.addLabeledControl(
+			"Browse mode message:",
+			wx.TextCtrl,
+			value=get_browse_mode_message(),
+		)
+		self.focusModeMessageEdit = group.addLabeledControl(
+			"Focus mode message:",
+			wx.TextCtrl,
+			value=get_focus_mode_message(),
+		)
+		self.browseModeMessageEdit.Bind(wx.EVT_TEXT, self.onChanged)
+		self.focusModeMessageEdit.Bind(wx.EVT_TEXT, self.onChanged)
+		self._update_mode_indication_message_enabled()
 		self.trapNonCommandGesturesCheckBox = self._add_browse_checkbox(group, box, "&Trap all non-command gestures from reaching the document", "trapNonCommandGestures")
 
 		self.browseModeTouchNavigationList = group.addLabeledControl(
@@ -468,6 +489,13 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		except Exception:
 			pass
 
+	def _update_mode_indication_message_enabled(self):
+		enabled = not _is_checked(self.passThroughAudioIndicationCheckBox)
+		for attribute in ("browseModeMessageEdit", "focusModeMessageEdit"):
+			control = self.__dict__.get(attribute)
+			if control is not None:
+				control.Enable(enabled)
+
 	def onPageLoadSummaryModeChanged(self, evt=None):
 		self._update_page_entry_summary_delay_enabled()
 		self.onChanged(evt)
@@ -483,6 +511,7 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 
 	def _captureTransactionBaseline(self):
 		self._originalWebBrowse = capture_web_browse_state()
+		self._originalModeIndication = capture_mode_indication_state()
 		self._originalHeadingContinuity = capture_heading_continuity_state()
 		self._originalHeadingContinuityEnabled = get_heading_continuity_enabled()
 		self._originalPageSummary = capture_page_summary_state()
@@ -496,6 +525,9 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 	def _restoreTransactionBaseline(self):
 		try:
 			restore_web_browse_state(self._originalWebBrowse)
+			mode_indication = self.__dict__.get("_originalModeIndication")
+			if hasattr(mode_indication, "get") and "hasModeIndicationData" in mode_indication:
+				restore_mode_indication_state(mode_indication)
 			heading_continuity = self.__dict__.get("_originalHeadingContinuity")
 			if hasattr(heading_continuity, "get") and "hasHeadingContinuityData" in heading_continuity:
 				restore_heading_continuity_state(heading_continuity)
@@ -525,6 +557,12 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		set_virtual_buffer_setting("autoPassThroughOnFocusChange", _is_checked(self.autoPassThroughOnFocusChangeCheckBox))
 		set_virtual_buffer_setting("autoPassThroughOnCaretMove", _is_checked(self.autoPassThroughOnCaretMoveCheckBox))
 		set_virtual_buffer_setting("passThroughAudioIndication", _is_checked(self.passThroughAudioIndicationCheckBox))
+		browseModeMessageEdit = self.__dict__.get("browseModeMessageEdit")
+		focusModeMessageEdit = self.__dict__.get("focusModeMessageEdit")
+		if browseModeMessageEdit is not None:
+			set_browse_mode_message(browseModeMessageEdit.GetValue())
+		if focusModeMessageEdit is not None:
+			set_focus_mode_message(focusModeMessageEdit.GetValue())
 		set_virtual_buffer_setting("trapNonCommandGestures", _is_checked(self.trapNonCommandGesturesCheckBox))
 		set_virtual_buffer_setting(
 			"browseModeTouchNavigationElements",
@@ -609,6 +647,7 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 
 	def onChanged(self, evt=None):
 		try:
+			self._update_mode_indication_message_enabled()
 			self._saveTransaction()
 			self._markDirty()
 		except Exception:

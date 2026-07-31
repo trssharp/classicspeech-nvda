@@ -86,6 +86,10 @@ _CLASSIC_SPEECH_SPEC = {
     "headingContinuityData": {
         "enabled": "boolean(default=False)",
     },
+    "modeIndicationData": {
+        "browseModeMessage": "string(default='')",
+        "focusModeMessage": "string(default='')",
+    },
     "edgeNotificationData": {
         "enabledActivityIds": f"string_list(default=list({_EDGE_NOTIFICATION_DEFAULT_IDS_SPEC}))",
         "customMessages": {
