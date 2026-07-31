@@ -262,6 +262,20 @@ class NumberProcessorModeTests(unittest.TestCase):
                 self._set_mode(mode)
                 self.assertEqual(processor.process_literal_sequence([protected]), [protected])
 
+    def test_number_modes_preserve_non_number_groups_but_convert_standalone_groups(self):
+        processor = TextProcessor()
+        protected = "5'5 5’5 5′5 12:30 50% item_5 #5 +5 1,,2"
+        for mode in ("singleDigits", "pairs", "fullNumbers"):
+            with self.subTest(mode=mode):
+                self._set_mode(mode)
+                self.assertEqual(processor.process_literal_sequence([protected]), [protected])
+
+        self._set_mode("fullNumbers")
+        self.assertEqual(
+            processor.process_literal_sequence(["Value 1,234 End 42"]),
+            ["Value one thousand two hundred thirty four End forty two"],
+        )
+
     def test_number_modes_preserve_position_count_strings_for_position_filtering(self):
         processor = TextProcessor()
         examples = ["1 of 10", "Verbosity 1 of 10", "1,234 of 5,678"]
