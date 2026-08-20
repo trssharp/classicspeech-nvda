@@ -1,3 +1,5 @@
+from ..localization import _
+
 import wx
 import logHandler
 
@@ -20,55 +22,55 @@ class MenusPanel(wx.Panel):
 	def __init__(self, parent):
 		super().__init__(parent)
 
-		_set_panel_description(self, "Menus", "Configure menu open, close, menu bar focus, and menu bar leave announcements.")
+		_set_panel_description(self, _("Menus"), _("Configure menu open, close, menu bar focus, and menu bar leave announcements."))
 
 		mainSizer = wx.BoxSizer(wx.VERTICAL)
 
-		self.announceMenuOpen = wx.CheckBox(self, label="Announce menu open")
+		self.announceMenuOpen = wx.CheckBox(self, label=_("Announce menu open"))
 		self.announceMenuOpen.SetValue(_get_menu_open_enabled())
 		mainSizer.Add(self.announceMenuOpen, 0, wx.ALL | wx.EXPAND, 8)
 
 		openGrid = wx.FlexGridSizer(cols=2, vgap=8, hgap=10)
 		openGrid.AddGrowableCol(1, 1)
-		openGrid.Add(wx.StaticText(self, label="Menu open message:"), 0, wx.ALIGN_CENTER_VERTICAL)
+		openGrid.Add(wx.StaticText(self, label=_("Menu open message:")), 0, wx.ALIGN_CENTER_VERTICAL)
 		self.menuOpenMessage = wx.TextCtrl(self, value=_get_menu_open_message())
-		self.menuOpenMessage.SetName("Menu open message")
+		self.menuOpenMessage.SetName(_("Menu open message"))
 		openGrid.Add(self.menuOpenMessage, 1, wx.EXPAND)
 		mainSizer.Add(openGrid, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
-		self.announceMenuClose = wx.CheckBox(self, label="Announce menu close")
+		self.announceMenuClose = wx.CheckBox(self, label=_("Announce menu close"))
 		self.announceMenuClose.SetValue(_get_menu_close_enabled())
 		mainSizer.Add(self.announceMenuClose, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
 		closeGrid = wx.FlexGridSizer(cols=2, vgap=8, hgap=10)
 		closeGrid.AddGrowableCol(1, 1)
-		closeGrid.Add(wx.StaticText(self, label="Menu close message:"), 0, wx.ALIGN_CENTER_VERTICAL)
+		closeGrid.Add(wx.StaticText(self, label=_("Menu close message:")), 0, wx.ALIGN_CENTER_VERTICAL)
 		self.menuCloseMessage = wx.TextCtrl(self, value=_get_menu_close_message())
-		self.menuCloseMessage.SetName("Menu close message")
+		self.menuCloseMessage.SetName(_("Menu close message"))
 		closeGrid.Add(self.menuCloseMessage, 1, wx.EXPAND)
 		mainSizer.Add(closeGrid, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
-		self.announceMenuBarFocus = wx.CheckBox(self, label="Announce menu bar focus")
+		self.announceMenuBarFocus = wx.CheckBox(self, label=_("Announce menu bar focus"))
 		self.announceMenuBarFocus.SetValue(_get_menu_bar_focus_enabled())
 		mainSizer.Add(self.announceMenuBarFocus, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
 		barFocusGrid = wx.FlexGridSizer(cols=2, vgap=8, hgap=10)
 		barFocusGrid.AddGrowableCol(1, 1)
-		barFocusGrid.Add(wx.StaticText(self, label="Menu bar focus message:"), 0, wx.ALIGN_CENTER_VERTICAL)
+		barFocusGrid.Add(wx.StaticText(self, label=_("Menu bar focus message:")), 0, wx.ALIGN_CENTER_VERTICAL)
 		self.menuBarFocusMessage = wx.TextCtrl(self, value=_get_menu_bar_focus_message())
-		self.menuBarFocusMessage.SetName("Menu bar focus message")
+		self.menuBarFocusMessage.SetName(_("Menu bar focus message"))
 		barFocusGrid.Add(self.menuBarFocusMessage, 1, wx.EXPAND)
 		mainSizer.Add(barFocusGrid, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
-		self.announceMenuBarLeave = wx.CheckBox(self, label="Announce leaving menu bar")
+		self.announceMenuBarLeave = wx.CheckBox(self, label=_("Announce leaving menu bar"))
 		self.announceMenuBarLeave.SetValue(_get_menu_bar_leave_enabled())
 		mainSizer.Add(self.announceMenuBarLeave, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
 		barLeaveGrid = wx.FlexGridSizer(cols=2, vgap=8, hgap=10)
 		barLeaveGrid.AddGrowableCol(1, 1)
-		barLeaveGrid.Add(wx.StaticText(self, label="Menu bar leave message:"), 0, wx.ALIGN_CENTER_VERTICAL)
+		barLeaveGrid.Add(wx.StaticText(self, label=_("Menu bar leave message:")), 0, wx.ALIGN_CENTER_VERTICAL)
 		self.menuBarLeaveMessage = wx.TextCtrl(self, value=_get_menu_bar_leave_message())
-		self.menuBarLeaveMessage.SetName("Menu bar leave message")
+		self.menuBarLeaveMessage.SetName(_("Menu bar leave message"))
 		barLeaveGrid.Add(self.menuBarLeaveMessage, 1, wx.EXPAND)
 		mainSizer.Add(barLeaveGrid, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 		self.SetSizer(mainSizer)

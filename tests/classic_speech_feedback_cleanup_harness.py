@@ -600,10 +600,10 @@ class FeedbackSettingsWordingCleanupTests(unittest.TestCase):
         token_source = (root / "_speech_core" / "settings" / "token_editor_panel.py").read_text(encoding="utf-8")
         key_source = (root / "_speech_core" / "settings" / "key_labels_panel.py").read_text(encoding="utf-8")
 
-        self.assertIn('label="Reset Profile Now"', dialog_source)
-        self.assertIn('SetLabel("Reset Profile Now")', dialog_source)
-        self.assertIn('SetLabel("Reset Tokens to Defaults Now")', dialog_source)
-        self.assertIn('SetLabel("Reset Key Labels to Defaults Now")', dialog_source)
+        self.assertIn('label=_("Reset Profile Now")', dialog_source)
+        self.assertIn('SetLabel(_("Reset Profile Now"))', dialog_source)
+        self.assertIn('SetLabel(_("Reset Tokens to Defaults Now"))', dialog_source)
+        self.assertIn('SetLabel(_("Reset Key Labels to Defaults Now"))', dialog_source)
         for source in (verbosity_source, token_source, key_source):
             self.assertIn("Cancel will not undo this reset.", source)
             self.assertIn("Choose Yes to reset now, or No to keep your current settings.", source)
@@ -625,9 +625,9 @@ class FeedbackSettingsWordingCleanupTests(unittest.TestCase):
         controller_source = (root / "_speech_core" / "interrupt_control.py").read_text(encoding="utf-8")
         plugin_config_source = (root / "_speech_core" / "plugin_config.py").read_text(encoding="utf-8")
 
-        self.assertIn('label="Prevent automatic speech interruptions"', panel_source)
-        self.assertIn('label="Speech interrupt for typed characters"', panel_source)
-        self.assertIn('label="Speech interrupt for Enter key"', panel_source)
+        self.assertIn('label=_("Prevent automatic speech interruptions")', panel_source)
+        self.assertIn('label=_("Speech interrupt for typed characters")', panel_source)
+        self.assertIn('label=_("Speech interrupt for Enter key")', panel_source)
         self.assertIn('"keyboard", "speechInterruptForCharacters"', config_source)
         self.assertIn('"keyboard", "speechInterruptForEnter"', config_source)
         self.assertNotIn("allowKeyboardSpeechInterrupt", panel_source)

@@ -1,3 +1,5 @@
+from ._speech_core.localization import _
+
 # classicSpeech.py
 
 import api
@@ -1189,10 +1191,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             sysTrayIcon = gui.mainFrame.sysTrayIcon
             preferencesMenu = sysTrayIcon.preferencesMenu
             classicSpeechMenu = wx.Menu()
-            generalItem = classicSpeechMenu.Append(wx.ID_ANY, "General Settings...")
-            webItem = classicSpeechMenu.Append(wx.ID_ANY, "Web / Browse Mode Settings...")
-            voiceProfilesItem = classicSpeechMenu.Append(wx.ID_ANY, "Voice Profiles...")
-            submenuItem = preferencesMenu.AppendSubMenu(classicSpeechMenu, "ClassicSpeech")
+            generalItem = classicSpeechMenu.Append(wx.ID_ANY, _("General Settings..."))
+            webItem = classicSpeechMenu.Append(wx.ID_ANY, _("Web / Browse Mode Settings..."))
+            voiceProfilesItem = classicSpeechMenu.Append(wx.ID_ANY, _("Voice Profiles..."))
+            submenuItem = preferencesMenu.AppendSubMenu(classicSpeechMenu, _("ClassicSpeech"))
             sysTrayIcon.Bind(wx.EVT_MENU, self.onClassicSpeechGeneralSettingsMenu, generalItem)
             sysTrayIcon.Bind(wx.EVT_MENU, self.onClassicSpeechWebBrowseSettingsMenu, webItem)
             sysTrayIcon.Bind(wx.EVT_MENU, self.onClassicSpeechVoiceProfilesMenu, voiceProfilesItem)
@@ -1270,22 +1272,22 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         queueHandler.queueFunction(queueHandler.eventQueue, self._openVoiceProfiles)
 
     @scriptHandler.script(
-        description="Opens ClassicSpeech settings",
-        category="ClassicSpeech",
+        description=_("Opens ClassicSpeech settings"),
+        category=_("ClassicSpeech"),
     )
     def script_openClassicSpeechSettings(self, gesture):
         queueHandler.queueFunction(queueHandler.eventQueue, self._openSettings)
 
     @scriptHandler.script(
-        description="Opens ClassicSpeech Web / Browse Mode Settings",
-        category="ClassicSpeech",
+        description=_("Opens ClassicSpeech Web / Browse Mode Settings"),
+        category=_("ClassicSpeech"),
     )
     def script_openClassicSpeechWebBrowseSettings(self, gesture):
         queueHandler.queueFunction(queueHandler.eventQueue, self._openWebBrowseSettings)
 
     @scriptHandler.script(
-        description="Opens ClassicSpeech Voice Profiles",
-        category="ClassicSpeech",
+        description=_("Opens ClassicSpeech Voice Profiles"),
+        category=_("ClassicSpeech"),
     )
     def script_openClassicSpeechVoiceProfiles(self, gesture):
         queueHandler.queueFunction(queueHandler.eventQueue, self._openVoiceProfiles)
@@ -1338,25 +1340,25 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._get_web_page_lifecycle().handle_document_load_complete(obj)
 
     @scriptHandler.script(
-        description="Reports selected Browse Mode element counts for the current page",
-        category="ClassicSpeech",
+        description=_("Reports selected Browse Mode element counts for the current page"),
+        category=_("ClassicSpeech"),
     )
     def script_pageSummary(self, gesture):
         try:
             focus = api.getFocusObject()
             document = getattr(focus, "treeInterceptor", None)
             if document is None or not hasattr(document, "_iterNodesByType"):
-                ui.message("Page summary is not available here.")
+                ui.message(_("Page summary is not available here."))
                 return
             self._report_page_summary_for_document(document)
         except Exception:
             log.exception("ClassicSpeech page summary failed")
-            ui.message("Page summary is not available here.")
+            ui.message(_("Page summary is not available here."))
 
 
     @scriptHandler.script(
-        description="Speaks the current object. Press twice quickly to spell and copy it",
-        category="ClassicSpeech",
+        description=_("Speaks the current object. Press twice quickly to spell and copy it"),
+        category=_("ClassicSpeech"),
     )
     def script_queryCurrentObject(self, gesture):
         try:
@@ -1374,7 +1376,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
             focus = self._get_query_object()
             if not focus:
-                ui.message("No object")
+                ui.message(_("No object"))
                 return
 
             repeatCount = scriptHandler.getLastScriptRepeatCount()
@@ -1384,59 +1386,59 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
             text = self.processor.get_query_object_text(focus)
             if not text:
-                ui.message("No object")
+                ui.message(_("No object"))
                 return
 
             speech.speakSpelling(text)
             api.copyToClip(text, notify=False)
         except Exception as e:
             log.error(f"ClassicSpeech query object failed: {e}", exc_info=True)
-            ui.message("No focus")
+            ui.message(_("No focus"))
     @scriptHandler.script(
-        description="Reviews the previous ClassicSpeech history item",
-        category="ClassicSpeech",
+        description=_("Reviews the previous ClassicSpeech history item"),
+        category=_("ClassicSpeech"),
     )
     def script_previousSpeechHistory(self, gesture):
         self.history.speak_previous()
 
     @scriptHandler.script(
-        description="Reviews the next ClassicSpeech history item",
-        category="ClassicSpeech",
+        description=_("Reviews the next ClassicSpeech history item"),
+        category=_("ClassicSpeech"),
     )
     def script_nextSpeechHistory(self, gesture):
         self.history.speak_next()
 
     @scriptHandler.script(
-        description="Moves to the oldest ClassicSpeech history item",
-        category="ClassicSpeech",
+        description=_("Moves to the oldest ClassicSpeech history item"),
+        category=_("ClassicSpeech"),
     )
     def script_bottomSpeechHistory(self, gesture):
         self.history.speak_bottom()
 
     @scriptHandler.script(
-        description="Moves to the newest ClassicSpeech history item",
-        category="ClassicSpeech",
+        description=_("Moves to the newest ClassicSpeech history item"),
+        category=_("ClassicSpeech"),
     )
     def script_topSpeechHistory(self, gesture):
         self.history.speak_top()
 
     @scriptHandler.script(
-        description="Copies the current ClassicSpeech history item to the clipboard",
-        category="ClassicSpeech",
+        description=_("Copies the current ClassicSpeech history item to the clipboard"),
+        category=_("ClassicSpeech"),
     )
     def script_copySpeechHistory(self, gesture):
         self.history.copy_current()
 
     @scriptHandler.script(
-        description="Opens the ClassicSpeech history dialog",
-        category="ClassicSpeech",
+        description=_("Opens the ClassicSpeech history dialog"),
+        category=_("ClassicSpeech"),
     )
     def script_openSpeechHistory(self, gesture):
         try:
             show_history_dialog(self.history)
         except Exception as e:
             log.error(f"Failed to open ClassicSpeech history: {e}", exc_info=True)
-            ui.message("Could not open speech history")
+            ui.message(_("Could not open speech history"))
 
 
     def _getWxDefaultButtonName(self):
@@ -1476,8 +1478,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         return focus, focused_button_default_status(focus)
 
     @scriptHandler.script(
-        description="Announces the default button in the current dialog",
-        category="ClassicSpeech",
+        description=_("Announces the default button in the current dialog"),
+        category=_("ClassicSpeech"),
     )
     def script_announceDefaultButton(self, gesture):
         try:
@@ -1489,20 +1491,20 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             # focus speech handles true default-token classification separately.
             try:
                 if getattr(focus, "role", None) == controlTypes.Role.BUTTON:
-                    name = get_object_name(focus) or "unknown"
-                    ui.message(f"Default button {name}")
+                    name = get_object_name(focus) or _("unknown")
+                    ui.message(_("Default button {name}").format(name=name))
                     return
             except Exception:
                 pass
 
             name = self._getDefaultButtonName()
             if not name:
-                ui.message("No default button")
+                ui.message(_("No default button"))
                 return
-            ui.message(f"Default button {name}")
+            ui.message(_("Default button {name}").format(name=name))
         except Exception as e:
             log.error(f"Failed announcing default button: {e}", exc_info=True)
-            ui.message("No default button")
+            ui.message(_("No default button"))
 
     def _onWebBrowseDialogClosed(self, evt):
         try:

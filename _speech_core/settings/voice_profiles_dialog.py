@@ -4,6 +4,8 @@ The dialog edits stored snapshots. Selecting a row never changes the live
 synthesizer; explicit preview temporarily applies and then restores a snapshot.
 """
 from __future__ import annotations
+from ..localization import _
+
 
 import wx
 import logHandler
@@ -27,7 +29,7 @@ class VoiceProfilesDialog(wx.Dialog):
 	def __init__(self, parent, driver=None):
 		super().__init__(
 			parent,
-			title="ClassicSpeech Voice Profiles",
+			title=_("ClassicSpeech Voice Profiles"),
 			style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER | wx.MAXIMIZE_BOX,
 		)
 		self.SetName("ClassicSpeechVoiceProfilesDialog")
@@ -65,13 +67,13 @@ class VoiceProfilesDialog(wx.Dialog):
 
 	def _build_profile_list(self, content):
 		left = wx.BoxSizer(wx.VERTICAL)
-		left.Add(wx.StaticText(self, label="Voice profiles"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+		left.Add(wx.StaticText(self, label=_("Voice profiles")), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
 		list_class = nvdaControls.AutoWidthColumnListCtrl
 		self.profileList = list_class(
 			self, style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.LC_NO_HEADER, size=(280, -1),
 		)
-		self.profileList.SetName("Voice profiles")
-		self.profileList.InsertColumn(0, "Voice profiles")
+		self.profileList.SetName(_("Voice profiles"))
+		self.profileList.InsertColumn(0, _("Voice profiles"))
 		for index, row in enumerate(self.store.rows):
 			self.profileList.InsertItem(index, row.label)
 		left.Add(self.profileList, 1, wx.ALL | wx.EXPAND, 8)
@@ -89,20 +91,20 @@ class VoiceProfilesDialog(wx.Dialog):
 	def _build_buttons(self, outer):
 		buttons = wx.BoxSizer(wx.HORIZONTAL)
 		previewControls = wx.BoxSizer(wx.VERTICAL)
-		self.previewTextLabel = wx.StaticText(self, label="Preview &text:")
+		self.previewTextLabel = wx.StaticText(self, label=_("Preview &text:"))
 		self.previewText = wx.TextCtrl(self, value=DEFAULT_PREVIEW_TEXT)
-		self.previewText.SetName("Preview text:")
+		self.previewText.SetName(_("Preview text:"))
 		self.previewStatus = wx.StaticText(self, label="")
 		previewControls.Add(self.previewTextLabel, 0, wx.BOTTOM, 2)
 		previewControls.Add(self.previewText, 0, wx.EXPAND)
 		previewControls.Add(self.previewStatus, 0, wx.TOP, 2)
-		self.previewBtn = wx.Button(self, label="Pre&view selected profile")
+		self.previewBtn = wx.Button(self, label=_("Pre&view selected profile"))
 		self.previewBtn.Disable()
-		self.resetBtn = wx.Button(self, label="Reset all Voice Profile overrides")
-		self.resetBtn.SetName("Reset all Voice Profile overrides")
-		self.okBtn = wx.Button(self, wx.ID_OK, label="OK")
-		self.cancelBtn = wx.Button(self, wx.ID_CANCEL, label="Cancel")
-		self.applyBtn = wx.Button(self, label="Apply")
+		self.resetBtn = wx.Button(self, label=_("Reset all Voice Profile overrides"))
+		self.resetBtn.SetName(_("Reset all Voice Profile overrides"))
+		self.okBtn = wx.Button(self, wx.ID_OK, label=_("OK"))
+		self.cancelBtn = wx.Button(self, wx.ID_CANCEL, label=_("Cancel"))
+		self.applyBtn = wx.Button(self, label=_("Apply"))
 		self.applyBtn.Hide()
 		self.okBtn.SetDefault()
 		buttons.Add(previewControls, 1, wx.ALL | wx.EXPAND, 8)
@@ -139,7 +141,7 @@ class VoiceProfilesDialog(wx.Dialog):
 			self.currentControls.build(self.editorPanel, self.editorSizer)
 		else:
 			self.editorSizer.Add(
-				wx.StaticText(self.editorPanel, label="The active synthesizer exposes no editable settings."),
+				wx.StaticText(self.editorPanel, label=_("The active synthesizer exposes no editable settings.")),
 				0, wx.ALL, 10,
 			)
 		self.editorPanel.Layout()
@@ -251,8 +253,10 @@ class VoiceProfilesDialog(wx.Dialog):
 		self.editorPanel.Enable(not busy)
 		self.previewText.Enable(not busy)
 		self.previewBtn.Enable(not busy)
-		self.previewBtn.SetLabel("Previewing selected profile..." if busy else "Pre&view selected profile")
-		self.previewStatus.SetLabel("Previewing selected profile." if busy else "")
+		self.previewBtn.SetLabel(
+			_("Previewing selected profile...") if busy else _("Pre&view selected profile")
+		)
+		self.previewStatus.SetLabel(_("Previewing selected profile.") if busy else "")
 		self.Layout()
 
 	def _onPreviewFinished(self, reason):
@@ -264,9 +268,9 @@ class VoiceProfilesDialog(wx.Dialog):
 	def onResetAllOverrides(self, event):
 		self._cancelPreview()
 		answer = wx.MessageBox(
-			"Remove every saved ClassicSpeech Voice Profile override for the active synthesizer? "
-			"NVDA's native Voice Settings will be used until you save a new profile.",
-			"Reset all Voice Profile overrides",
+			_("Remove every saved ClassicSpeech Voice Profile override for the active synthesizer? "
+			"NVDA's native Voice Settings will be used until you save a new profile."),
+			_("Reset all Voice Profile overrides"),
 			wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING,
 			parent=self,
 		)

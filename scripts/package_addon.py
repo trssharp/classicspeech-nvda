@@ -13,6 +13,7 @@ DIST = ROOT / "dist"
 RUNTIME_FILES = ("classicSpeech.py",)
 RUNTIME_DIRECTORIES = ("_speech_core",)
 APP_MODULE_DIRECTORIES = ("appModules",)
+LOCALE_DIRECTORIES = ("locale",)
 RELEASE_NOTES = "EDGE-NOTIFICATIONS-RC-V26.md"
 _NUMERIC_VERSION = re.compile(r"^\d+\.\d+(?:\.\d+)?$")
 _SAFE_LABEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -70,6 +71,16 @@ def _add_tree(archive: zipfile.ZipFile, source: Path, prefix: Path) -> None:
         archive.write(file_path, (prefix / file_path.relative_to(source)).as_posix())
 
 
+def _add_locale_tree(archive: zipfile.ZipFile, source: Path) -> None:
+    """Package runtime catalogs while excluding editable PO/POT sources."""
+    for file_path in sorted(source.rglob("*")):
+        if not file_path.is_file():
+            continue
+        if file_path.suffix != ".mo" and file_path.name != "manifest.ini":
+            continue
+        archive.write(file_path, (Path("locale") / file_path.relative_to(source)).as_posix())
+
+
 def main() -> None:
     args = _parse_args()
     manifest = ROOT / "manifest.ini"
@@ -101,6 +112,10 @@ def main() -> None:
             if not source.is_dir():
                 raise SystemExit(f"Missing app module directory: {source}")
             _add_tree(archive, source, Path(relative_path))
+        for relative_path in LOCALE_DIRECTORIES:
+            source = ROOT / relative_path
+            if source.is_dir():
+                _add_locale_tree(archive, source)
 
         release_notes = ROOT / "docs" / RELEASE_NOTES
         if release_notes.is_file():
@@ -119,6 +134,7 @@ def main() -> None:
             "globalPlugins/_speech_core/settings/text/config.py",
             "globalPlugins/_speech_core/settings/text/panel.py",
             "appModules/msedge.py",
+            "locale/es/LC_MESSAGES/nvda.mo",
         }
         if not required.issubset(members):
             raise SystemExit(f"Missing required package files: {sorted(required - members)}")

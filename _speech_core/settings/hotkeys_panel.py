@@ -1,3 +1,5 @@
+from ..localization import _
+
 import wx
 import logHandler
 
@@ -32,11 +34,11 @@ class HotkeysPanel(wx.Panel):
 		self.hotkeyTypes = _get_hotkey_types()
 		self.dialogAccessKeyOnly = _get_hotkey_dialog_access_key_only()
 		self._description = (
-			"Hotkey speech is separate from verbosity profiles. "
+			_("Hotkey speech is separate from verbosity profiles. "
 			"Choose where ClassicSpeech should announce keyboard shortcuts and how extracted shortcuts should be spoken. "
-			"Object query always includes the shortcut when NVDA exposes one."
+			"Object query always includes the shortcut when NVDA exposes one.")
 		)
-		_set_panel_description(self, "Hotkeys", self._description)
+		_set_panel_description(self, _("Hotkeys"), self._description)
 
 		mainSizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -49,34 +51,34 @@ class HotkeysPanel(wx.Panel):
 
 		grid = wx.FlexGridSizer(cols=2, vgap=8, hgap=10)
 		grid.AddGrowableCol(1, 1)
-		grid.Add(wx.StaticText(self, label="Speak hotkeys:"), 0, wx.ALIGN_CENTER_VERTICAL)
+		grid.Add(wx.StaticText(self, label=_("Speak hotkeys:")), 0, wx.ALIGN_CENTER_VERTICAL)
 		self.hotkeyModeChoice = wx.Choice(
 			self,
 			choices=[label for label, _value in HOTKEY_MODE_CHOICES],
 		)
-		self.hotkeyModeChoice.SetName("Speak hotkeys")
+		self.hotkeyModeChoice.SetName(_("Speak hotkeys"))
 		grid.Add(self.hotkeyModeChoice, 1, wx.EXPAND)
 
-		grid.Add(wx.StaticText(self, label="Shortcut formatting:"), 0, wx.ALIGN_CENTER_VERTICAL)
+		grid.Add(wx.StaticText(self, label=_("Shortcut formatting:")), 0, wx.ALIGN_CENTER_VERTICAL)
 		self.hotkeyFormatChoice = wx.Choice(
 			self,
 			choices=[label for label, _value in HOTKEY_FORMAT_CHOICES],
 		)
-		self.hotkeyFormatChoice.SetName("Shortcut formatting")
+		self.hotkeyFormatChoice.SetName(_("Shortcut formatting"))
 		grid.Add(self.hotkeyFormatChoice, 1, wx.EXPAND)
 
-		grid.Add(wx.StaticText(self, label="Which shortcuts to speak:"), 0, wx.ALIGN_CENTER_VERTICAL)
+		grid.Add(wx.StaticText(self, label=_("Which shortcuts to speak:")), 0, wx.ALIGN_CENTER_VERTICAL)
 		self.hotkeyTypesChoice = wx.Choice(
 			self,
 			choices=[label for label, _value in HOTKEY_TYPES_CHOICES],
 		)
-		self.hotkeyTypesChoice.SetName("Which shortcuts to speak")
+		self.hotkeyTypesChoice.SetName(_("Which shortcuts to speak"))
 		grid.Add(self.hotkeyTypesChoice, 1, wx.EXPAND)
 		mainSizer.Add(grid, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
 		self.dialogAccessKeyOnlyCheck = wx.CheckBox(
 			self,
-			label="For simple dialog Alt shortcuts, speak only the access key letter",
+			label=_("For simple dialog Alt shortcuts, speak only the access key letter"),
 		)
 		mainSizer.Add(self.dialogAccessKeyOnlyCheck, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 		self.SetSizer(mainSizer)

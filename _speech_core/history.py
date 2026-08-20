@@ -6,6 +6,8 @@ verbosity/profile/token formatting has been applied. Speech commands such as
 BreakCommand, CancellableSpeech, and CharacterModeCommand are intentionally
 ignored when creating the display/copy text.
 """
+from .localization import _
+
 
 from collections import deque
 
@@ -142,28 +144,28 @@ class SpeechHistoryBuffer:
     def speak_previous(self):
         text = self.previous()
         if text is None:
-            ui.message("Bottom of speech history")
+            ui.message(_("Bottom of speech history"))
             return
         self.speak_text(text)
 
     def speak_next(self):
         text = self.next()
         if text is None:
-            ui.message("Top of speech history")
+            ui.message(_("Top of speech history"))
             return
         self.speak_text(text)
 
     def speak_bottom(self):
         text = self.bottom()
         if text is None:
-            ui.message("No speech history")
+            ui.message(_("No speech history"))
             return
         self.speak_text(text)
 
     def speak_top(self):
         text = self.top()
         if text is None:
-            ui.message("No speech history")
+            ui.message(_("No speech history"))
             return
         self.speak_text(text)
 
@@ -173,12 +175,12 @@ class SpeechHistoryBuffer:
     def copy_index(self, index):
         text = self.select(index)
         if not text:
-            ui.message("No speech history")
+            ui.message(_("No speech history"))
             return False
         if api.copyToClip(text):
             self.suppress_next_append()
             mark_history_native_passthrough()
-            speech.speak([text, "copied"])
+            speech.speak([text, _("copied")])
             return True
-        ui.message("Copy failed")
+        ui.message(_("Copy failed"))
         return False

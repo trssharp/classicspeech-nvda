@@ -1,3 +1,5 @@
+from ...localization import _
+
 import wx
 import gui
 import config
@@ -86,16 +88,16 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 	"""ClassicSpeech dialog for native NVDA web and browse-mode settings."""
 
 	CATEGORY_NAMES = [
-		"Browse Mode",
-		"Web Element Reporting",
-		"Page Summary",
-		"Microsoft Edge Notifications",
+		_("Browse Mode"),
+		_("Web Element Reporting"),
+		_("Page Summary"),
+		_("Microsoft Edge Notifications"),
 	]
 
 	def __init__(self, parent):
 		super().__init__(
 			parent,
-			title="ClassicSpeech Web / Browse Mode Settings",
+			title=_("ClassicSpeech Web / Browse Mode Settings"),
 			style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER | wx.MAXIMIZE_BOX,
 		)
 		self.SetName("ClassicSpeechWebBrowseSettingsDialog")
@@ -108,7 +110,7 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		contentSizer = wx.BoxSizer(wx.HORIZONTAL)
 
 		leftSizer = wx.BoxSizer(wx.VERTICAL)
-		self.categoryLabel = wx.StaticText(self, label="Categories")
+		self.categoryLabel = wx.StaticText(self, label=_("Categories"))
 		leftSizer.Add(self.categoryLabel, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
 		listClass = nvdaControls.AutoWidthColumnListCtrl if nvdaControls else wx.ListCtrl
 		self.categoryList = listClass(
@@ -116,8 +118,8 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 			style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.LC_NO_HEADER,
 			size=(240, -1),
 		)
-		self.categoryList.SetName("Categories")
-		self.categoryList.InsertColumn(0, "Categories")
+		self.categoryList.SetName(_("Categories"))
+		self.categoryList.InsertColumn(0, _("Categories"))
 		for categoryName in self.CATEGORY_NAMES:
 			self.categoryList.Append((categoryName,))
 		self.categoryList.Select(0)
@@ -151,9 +153,9 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 
 		bottomRow = wx.BoxSizer(wx.HORIZONTAL)
 		bottomRow.AddStretchSpacer()
-		self.okBtn = wx.Button(self, wx.ID_OK, label="OK")
-		self.cancelBtn = wx.Button(self, wx.ID_CANCEL, label="Cancel")
-		self.applyBtn = wx.Button(self, label="Apply")
+		self.okBtn = wx.Button(self, wx.ID_OK, label=_("OK"))
+		self.cancelBtn = wx.Button(self, wx.ID_CANCEL, label=_("Cancel"))
+		self.applyBtn = wx.Button(self, label=_("Apply"))
 		self.applyBtn.Hide()
 		self.okBtn.SetDefault()
 		bottomRow.Add(self.okBtn, 0, wx.ALL, 8)
@@ -183,11 +185,11 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 			return list(browseMode.BrowseModeTreeInterceptor._browseTouchNavRegistry)
 		except Exception:
 			return [
-				("heading", "Headings"),
-				("link", "Links"),
-				("formField", "Form fields"),
-				("list", "Lists"),
-				("table", "Tables"),
+				("heading", _("Headings")),
+				("link", _("Links")),
+				("formField", _("Form fields")),
+				("list", _("Lists")),
+				("table", _("Tables")),
 			]
 
 	def _add_static_box_group(self, panel, sHelper, label):
@@ -202,12 +204,12 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		sHelper = guiHelper.BoxSizerHelper(panel, sizer=mainSizer)
 		sHelper.addItem(wx.StaticText(
 			panel,
-			label="Configure native NVDA Browse Mode behavior. These settings write to NVDA's virtualBuffers configuration.",
+			label=_("Configure native NVDA Browse Mode behavior. These settings write to NVDA's virtualBuffers configuration."),
 		))
-		group, box = self._add_static_box_group(panel, sHelper, "Browse Mode")
+		group, box = self._add_static_box_group(panel, sHelper, _("Browse Mode"))
 
 		self.maxLengthEdit = group.addLabeledControl(
-			"&Maximum number of characters on one line",
+			_("&Maximum number of characters on one line"),
 			nvdaControls.SelectOnFocusSpinCtrl,
 			min=10,
 			max=250,
@@ -215,36 +217,36 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		)
 		self.maxLengthEdit.Bind(wx.EVT_TEXT, self.onChanged)
 		self.pageLinesEdit = group.addLabeledControl(
-			"&Number of lines per page",
+			_("&Number of lines per page"),
 			nvdaControls.SelectOnFocusSpinCtrl,
 			min=5,
 			max=150,
 			initial=get_virtual_buffer_setting("linesPerPage"),
 		)
 		self.pageLinesEdit.Bind(wx.EVT_TEXT, self.onChanged)
-		self.useScreenLayoutCheckBox = self._add_browse_checkbox(group, box, "Use &screen layout (when supported)", "useScreenLayout")
-		self.enableOnPageLoadCheckBox = self._add_browse_checkbox(group, box, "&Enable browse mode on page load", "enableOnPageLoad")
-		self.autoSayAllCheckBox = self._add_browse_checkbox(group, box, "Automatic &Say All on page load", "autoSayAllOnPageLoad")
-		self.autoPassThroughOnFocusChangeCheckBox = self._add_browse_checkbox(group, box, "Automatic focus mode for focus changes", "autoPassThroughOnFocusChange")
-		self.autoPassThroughOnCaretMoveCheckBox = self._add_browse_checkbox(group, box, "Automatic focus mode for caret movement", "autoPassThroughOnCaretMove")
-		self.passThroughAudioIndicationCheckBox = self._add_browse_checkbox(group, box, "Audio indication of focus and browse modes", "passThroughAudioIndication")
+		self.useScreenLayoutCheckBox = self._add_browse_checkbox(group, box, _("Use &screen layout (when supported)"), "useScreenLayout")
+		self.enableOnPageLoadCheckBox = self._add_browse_checkbox(group, box, _("&Enable browse mode on page load"), "enableOnPageLoad")
+		self.autoSayAllCheckBox = self._add_browse_checkbox(group, box, _("Automatic &Say All on page load"), "autoSayAllOnPageLoad")
+		self.autoPassThroughOnFocusChangeCheckBox = self._add_browse_checkbox(group, box, _("Automatic focus mode for focus changes"), "autoPassThroughOnFocusChange")
+		self.autoPassThroughOnCaretMoveCheckBox = self._add_browse_checkbox(group, box, _("Automatic focus mode for caret movement"), "autoPassThroughOnCaretMove")
+		self.passThroughAudioIndicationCheckBox = self._add_browse_checkbox(group, box, _("Audio indication of focus and browse modes"), "passThroughAudioIndication")
 		self.browseModeMessageEdit = group.addLabeledControl(
-			"Browse mode message:",
+			_("Browse mode message:"),
 			wx.TextCtrl,
 			value=get_browse_mode_message(),
 		)
 		self.focusModeMessageEdit = group.addLabeledControl(
-			"Focus mode message:",
+			_("Focus mode message:"),
 			wx.TextCtrl,
 			value=get_focus_mode_message(),
 		)
 		self.browseModeMessageEdit.Bind(wx.EVT_TEXT, self.onChanged)
 		self.focusModeMessageEdit.Bind(wx.EVT_TEXT, self.onChanged)
 		self._update_mode_indication_message_enabled()
-		self.trapNonCommandGesturesCheckBox = self._add_browse_checkbox(group, box, "&Trap all non-command gestures from reaching the document", "trapNonCommandGestures")
+		self.trapNonCommandGesturesCheckBox = self._add_browse_checkbox(group, box, _("&Trap all non-command gestures from reaching the document"), "trapNonCommandGestures")
 
 		self.browseModeTouchNavigationList = group.addLabeledControl(
-			"T&ouch navigation elements:",
+			_("T&ouch navigation elements:"),
 			nvdaControls.CustomCheckListBox,
 			choices=[label for _itemType, label in self._browseModeElements],
 		)
@@ -259,19 +261,19 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		for index, (itemType, _label) in enumerate(self._browseModeElements):
 			self.browseModeTouchNavigationList.Check(index, itemType in enabledTypes)
 		self.loadChromiumBusyCombo = group.addLabeledControl(
-			"Load Chromium virtual buffer when document busy.",
+			_("Load Chromium virtual buffer when document busy."),
 			nvdaControls.FeatureFlagCombo,
 			keyPath=["virtualBuffers", "loadChromiumVBufOnBusyState"],
 			conf=config.conf,
 			onChoiceEventHandler=self.onChanged,
 		)
 		experimentalGroup, experimentalBox = self._add_static_box_group(
-			panel, sHelper, "Experimental heading presentation"
+			panel, sHelper, _("Experimental heading presentation")
 		)
 		self.headingContinuityCheckBox = experimentalGroup.addItem(
 			wx.CheckBox(
 				experimentalBox,
-				label="Reduce repeated heading levels on continuation lines",
+				label=_("Reduce repeated heading levels on continuation lines"),
 			)
 		)
 		self.headingContinuityCheckBox.SetValue(get_heading_continuity_enabled())
@@ -284,36 +286,36 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		sHelper = guiHelper.BoxSizerHelper(panel, sizer=mainSizer)
 		sHelper.addItem(wx.StaticText(
 			panel,
-			label="Configure web-related native NVDA documentFormatting announcements.",
+			label=_("Configure web-related native NVDA documentFormatting announcements."),
 		))
-		group, box = self._add_static_box_group(panel, sHelper, "Web Element Reporting")
+		group, box = self._add_static_box_group(panel, sHelper, _("Web Element Reporting"))
 		self.annotationDetailsCheckBox = self._add_annotation_checkbox(
 			group,
 			box,
-			"Report 'has details' for structured annotations",
+			_("Report 'has details' for structured annotations"),
 			"reportDetails",
 		)
 		self.ariaDescriptionCheckBox = self._add_annotation_checkbox(
 			group,
 			box,
-			"Report aria-description always",
+			_("Report aria-description always"),
 			"reportAriaDescription",
 		)
-		self.layoutTablesCheckBox = self._add_web_checkbox(group, box, "Include l&ayout tables", "includeLayoutTables")
-		self.headingsCheckBox = self._add_web_checkbox(group, box, "&Headings", "reportHeadings")
-		self.linksCheckBox = self._add_web_checkbox(group, box, "Lin&ks", "reportLinks")
-		self.linkTypeCheckBox = self._add_web_checkbox(group, box, "Link type", "reportLinkType")
-		self.graphicsCheckBox = self._add_web_checkbox(group, box, "&Graphics", "reportGraphics")
-		self.listsCheckBox = self._add_web_checkbox(group, box, "&Lists", "reportLists")
-		self.blockQuotesCheckBox = self._add_web_checkbox(group, box, "Block &quotes", "reportBlockQuotes")
-		self.groupingsCheckBox = self._add_web_checkbox(group, box, "&Groupings", "reportGroupings")
-		self.landmarksCheckBox = self._add_web_checkbox(group, box, "Lan&dmarks", "reportLandmarks")
-		self.articlesCheckBox = self._add_web_checkbox(group, box, "Arti&cles", "reportArticles")
-		self.framesCheckBox = self._add_web_checkbox(group, box, "Fra&mes", "reportFrames")
-		self.figuresCheckBox = self._add_web_checkbox(group, box, "Fi&gures", "reportFigures")
-		self.clickableCheckBox = self._add_web_checkbox(group, box, "&Clickable", "reportClickable")
+		self.layoutTablesCheckBox = self._add_web_checkbox(group, box, _("Include l&ayout tables"), "includeLayoutTables")
+		self.headingsCheckBox = self._add_web_checkbox(group, box, _("&Headings"), "reportHeadings")
+		self.linksCheckBox = self._add_web_checkbox(group, box, _("Lin&ks"), "reportLinks")
+		self.linkTypeCheckBox = self._add_web_checkbox(group, box, _("Link type"), "reportLinkType")
+		self.graphicsCheckBox = self._add_web_checkbox(group, box, _("&Graphics"), "reportGraphics")
+		self.listsCheckBox = self._add_web_checkbox(group, box, _("&Lists"), "reportLists")
+		self.blockQuotesCheckBox = self._add_web_checkbox(group, box, _("Block &quotes"), "reportBlockQuotes")
+		self.groupingsCheckBox = self._add_web_checkbox(group, box, _("&Groupings"), "reportGroupings")
+		self.landmarksCheckBox = self._add_web_checkbox(group, box, _("Lan&dmarks"), "reportLandmarks")
+		self.articlesCheckBox = self._add_web_checkbox(group, box, _("Arti&cles"), "reportArticles")
+		self.framesCheckBox = self._add_web_checkbox(group, box, _("Fra&mes"), "reportFrames")
+		self.figuresCheckBox = self._add_web_checkbox(group, box, _("Fi&gures"), "reportFigures")
+		self.clickableCheckBox = self._add_web_checkbox(group, box, _("&Clickable"), "reportClickable")
 		self.brailleLiveRegionsCombo = group.addLabeledControl(
-			"Braille report live regions:",
+			_("Braille report live regions:"),
 			nvdaControls.FeatureFlagCombo,
 			keyPath=["braille", "reportLiveRegions"],
 			conf=config.conf,
@@ -327,11 +329,11 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		sHelper = guiHelper.BoxSizerHelper(panel, sizer=mainSizer)
 		sHelper.addItem(wx.StaticText(
 			panel,
-			label="Choose the Browse Mode element types included when you press NVDA+Shift+U. Checked items are included.",
+			label=_("Choose the Browse Mode element types included when you press NVDA+Shift+U. Checked items are included."),
 		))
-		group, box = self._add_static_box_group(panel, sHelper, "Page Summary")
+		group, box = self._add_static_box_group(panel, sHelper, _("Page Summary"))
 		self.notifyWhenPageReadyCheckBox = group.addItem(
-			wx.CheckBox(box, label="Notify when page is ready")
+			wx.CheckBox(box, label=_("Notify when page is ready"))
 		)
 		self.notifyWhenPageReadyCheckBox.SetValue(get_notify_when_page_ready())
 		self.notifyWhenPageReadyCheckBox.Bind(wx.EVT_CHECKBOX, self.onPageReadyChanged)
@@ -339,13 +341,13 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		pageReadyMessageSizer = wx.BoxSizer(wx.HORIZONTAL)
 		self.pageReadyMessageLabel = wx.StaticText(
 			self.pageReadyMessageRow,
-			label="Page ready message:",
+			label=_("Page ready message:"),
 		)
 		self.pageReadyMessageEdit = wx.TextCtrl(
 			self.pageReadyMessageRow,
 			value=get_page_ready_message(),
 		)
-		self.pageReadyMessageEdit.SetName("Page ready message:")
+		self.pageReadyMessageEdit.SetName(_("Page ready message:"))
 		pageReadyMessageSizer.Add(
 			self.pageReadyMessageLabel,
 			0,
@@ -359,12 +361,12 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 			self.pageReadyMessageRow.Hide()
 		self.pageReadyMessageEdit.Bind(wx.EVT_TEXT, self.onChanged)
 		self.pageLoadSummaryMode = group.addLabeledControl(
-		    "Page-load summary:",
+		    _("Page-load summary:"),
 		    wx.Choice,
 		    choices=[
-		        "NVDA native, no summary",
-		        "Summary after page is ready",
-		        "Replace initial page speech with summary",
+		        _("NVDA native, no summary"),
+		        _("Summary after page is ready"),
+		        _("Replace initial page speech with summary"),
 		    ],
 		)
 		self._pageLoadSummaryModes = (
@@ -378,33 +380,33 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		self.pageLoadSummaryMode.Bind(wx.EVT_CHOICE, self.onPageLoadSummaryModeChanged)
 		self._pageEntrySummaryDelaySeconds = (0, 1, 2, 3, 4, 5)
 		self.pageEntrySummaryDelayChoice = group.addLabeledControl(
-			"Automatic page-entry summary delay:",
+			_("Automatic page-entry summary delay:"),
 			wx.Choice,
 			choices=(
-				"No additional delay",
-				"1 second",
-				"2 seconds",
-				"3 seconds",
-				"4 seconds",
-				"5 seconds",
+				_("No additional delay"),
+				_("1 second"),
+				_("2 seconds"),
+				_("3 seconds"),
+				_("4 seconds"),
+				_("5 seconds"),
 			),
 		)
-		self.pageEntrySummaryDelayChoice.SetName("Automatic page-entry summary delay")
+		self.pageEntrySummaryDelayChoice.SetName(_("Automatic page-entry summary delay"))
 		self.pageEntrySummaryDelayChoice.SetSelection(
 			self._pageEntrySummaryDelaySeconds.index(get_page_entry_summary_delay_seconds())
 		)
 		self.pageEntrySummaryDelayChoice.Bind(wx.EVT_CHOICE, self.onChanged)
 		self._update_page_entry_summary_delay_enabled()
-		self._pageSummaryElements = [("documentTitle", "Title")] + [
+		self._pageSummaryElements = [("documentTitle", _("Title"))] + [
 			(item.item_type, item.plural_label)
 			for item in SUMMARY_ITEM_TYPES
 		]
 		self.pageSummaryElementList = group.addLabeledControl(
-			"Page Summary choices:",
+			_("Page Summary choices:"),
 			nvdaControls.CustomCheckListBox,
 			choices=[label for _itemType, label in self._pageSummaryElements],
 		)
-		self.pageSummaryElementList.SetName("Included page summary element types")
+		self.pageSummaryElementList.SetName(_("Included page summary element types"))
 		self.pageSummaryElementList.Bind(wx.EVT_CHECKLISTBOX, self.onPageSummaryChanged)
 		enabledTypes = set(get_included_element_types())
 		if get_include_document_title():

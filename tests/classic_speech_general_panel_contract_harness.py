@@ -294,11 +294,10 @@ class GeneralPanelContractTests(unittest.TestCase):
             currentEditProfile="Beginner",
             profileConfig={"enabledTokens": {"name": True, "position": True, "value": True}},
             profileBehavior={},
-            activeProfileChoice=Control("Advanced"),
+            activeProfileChoice=Control(2),
             tokenList=CheckedList([2, 4]),
             positionModeChoice=Control(1),
         )
-        panel.activeProfileChoice.GetStringSelection = lambda: panel.activeProfileChoice.value
         panel._getPositionModeFromChoice = lambda: VerbosityPanel._getPositionModeFromChoice(panel)
         panel._refreshWorkingConfigFromControls = lambda: VerbosityPanel._refreshWorkingConfigFromControls(panel)
 

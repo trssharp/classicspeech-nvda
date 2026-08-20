@@ -633,7 +633,7 @@ class VoiceProfileControlAndDialogTests(unittest.TestCase):
 			"self._cancelPreview()",
 			"self.previewBtn.Enable(row.editable and not self._preview_is_active())",
 			"Reset all Voice Profile overrides",
-			"self.resetBtn.SetName(\"Reset all Voice Profile overrides\")",
+			"self.resetBtn.SetName(_(\"Reset all Voice Profile overrides\"))",
 			"self.onResetAllOverrides",
 			"wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING",
 			"self.store.reset_all_overrides()",

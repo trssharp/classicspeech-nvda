@@ -75,6 +75,8 @@ class PackageVersioningTests(unittest.TestCase):
         self.assertIn("globalPlugins/_speech_core/settings/text/panel.py", members)
         self.assertNotIn("globalPlugins/_speech_core/settings/text_processing_config.py", members)
         self.assertNotIn("globalPlugins/_speech_core/settings/text_processing_panel.py", members)
+        self.assertIn("locale/es/LC_MESSAGES/nvda.mo", members)
+        self.assertNotIn("locale/es/LC_MESSAGES/nvda.po", members)
 
 
 if __name__ == "__main__":
