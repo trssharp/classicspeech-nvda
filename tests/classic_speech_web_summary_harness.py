@@ -358,8 +358,8 @@ class WebSummaryCommandTests(unittest.TestCase):
         source = (ROOT / "classicSpeech.py").read_text(encoding="utf-8")
         before_script = source.split("def script_pageSummary", 1)[0]
         decorator_block = before_script.rsplit("@scriptHandler.script(", 1)[1]
-        self.assertIn('description="Reports selected Browse Mode element counts for the current page"', decorator_block)
-        self.assertIn('category="ClassicSpeech"', decorator_block)
+        self.assertIn('description=_("Reports selected Browse Mode element counts for the current page")', decorator_block)
+        self.assertIn('category=_("ClassicSpeech")', decorator_block)
 
     def test_page_summary_speaks_selected_counts_without_moving_items_or_focus(self):
         heading = FakeQuickNavItem()

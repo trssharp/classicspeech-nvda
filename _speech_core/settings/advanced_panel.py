@@ -1,3 +1,5 @@
+from ..localization import _
+
 import wx
 import logHandler
 
@@ -24,22 +26,22 @@ class AdvancedPanel(wx.Panel):
 
 		_set_panel_description(
 			self,
-			"Advanced",
-			"Configure ClassicSpeech diagnostic logging and the speech processing hook.",
+			_("Advanced"),
+			_("Configure ClassicSpeech diagnostic logging and the speech processing hook."),
 		)
 
 		mainSizer = wx.BoxSizer(wx.VERTICAL)
 
 		self.speechHookEnabled = wx.CheckBox(
 			self,
-			label="Enable ClassicSpeech speech processing hook",
+			label=_("Enable ClassicSpeech speech processing hook"),
 		)
 		self.speechHookEnabled.SetValue(_get_speech_hook_enabled())
 		mainSizer.Add(self.speechHookEnabled, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
 		self.announceSpeechHookLoaded = wx.CheckBox(
 			self,
-			label="Speak a message when the speech hook loads",
+			label=_("Speak a message when the speech hook loads"),
 		)
 		self.announceSpeechHookLoaded.SetValue(_get_announce_speech_hook_loaded_enabled())
 		mainSizer.Add(self.announceSpeechHookLoaded, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
@@ -47,7 +49,7 @@ class AdvancedPanel(wx.Panel):
 		hookMessageGrid = wx.FlexGridSizer(cols=2, vgap=8, hgap=10)
 		hookMessageGrid.AddGrowableCol(1, 1)
 		hookMessageGrid.Add(
-			wx.StaticText(self, label="Speech hook loaded message:"),
+			wx.StaticText(self, label=_("Speech hook loaded message:")),
 			0,
 			wx.ALIGN_CENTER_VERTICAL,
 		)
@@ -55,22 +57,22 @@ class AdvancedPanel(wx.Panel):
 			self,
 			value=_get_speech_hook_loaded_message(),
 		)
-		self.speechHookLoadedMessage.SetName("Speech hook loaded message")
+		self.speechHookLoadedMessage.SetName(_("Speech hook loaded message"))
 		hookMessageGrid.Add(self.speechHookLoadedMessage, 1, wx.EXPAND)
 		mainSizer.Add(hookMessageGrid, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
 		note = wx.StaticText(
 			self,
 			label=(
-				"Turning the speech hook off leaves ClassicSpeech commands available, "
-				"but lets NVDA speech pass through without ClassicSpeech processing."
+				_("Turning the speech hook off leaves ClassicSpeech commands available, "
+				"but lets NVDA speech pass through without ClassicSpeech processing.")
 			),
 		)
 		mainSizer.Add(note, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
 		self.debugLogging = wx.CheckBox(
 			self,
-			label="Enable ClassicSpeech diagnostic logging",
+			label=_("Enable ClassicSpeech diagnostic logging"),
 		)
 		self.debugLogging.SetValue(_get_debug_logging_enabled())
 		mainSizer.Add(self.debugLogging, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)

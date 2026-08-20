@@ -1,5 +1,7 @@
 """Editable Microsoft Edge notification controls for the settings dialog."""
 from __future__ import annotations
+from ..localization import _
+
 
 from .edge_notifications_config import (
     EDGE_NOTIFICATION_ACTIVITIES,
@@ -13,8 +15,8 @@ class EdgeNotificationsPanel(RenameListPanel):
     """Registry-backed checklist with separate enablement and custom wording."""
 
     _DESCRIPTION = (
-        "Space: announce or suppress. F2: set a custom announcement. "
-        "Delete: restore the native Edge announcement. Shift+F10: menu."
+        _("Space: announce or suppress. F2: set a custom announcement. "
+        "Delete: restore the native Edge announcement. Shift+F10: menu.")
     )
 
     def __init__(self, parent, onChange=None):
@@ -25,7 +27,7 @@ class EdgeNotificationsPanel(RenameListPanel):
         }
         super().__init__(
             parent,
-            title="Microsoft Edge notifications",
+            title=_("Microsoft Edge notifications"),
             labels=self._activityIds,
             renames={},
             mutedLabels=[],
@@ -33,16 +35,16 @@ class EdgeNotificationsPanel(RenameListPanel):
             displayLabels=displayLabels,
             helpText=self._DESCRIPTION,
             compactDisplay=True,
-            renamePromptTitle="Custom notification message: {display}",
+            renamePromptTitle=_("Custom notification message: {display}"),
             renamePromptMessage=(
-                "Enter a custom notification message for '{display}'. "
-                "Leave blank to restore the native Edge announcement."
+                _("Enter a custom notification message for '{display}'. "
+                "Leave blank to restore the native Edge announcement.")
             ),
-            renameMenuLabel="Set custom message\tF2",
-            clearRenameMenuLabel="Restore native message\tDelete",
-            checkedActionCaption="Announce",
-            uncheckedActionCaption="Suppress",
-            customDisplaySuffix="custom message: {text}",
+            renameMenuLabel=_("Set custom message\tF2"),
+            clearRenameMenuLabel=_("Restore native message\tDelete"),
+            checkedActionCaption=_("Announce"),
+            uncheckedActionCaption=_("Suppress"),
+            customDisplaySuffix=_("custom message: {text}"),
         )
 
     def loadData(self, enabledActivityIds, customMessages):

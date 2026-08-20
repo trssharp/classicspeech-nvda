@@ -1,3 +1,5 @@
+from ..localization import _
+
 import wx
 import logHandler
 
@@ -29,14 +31,14 @@ class MiscPanel(wx.Panel):
 
 		self.announceDefaultButton = wx.CheckBox(
 			self,
-			label="Announce default button in dialogs",
+			label=_("Announce default button in dialogs"),
 		)
 		self.announceDefaultButton.SetValue(_get_default_button_enabled())
 		mainSizer.Add(self.announceDefaultButton, 0, wx.ALL | wx.EXPAND, 8)
 
 		self.guessObjectPositionInformationWhenUnavailable = wx.CheckBox(
 			self,
-			label="Guess object position information when unavailable",
+			label=_("Guess object position information when unavailable"),
 		)
 		self.guessObjectPositionInformationWhenUnavailable.SetValue(
 			_get_guess_object_position_information_when_unavailable()
@@ -46,7 +48,7 @@ class MiscPanel(wx.Panel):
 		querySourceSizer = wx.BoxSizer(wx.HORIZONTAL)
 		querySourceLabel = wx.StaticText(
 			self,
-			label="Insert+Tab reports",
+			label=_("Insert+Tab reports"),
 		)
 		querySourceSizer.Add(querySourceLabel, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
 		self.queryObjectSourceChoice = wx.Choice(
@@ -60,34 +62,34 @@ class MiscPanel(wx.Panel):
 				break
 		else:
 			self.queryObjectSourceChoice.SetSelection(0)
-		self.queryObjectSourceChoice.SetName("Insert+Tab reports")
+		self.queryObjectSourceChoice.SetName(_("Insert+Tab reports"))
 		querySourceSizer.Add(self.queryObjectSourceChoice, 0, wx.ALIGN_CENTER_VERTICAL)
 		mainSizer.Add(querySourceSizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
 		self.objectNavigationProcessing = wx.CheckBox(
 			self,
-			label="Object navigation processing",
+			label=_("Object navigation processing"),
 		)
 		self.objectNavigationProcessing.SetValue(_get_object_navigation_processing_enabled())
 		mainSizer.Add(self.objectNavigationProcessing, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
 		self.preventAutomaticSpeechInterrupt = wx.CheckBox(
 			self,
-			label="Prevent automatic speech interruptions",
+			label=_("Prevent automatic speech interruptions"),
 		)
 		self.preventAutomaticSpeechInterrupt.SetValue(_get_prevent_automatic_speech_interrupt_enabled())
 		mainSizer.Add(self.preventAutomaticSpeechInterrupt, 0, wx.ALL | wx.EXPAND, 8)
 
 		self.speechInterruptForCharacters = wx.CheckBox(
 			self,
-			label="Speech interrupt for typed characters",
+			label=_("Speech interrupt for typed characters"),
 		)
 		self.speechInterruptForCharacters.SetValue(_get_speech_interrupt_for_typed_characters_enabled())
 		mainSizer.Add(self.speechInterruptForCharacters, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
 		self.speechInterruptForEnter = wx.CheckBox(
 			self,
-			label="Speech interrupt for Enter key",
+			label=_("Speech interrupt for Enter key"),
 		)
 		self.speechInterruptForEnter.SetValue(_get_speech_interrupt_for_enter_enabled())
 		mainSizer.Add(self.speechInterruptForEnter, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)

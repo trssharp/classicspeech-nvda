@@ -387,7 +387,7 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 		self.assertIn("_openWebBrowseSettings", classic_speech)
 	def test_page_summary_category_uses_accessible_checklist_and_propagating_handler(self):
 		dialog_source = (ROOT / "_speech_core" / "settings" / "web" / "dialog.py").read_text(encoding="utf-8")
-		self.assertIn('self._pageSummaryElements = [("documentTitle", "Title")]', dialog_source)
+		self.assertIn('self._pageSummaryElements = [("documentTitle", _("Title"))]', dialog_source)
 		self.assertIn("choices=[label for _itemType, label in self._pageSummaryElements]", dialog_source)
 		self.assertIn("get_include_document_title", dialog_source)
 		self.assertIn("set_include_document_title", dialog_source)
@@ -528,10 +528,10 @@ class WebBrowseEdgeNotificationsIntegrationTests(unittest.TestCase):
 		dialog_source = (ROOT / "_speech_core" / "settings" / "web" / "dialog.py").read_text(encoding="utf-8")
 		self.assertIn("from ..edge_notifications_config import (", dialog_source)
 		self.assertIn("from ..edge_notifications_panel import EdgeNotificationsPanel", dialog_source)
-		self.assertIn('"Microsoft Edge Notifications",', dialog_source)
+		self.assertIn('_("Microsoft Edge Notifications"),', dialog_source)
 		self.assertLess(
-			dialog_source.index('"Page Summary",'),
-			dialog_source.index('"Microsoft Edge Notifications",'),
+			dialog_source.index('_("Page Summary"),'),
+			dialog_source.index('_("Microsoft Edge Notifications"),'),
 		)
 		self.assertIn("self.edgeNotificationsPanel = scrolledpanel.ScrolledPanel", dialog_source)
 		self.assertIn("self.edgeNotificationsEditor = EdgeNotificationsPanel(", dialog_source)

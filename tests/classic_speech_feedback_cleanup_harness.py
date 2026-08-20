@@ -452,18 +452,9 @@ class KeyboardEntryVoiceProfileTests(unittest.TestCase):
 
     def test_nvda_master_braille_input_reaches_the_shared_typed_entry_path(self):
         nvda_source = nvda_harness.NVDA_SOURCE
-        braille_input_path = next(
-            (
-                path
-                for path in (
-                    nvda_source / "brailleInput.py",
-                    nvda_source / "braille" / "input" / "inputHandler.py",
-                )
-                if path.is_file()
-            ),
-            None,
-        )
-        self.assertIsNotNone(braille_input_path, "NVDA braille input source was not found")
+        # Prefer the actual implementation in the new package; brailleInput.py is a deprecated compat shim
+        braille_input_path = nvda_source / "braille" / "input" / "inputHandler.py"
+        self.assertTrue(braille_input_path.is_file(), "NVDA braille input source was not found at braille/input/inputHandler.py")
         braille_input = braille_input_path.read_text(encoding="utf-8")
         nvda_object = (nvda_source / "NVDAObjects" / "__init__.py").read_text(encoding="utf-8")
         self.assertIn("focusObj.event_typedCharacter(ch=ch)", braille_input)
@@ -600,10 +591,10 @@ class FeedbackSettingsWordingCleanupTests(unittest.TestCase):
         token_source = (root / "_speech_core" / "settings" / "token_editor_panel.py").read_text(encoding="utf-8")
         key_source = (root / "_speech_core" / "settings" / "key_labels_panel.py").read_text(encoding="utf-8")
 
-        self.assertIn('label="Reset Profile Now"', dialog_source)
-        self.assertIn('SetLabel("Reset Profile Now")', dialog_source)
-        self.assertIn('SetLabel("Reset Tokens to Defaults Now")', dialog_source)
-        self.assertIn('SetLabel("Reset Key Labels to Defaults Now")', dialog_source)
+        self.assertIn('label=_("Reset Profile Now")', dialog_source)
+        self.assertIn('SetLabel(_("Reset Profile Now"))', dialog_source)
+        self.assertIn('SetLabel(_("Reset Tokens to Defaults Now"))', dialog_source)
+        self.assertIn('SetLabel(_("Reset Key Labels to Defaults Now"))', dialog_source)
         for source in (verbosity_source, token_source, key_source):
             self.assertIn("Cancel will not undo this reset.", source)
             self.assertIn("Choose Yes to reset now, or No to keep your current settings.", source)
@@ -625,9 +616,9 @@ class FeedbackSettingsWordingCleanupTests(unittest.TestCase):
         controller_source = (root / "_speech_core" / "interrupt_control.py").read_text(encoding="utf-8")
         plugin_config_source = (root / "_speech_core" / "plugin_config.py").read_text(encoding="utf-8")
 
-        self.assertIn('label="Prevent automatic speech interruptions"', panel_source)
-        self.assertIn('label="Speech interrupt for typed characters"', panel_source)
-        self.assertIn('label="Speech interrupt for Enter key"', panel_source)
+        self.assertIn('label=_("Prevent automatic speech interruptions")', panel_source)
+        self.assertIn('label=_("Speech interrupt for typed characters")', panel_source)
+        self.assertIn('label=_("Speech interrupt for Enter key")', panel_source)
         self.assertIn('"keyboard", "speechInterruptForCharacters"', config_source)
         self.assertIn('"keyboard", "speechInterruptForEnter"', config_source)
         self.assertNotIn("allowKeyboardSpeechInterrupt", panel_source)

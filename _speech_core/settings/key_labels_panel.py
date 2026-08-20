@@ -1,3 +1,5 @@
+from ..localization import _
+
 import copy
 
 import wx
@@ -20,12 +22,12 @@ class KeyLabelsPanel(wx.Panel):
 
 		self.keyLabelConfig = _clone_key_label_config()
 		self._description = (
-			"Key labels control what ClassicSpeech changes for normal keyboard speech. "
+			_("Key labels control what ClassicSpeech changes for normal keyboard speech. "
 			"Input help is left native and does not use these key-label changes. "
 			"They are separate from object speech tokens and hotkey tokens.\n"
-			"Space: mute or unmute. F2: rename. Delete: clear rename. Shift+F10: menu."
+			"Space: mute or unmute. F2: rename. Delete: clear rename. Shift+F10: menu.")
 		)
-		_set_panel_description(self, "Key Labels", self._description)
+		_set_panel_description(self, _("Key Labels"), self._description)
 		self.keyRows = get_known_key_labels()
 		self.keyNames = [key for key, _label in self.keyRows]
 		self.defaultLabels = {key: label for key, label in self.keyRows}
@@ -41,7 +43,7 @@ class KeyLabelsPanel(wx.Panel):
 
 		self.keyPanel = RenameListPanel(
 			self,
-			title="Key labels",
+			title=_("Key labels"),
 			labels=self.keyNames,
 			renames={},
 			mutedLabels=[],
@@ -82,7 +84,7 @@ class KeyLabelsPanel(wx.Panel):
 			_preview_key_label_config(self.keyLabelConfig)
 
 	def reset_key_labels_to_defaults(self):
-		message = (
+		message = _(
 			"Reset key label settings to defaults now?"
 			"\n\nThis will immediately clear all custom key renames and muted keys."
 			"\n\nCancel will not undo this reset."
@@ -90,7 +92,7 @@ class KeyLabelsPanel(wx.Panel):
 		)
 		result = wx.MessageBox(
 			message,
-			"Reset Key Labels to Defaults",
+			_("Reset Key Labels to Defaults"),
 			wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
 			self,
 		)

@@ -1,5 +1,7 @@
 # history_viewer.py
 """Simple wx dialog for reviewing ClassicSpeech history."""
+from .localization import _
+
 
 import wx
 
@@ -91,7 +93,7 @@ class SpeechHistoryDialog(wx.Dialog):
     def __init__(self, parent, history):
         global _HISTORY_DIALOG_ACTIVE
         _HISTORY_DIALOG_ACTIVE = True
-        super().__init__(parent, title="Speech History")
+        super().__init__(parent, title=_("Speech History"))
         self.history = history
 
         mainSizer = wx.BoxSizer(wx.VERTICAL)
@@ -105,9 +107,9 @@ class SpeechHistoryDialog(wx.Dialog):
         mainSizer.Add(self.listBox, proportion=1, flag=wx.EXPAND | wx.ALL, border=10)
 
         buttonSizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.copyButton = wx.Button(self, label="&Copy")
-        self.clearButton = wx.Button(self, label="C&lear")
-        self.closeButton = wx.Button(self, id=wx.ID_CLOSE, label="Close")
+        self.copyButton = wx.Button(self, label=_("&Copy"))
+        self.clearButton = wx.Button(self, label=_("C&lear"))
+        self.closeButton = wx.Button(self, id=wx.ID_CLOSE, label=_("Close"))
 
         buttonSizer.Add(self.copyButton, flag=wx.RIGHT, border=8)
         buttonSizer.Add(self.clearButton, flag=wx.RIGHT, border=8)
@@ -148,7 +150,7 @@ class SpeechHistoryDialog(wx.Dialog):
     def onCopy(self, event=None):
         index = self._selectedIndex()
         if index is None:
-            ui.message("No history item selected")
+            ui.message(_("No history item selected"))
             return
         self.history.copy_index(index)
 
@@ -156,7 +158,7 @@ class SpeechHistoryDialog(wx.Dialog):
         self.history.clear()
         self.listBox.Clear()
         self._refreshButtons()
-        ui.message("Speech history cleared")
+        ui.message(_("Speech history cleared"))
         self.closeButton.SetFocus()
 
     def onCharHook(self, event):

@@ -1,3 +1,5 @@
+from ..localization import _
+
 import copy
 
 import wx
@@ -25,12 +27,12 @@ class TokenEditorPanel(wx.Panel):
 
 		self.shapeConfig = _clone_shape_from_manager()
 		self._description = (
-			"The token editor is global. Use it to rename or mute individual role and state labels "
+			_("The token editor is global. Use it to rename or mute individual role and state labels "
 			"for all verbosity profiles.\n"
 			"Use Control+Up and Control+Down to reorder the spoken token sequence.\n"
-			"Space: mute or unmute. F2: rename. Delete: clear rename. Shift+F10: menu."
+			"Space: mute or unmute. F2: rename. Delete: clear rename. Shift+F10: menu.")
 		)
-		_set_panel_description(self, "Token Editor", self._description)
+		_set_panel_description(self, _("Token Editor"), self._description)
 
 		self.roleLabels = sorted(SPOKEN_TO_ROLE.keys(), key=str.lower)
 		self.stateLabels = sorted(SPOKEN_TO_STATE.keys(), key=str.lower)
@@ -45,13 +47,13 @@ class TokenEditorPanel(wx.Panel):
 		)
 
 		mainSizer.Add(
-			wx.StaticText(self, label="Spoken token sequence"),
+			wx.StaticText(self, label=_("Spoken token sequence")),
 			0,
 			wx.LEFT | wx.RIGHT | wx.TOP | wx.EXPAND,
 			8,
 		)
 		self.tokenOrderList = wx.ListBox(self, style=wx.LB_SINGLE)
-		self.tokenOrderList.SetName("Spoken token sequence")
+		self.tokenOrderList.SetName(_("Spoken token sequence"))
 		mainSizer.Add(self.tokenOrderList, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 		self.tokenOrderList.Bind(wx.EVT_KEY_DOWN, self.onTokenOrderKeyDown)
 
@@ -59,7 +61,7 @@ class TokenEditorPanel(wx.Panel):
 
 		self.rolePanel = RenameListPanel(
 			self,
-			title="Roles",
+			title=_("Roles"),
 			labels=self.roleLabels,
 			renames={},
 			mutedLabels=[],
@@ -69,7 +71,7 @@ class TokenEditorPanel(wx.Panel):
 
 		self.statePanel = RenameListPanel(
 			self,
-			title="States",
+			title=_("States"),
 			labels=self.stateLabels,
 			renames={},
 			mutedLabels=[],
@@ -212,7 +214,7 @@ class TokenEditorPanel(wx.Panel):
 			_preview_shape_config(self.shapeConfig)
 
 	def reset_tokens_to_defaults(self):
-		message = (
+		message = _(
 			"Reset token editor settings to defaults now?"
 			"\n\nThis will immediately clear all global token renames and muted labels, "
 			"and restore the default token order."
@@ -221,7 +223,7 @@ class TokenEditorPanel(wx.Panel):
 		)
 		result = wx.MessageBox(
 			message,
-			"Reset Tokens to Defaults",
+			_("Reset Tokens to Defaults"),
 			wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
 			self,
 		)

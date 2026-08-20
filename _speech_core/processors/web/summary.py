@@ -5,6 +5,8 @@ Browse Mode quick-navigation iterators without calling item reporting or
 movement methods, so callers can present a summary without moving the user.
 """
 from __future__ import annotations
+from ...localization import _
+
 
 from dataclasses import dataclass
 from typing import Iterable, Protocol
@@ -23,24 +25,24 @@ class SummaryItemType:
 # Stable ClassicSpeech display order. The types and gestures are verified against
 # NVDA master browseMode.py's quick-navigation registry.
 SUMMARY_ITEM_TYPES: tuple[SummaryItemType, ...] = (
-    SummaryItemType("annotation", "A", "annotation", "Annotations"),
-    SummaryItemType("button", "B", "button", "Buttons"),
-    SummaryItemType("comboBox", "C", "combo box", "Combo boxes"),
-    SummaryItemType("landmark", "D", "landmark", "Landmarks"),
-    SummaryItemType("edit", "E", "edit field", "Edit fields"),
-    SummaryItemType("formField", "F", "form field", "Form fields"),
-    SummaryItemType("graphic", "G", "graphic", "Graphics"),
-    SummaryItemType("heading", "H", "heading", "Headings"),
-    SummaryItemType("link", "K", "link", "Links"),
-    SummaryItemType("list", "L", "list", "Lists"),
-    SummaryItemType("frame", "M", "frame", "Frames"),
-    SummaryItemType("embeddedObject", "O", "embedded object", "Embedded objects"),
-    SummaryItemType("blockQuote", "Q", "block quote", "Block quotes"),
-    SummaryItemType("radioButton", "R", "radio button", "Radio buttons"),
-    SummaryItemType("separator", "S", "separator", "Separators"),
-    SummaryItemType("table", "T", "table", "Tables"),
-    SummaryItemType("error", "W", "error", "Errors"),
-    SummaryItemType("checkBox", "X", "check box", "Check boxes"),
+    SummaryItemType("annotation", "A", _("annotation"), _("Annotations")),
+    SummaryItemType("button", "B", _("button"), _("Buttons")),
+    SummaryItemType("comboBox", "C", _("combo box"), _("Combo boxes")),
+    SummaryItemType("landmark", "D", _("landmark"), _("Landmarks")),
+    SummaryItemType("edit", "E", _("edit field"), _("Edit fields")),
+    SummaryItemType("formField", "F", _("form field"), _("Form fields")),
+    SummaryItemType("graphic", "G", _("graphic"), _("Graphics")),
+    SummaryItemType("heading", "H", _("heading"), _("Headings")),
+    SummaryItemType("link", "K", _("link"), _("Links")),
+    SummaryItemType("list", "L", _("list"), _("Lists")),
+    SummaryItemType("frame", "M", _("frame"), _("Frames")),
+    SummaryItemType("embeddedObject", "O", _("embedded object"), _("Embedded objects")),
+    SummaryItemType("blockQuote", "Q", _("block quote"), _("Block quotes")),
+    SummaryItemType("radioButton", "R", _("radio button"), _("Radio buttons")),
+    SummaryItemType("separator", "S", _("separator"), _("Separators")),
+    SummaryItemType("table", "T", _("table"), _("Tables")),
+    SummaryItemType("error", "W", _("error"), _("Errors")),
+    SummaryItemType("checkBox", "X", _("check box"), _("Check boxes")),
 )
 
 DEFAULT_INCLUDED_ITEM_TYPES: tuple[str, ...] = (
@@ -52,7 +54,7 @@ DEFAULT_INCLUDED_ITEM_TYPES: tuple[str, ...] = (
     "table",
 )
 
-_EMPTY_SUMMARY_MESSAGE = "No selected element types found."
+_EMPTY_SUMMARY_MESSAGE = _("No selected element types found.")
 _ITEM_BY_TYPE = {item.item_type: item for item in SUMMARY_ITEM_TYPES}
 
 

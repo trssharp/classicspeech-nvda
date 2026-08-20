@@ -1,3 +1,5 @@
+from ..localization import _
+
 import copy
 
 import wx
@@ -30,10 +32,10 @@ class SpeechTimingPanel(wx.Panel):
 		self.shapeConfig = _clone_shape_from_manager()
 		self.tokenPauseChoices = {}
 		self._description = (
-			"Global pause is the default silence used between spoken items. "
-			"Per-token pauses can override it for specific tokens, such as position."
+			_("Global pause is the default silence used between spoken items. "
+			"Per-token pauses can override it for specific tokens, such as position.")
 		)
-		_set_panel_description(self, "Speech Timing", self._description)
+		_set_panel_description(self, _("Speech Timing"), self._description)
 
 		mainSizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -47,29 +49,36 @@ class SpeechTimingPanel(wx.Panel):
 		grid = wx.FlexGridSizer(cols=2, vgap=10, hgap=10)
 		grid.AddGrowableCol(1, 1)
 
-		grid.Add(wx.StaticText(self, label="Global pause:"), 0, wx.ALIGN_CENTER_VERTICAL)
+		grid.Add(wx.StaticText(self, label=_("Global pause:")), 0, wx.ALIGN_CENTER_VERTICAL)
 		self.globalPauseChoice = wx.Choice(
 			self,
 			choices=[label for label, _value in GLOBAL_PAUSE_CHOICES],
 		)
-		self.globalPauseChoice.SetName("Global pause")
+		self.globalPauseChoice.SetName(_("Global pause"))
 		grid.Add(self.globalPauseChoice, 1, wx.EXPAND)
 
-		grid.Add(wx.StaticText(self, label="Pause placement:"), 0, wx.ALIGN_CENTER_VERTICAL)
+		grid.Add(wx.StaticText(self, label=_("Pause placement:")), 0, wx.ALIGN_CENTER_VERTICAL)
 		self.pausePlacementChoice = wx.Choice(
 			self,
 			choices=[label for label, _value in PAUSE_PLACEMENT_CHOICES],
 		)
-		self.pausePlacementChoice.SetName("Pause placement")
+		self.pausePlacementChoice.SetName(_("Pause placement"))
 		grid.Add(self.pausePlacementChoice, 1, wx.EXPAND)
 
 		for tokenKind, tokenLabel in TOKEN_ORDER_ITEMS:
-			grid.Add(wx.StaticText(self, label=f"{tokenLabel} pause:"), 0, wx.ALIGN_CENTER_VERTICAL)
+			grid.Add(
+				wx.StaticText(
+					self,
+					label=_("{tokenLabel} pause:").format(tokenLabel=tokenLabel),
+				),
+				0,
+				wx.ALIGN_CENTER_VERTICAL,
+			)
 			choice = wx.Choice(
 				self,
 				choices=[label for label, _value in TOKEN_PAUSE_CHOICES],
 			)
-			choice.SetName(f"{tokenLabel} pause")
+			choice.SetName(_("{tokenLabel} pause").format(tokenLabel=tokenLabel))
 			self.tokenPauseChoices[tokenKind] = choice
 			grid.Add(choice, 1, wx.EXPAND)
 
@@ -77,7 +86,7 @@ class SpeechTimingPanel(wx.Panel):
 
 		self.pauseAfterFinalToken = wx.CheckBox(
 			self,
-			label="Pause after final spoken token",
+			label=_("Pause after final spoken token"),
 		)
 		mainSizer.Add(self.pauseAfterFinalToken, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 		self.SetSizer(mainSizer)

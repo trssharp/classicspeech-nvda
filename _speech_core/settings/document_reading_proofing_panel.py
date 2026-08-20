@@ -1,3 +1,5 @@
+from ..localization import _
+
 import wx
 import logHandler
 from gui import guiHelper, nvdaControls
@@ -52,8 +54,8 @@ class DocumentReadingProofingPanel(wx.Panel):
 		super().__init__(parent)
 		_set_panel_description(
 			self,
-			"Document Reading / Proofing",
-			"Configure selected native NVDA document formatting and proofing announcements. This panel wraps NVDA settings and does not add a ClassicSpeech document processor.",
+			_("Document Reading / Proofing"),
+			_("Configure selected native NVDA document formatting and proofing announcements. This panel wraps NVDA settings and does not add a ClassicSpeech document processor."),
 		)
 
 		mainSizer = wx.BoxSizer(wx.VERTICAL)
@@ -90,14 +92,14 @@ class DocumentReadingProofingPanel(wx.Panel):
 		return control
 
 	def _add_font_group(self, sHelper):
-		group, box = self._add_static_box_group(sHelper, "Font")
-		self._add_checkbox(group, box, "fontNameCheckBox", "reportFontName", "&Font name")
-		self._add_checkbox(group, box, "fontSizeCheckBox", "reportFontSize", "Font &size")
+		group, box = self._add_static_box_group(sHelper, _("Font"))
+		self._add_checkbox(group, box, "fontNameCheckBox", "reportFontName", _("&Font name"))
+		self._add_checkbox(group, box, "fontSizeCheckBox", "reportFontSize", _("Font &size"))
 		self._add_choice(
 			group,
 			"fontAttrsList",
 			"fontAttributeReporting",
-			"Font attrib&utes",
+			_("Font attrib&utes"),
 			FONT_ATTRIBUTE_REPORTING_CHOICES,
 		)
 		self._add_checkbox(
@@ -105,40 +107,40 @@ class DocumentReadingProofingPanel(wx.Panel):
 			box,
 			"superscriptsAndSubscriptsCheckBox",
 			"reportSuperscriptsAndSubscripts",
-			"Su&perscripts and subscripts",
+			_("Su&perscripts and subscripts"),
 		)
-		self._add_checkbox(group, box, "emphasisCheckBox", "reportEmphasis", "E&mphasis")
-		self._add_checkbox(group, box, "highlightCheckBox", "reportHighlight", "Highlighted (mar&ked) text")
-		self._add_checkbox(group, box, "styleCheckBox", "reportStyle", "St&yle")
-		self._add_checkbox(group, box, "colorCheckBox", "reportColor", "&Colors")
+		self._add_checkbox(group, box, "emphasisCheckBox", "reportEmphasis", _("E&mphasis"))
+		self._add_checkbox(group, box, "highlightCheckBox", "reportHighlight", _("Highlighted (mar&ked) text"))
+		self._add_checkbox(group, box, "styleCheckBox", "reportStyle", _("St&yle"))
+		self._add_checkbox(group, box, "colorCheckBox", "reportColor", _("&Colors"))
 		self._add_checkbox(
 			group,
 			box,
 			"transparentColorCheckBox",
 			"reportTransparentColor",
-			"Report transparent color values",
+			_("Report transparent color values"),
 		)
 
 	def _add_document_information_group(self, sHelper):
-		group, box = self._add_static_box_group(sHelper, "Document information")
-		self._add_checkbox(group, box, "commentsCheckBox", "reportComments", "Commen&ts")
-		self._add_checkbox(group, box, "bookmarksCheckBox", "reportBookmarks", "&Bookmarks")
-		self._add_checkbox(group, box, "revisionsCheckBox", "reportRevisions", "&Editor revisions")
+		group, box = self._add_static_box_group(sHelper, _("Document information"))
+		self._add_checkbox(group, box, "commentsCheckBox", "reportComments", _("Commen&ts"))
+		self._add_checkbox(group, box, "bookmarksCheckBox", "reportBookmarks", _("&Bookmarks"))
+		self._add_checkbox(group, box, "revisionsCheckBox", "reportRevisions", _("&Editor revisions"))
 		self.reportSpellingErrors2 = group.addLabeledControl(
-			"Spelling or grammar e&rrors",
+			_("Spelling or grammar e&rrors"),
 			nvdaControls.CustomCheckListBox,
 			choices=_choice_labels(REPORT_SPELLING_ERRORS_FLAGS),
 		)
 
 	def _add_pages_and_spacing_group(self, sHelper):
-		group, box = self._add_static_box_group(sHelper, "Pages and spacing")
-		self._add_checkbox(group, box, "pageCheckBox", "reportPage", "&Pages")
-		self._add_checkbox(group, box, "lineNumberCheckBox", "reportLineNumber", "Line &numbers")
+		group, box = self._add_static_box_group(sHelper, _("Pages and spacing"))
+		self._add_checkbox(group, box, "pageCheckBox", "reportPage", _("&Pages"))
+		self._add_checkbox(group, box, "lineNumberCheckBox", "reportLineNumber", _("Line &numbers"))
 		self._add_choice(
 			group,
 			"lineIndentationCombo",
 			"reportLineIndentation",
-			"Line &indentation reporting:",
+			_("Line &indentation reporting:"),
 			REPORT_LINE_INDENTATION_CHOICES,
 		)
 		self._add_checkbox(
@@ -146,33 +148,33 @@ class DocumentReadingProofingPanel(wx.Panel):
 			box,
 			"ignoreBlankLinesRLICheckbox",
 			"ignoreBlankLinesForRLI",
-			"Ignore &blank lines for line indentation reporting",
+			_("Ignore &blank lines for line indentation reporting"),
 		)
 		self._add_checkbox(
 			group,
 			box,
 			"paragraphIndentationCheckBox",
 			"reportParagraphIndentation",
-			"&Paragraph indentation",
+			_("&Paragraph indentation"),
 		)
-		self._add_checkbox(group, box, "lineSpacingCheckBox", "reportLineSpacing", "&Line spacing")
-		self._add_checkbox(group, box, "alignmentCheckBox", "reportAlignment", "&Alignment")
+		self._add_checkbox(group, box, "lineSpacingCheckBox", "reportLineSpacing", _("&Line spacing"))
+		self._add_checkbox(group, box, "alignmentCheckBox", "reportAlignment", _("&Alignment"))
 
 	def _add_table_information_group(self, sHelper):
-		group, box = self._add_static_box_group(sHelper, "Table information")
-		self._add_checkbox(group, box, "tablesCheckBox", "reportTables", "&Tables")
-		self._add_choice(group, "tableHeadersComboBox", "reportTableHeaders", "H&eaders", REPORT_TABLE_HEADERS_CHOICES)
-		self._add_checkbox(group, box, "tableCellCoordsCheckBox", "reportTableCellCoords", "Cell c&oordinates")
-		self._add_choice(group, "borderComboBox", "reportCellBorders", "Cell &borders:", REPORT_CELL_BORDERS_CHOICES)
+		group, box = self._add_static_box_group(sHelper, _("Table information"))
+		self._add_checkbox(group, box, "tablesCheckBox", "reportTables", _("&Tables"))
+		self._add_choice(group, "tableHeadersComboBox", "reportTableHeaders", _("H&eaders"), REPORT_TABLE_HEADERS_CHOICES)
+		self._add_checkbox(group, box, "tableCellCoordsCheckBox", "reportTableCellCoords", _("Cell c&oordinates"))
+		self._add_choice(group, "borderComboBox", "reportCellBorders", _("Cell &borders:"), REPORT_CELL_BORDERS_CHOICES)
 
 	def _add_advanced_group(self, sHelper):
-		group, box = self._add_static_box_group(sHelper, "Advanced")
+		group, box = self._add_static_box_group(sHelper, _("Advanced"))
 		self._add_checkbox(
 			group,
 			box,
 			"detectFormatAfterCursorCheckBox",
 			"detectFormatAfterCursor",
-			"Report formatting chan&ges after the cursor (can cause a lag)",
+			_("Report formatting chan&ges after the cursor (can cause a lag)"),
 		)
 
 	def _bind_controls(self):

@@ -1,3 +1,5 @@
+from ..localization import _
+
 import copy
 
 import wx
@@ -26,18 +28,26 @@ from .constants import (
 	POSITION_MODE_EACH,
 	POSITION_MODE_FIRST,
 	POSITION_MODE_OFF,
+	PROFILE_NAME_CHOICES,
 	PROFILE_NAMES,
 )
 
 log = logHandler.log
 
+
+def _profile_name_from_choice(choice, currentProfile):
+	selection = choice.GetSelection()
+	if selection < 0 or selection >= len(PROFILE_NAME_CHOICES):
+		return currentProfile
+	return PROFILE_NAME_CHOICES[selection][1]
+
 class VerbosityPanel(wx.Panel):
 	TOKEN_DEFS = [
-		("name", "Name"),
-		("role", "Role"),
-		("state", "State"),
-		("description", "Description"),
-		("tooltip", "Tooltip"),
+		("name", _("Name")),
+		("role", _("Role")),
+		("state", _("State")),
+		("description", _("Description")),
+		("tooltip", _("Tooltip")),
 	]
 
 	def __init__(self, parent):
@@ -47,9 +57,9 @@ class VerbosityPanel(wx.Panel):
 		self.profileConfig = _clone_profile_from_manager(self.currentEditProfile)
 		self.profileBehavior = _get_profile_behavior(self.currentEditProfile)
 		self._description = (
-			"Choose the active verbosity profile and which object details ClassicSpeech speaks for that profile."
+			_("Choose the active verbosity profile and which object details ClassicSpeech speaks for that profile.")
 		)
-		_set_panel_description(self, "Verbosity", self._description)
+		_set_panel_description(self, _("Verbosity"), self._description)
 
 		mainSizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -63,15 +73,18 @@ class VerbosityPanel(wx.Panel):
 		grid = wx.FlexGridSizer(cols=2, vgap=10, hgap=10)
 		grid.AddGrowableCol(1, 1)
 
-		grid.Add(wx.StaticText(self, label="Active profile:"), 0, wx.ALIGN_CENTER_VERTICAL)
-		self.activeProfileChoice = wx.Choice(self, choices=PROFILE_NAMES)
-		self.activeProfileChoice.SetName("Active profile")
-		self.activeProfileChoice.SetStringSelection(self.currentEditProfile)
+		grid.Add(wx.StaticText(self, label=_("Active profile:")), 0, wx.ALIGN_CENTER_VERTICAL)
+		self.activeProfileChoice = wx.Choice(
+			self,
+			choices=[label for label, _profileName in PROFILE_NAME_CHOICES],
+		)
+		self.activeProfileChoice.SetName(_("Active profile"))
+		self.activeProfileChoice.SetSelection(PROFILE_NAMES.index(self.currentEditProfile))
 		grid.Add(self.activeProfileChoice, 1, wx.EXPAND)
 
 		mainSizer.Add(grid, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
-		tokenInfo = wx.StaticText(self, label="Spoken object details:")
+		tokenInfo = wx.StaticText(self, label=_("Spoken object details:"))
 		mainSizer.Add(tokenInfo, 0, wx.LEFT | wx.RIGHT | wx.TOP | wx.EXPAND, 8)
 
 		checkListClass = nvdaControls.CustomCheckListBox if nvdaControls else wx.CheckListBox
@@ -79,21 +92,21 @@ class VerbosityPanel(wx.Panel):
 			self,
 			choices=[label for _tokenKind, label in self.TOKEN_DEFS],
 		)
-		self.tokenList.SetName("Spoken object details")
+		self.tokenList.SetName(_("Spoken object details"))
 		mainSizer.Add(self.tokenList, 0, wx.ALL | wx.EXPAND, 8)
 
 		positionGrid = wx.FlexGridSizer(cols=2, vgap=8, hgap=10)
 		positionGrid.AddGrowableCol(1, 1)
-		positionGrid.Add(wx.StaticText(self, label="Position announcements:"), 0, wx.ALIGN_CENTER_VERTICAL)
+		positionGrid.Add(wx.StaticText(self, label=_("Position announcements:")), 0, wx.ALIGN_CENTER_VERTICAL)
 		self.positionModeChoice = wx.Choice(
 			self,
 			choices=[
-				"Off",
-				"Announce only first item",
-				"Announce on every move",
+				_("Off"),
+				_("Announce only first item"),
+				_("Announce on every move"),
 			],
 		)
-		self.positionModeChoice.SetName("Position announcements")
+		self.positionModeChoice.SetName(_("Position announcements"))
 		self._loadPositionModeChoice()
 		positionGrid.Add(self.positionModeChoice, 1, wx.EXPAND)
 		mainSizer.Add(positionGrid, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
@@ -145,7 +158,10 @@ class VerbosityPanel(wx.Panel):
 		self._loadPositionModeChoice()
 
 	def onActiveProfileChanged(self, evt=None):
-		self.currentEditProfile = self.activeProfileChoice.GetStringSelection()
+		self.currentEditProfile = _profile_name_from_choice(
+			self.activeProfileChoice,
+			self.currentEditProfile,
+		)
 		self.profileConfig = _clone_profile_from_manager(self.currentEditProfile)
 		self.profileBehavior = _get_profile_behavior(self.currentEditProfile)
 		self._loadEditorsFromProfileConfig()
@@ -184,7 +200,10 @@ class VerbosityPanel(wx.Panel):
 		wx.CallAfter(self.onInlineProfileChanged)
 
 	def apply_live(self, save=True):
-		self.currentEditProfile = self.activeProfileChoice.GetStringSelection()
+		self.currentEditProfile = _profile_name_from_choice(
+			self.activeProfileChoice,
+			self.currentEditProfile,
+		)
 
 		if save:
 			_set_active_profile_name(self.currentEditProfile)
@@ -196,15 +215,15 @@ class VerbosityPanel(wx.Panel):
 		_apply_profile_live(self.currentEditProfile)
 
 	def reset_current_profile(self):
-		message = (
-			f"Reset the {self.currentEditProfile} profile to its default settings now?"
+		message = _(
+			"Reset the {profile} profile to its default settings now?"
 			"\n\nThis will immediately clear saved overrides for this profile."
 			"\n\nCancel will not undo this reset."
 			"\n\nChoose Yes to reset now, or No to keep your current settings."
-		)
+		).format(profile=self.currentEditProfile)
 		result = wx.MessageBox(
 			message,
-			"Reset Profile",
+			_("Reset Profile"),
 			wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
 			self,
 		)
@@ -219,7 +238,10 @@ class VerbosityPanel(wx.Panel):
 		self.apply_live(save=True)
 
 	def get_working_profile_name(self):
-		return self.activeProfileChoice.GetStringSelection()
+		return _profile_name_from_choice(
+			self.activeProfileChoice,
+			self.currentEditProfile,
+		)
 
 	def get_working_profile_config(self):
 		self._refreshWorkingConfigFromControls()

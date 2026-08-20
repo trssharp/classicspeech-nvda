@@ -1,5 +1,7 @@
 import wx
 
+from ..localization import _
+
 try:
 	from gui import nvdaControls
 except Exception:
@@ -21,11 +23,11 @@ class RenameListPanel(wx.Panel):
 		compactDisplay=False,
 		renamePromptTitle=None,
 		renamePromptMessage=None,
-		renameMenuLabel="Rename	F2",
-		clearRenameMenuLabel="Clear Rename	Delete",
-		checkedActionCaption="Unmute",
-		uncheckedActionCaption="Mute",
-		customDisplaySuffix="renamed to {text}",
+		renameMenuLabel=_("Rename	F2"),
+		clearRenameMenuLabel=_("Clear Rename	Delete"),
+		checkedActionCaption=_("Unmute"),
+		uncheckedActionCaption=_("Mute"),
+		customDisplaySuffix=_("renamed to {text}"),
 	):
 		super().__init__(parent)
 
@@ -75,7 +77,7 @@ class RenameListPanel(wx.Panel):
 		self.populate()
 
 	def _statusFor(self, label):
-		return "Muted" if label in self._workingMuted else "Spoken"
+		return _("Muted") if label in self._workingMuted else _("Spoken")
 
 	def _spokenBaseFor(self, label):
 		return self._displayLabels.get(label, label)

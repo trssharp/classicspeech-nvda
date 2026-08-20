@@ -1,3 +1,5 @@
+from ..localization import _
+
 import copy
 
 import wx
@@ -61,23 +63,23 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 	"""Main ClassicSpeech settings dialog with category list and dynamic panel area."""
 
 	CATEGORY_NAMES = [
-		"Verbosity",
-		"Token Editor",
-		"Speech Timing",
-		"Text Processing",
-		"Number Processing",
-		"Document Reading / Proofing",
-		"Menus",
-		"Key Labels",
-		"Hotkeys",
-		"Misc",
-		"Advanced",
+		_("Verbosity"),
+		_("Token Editor"),
+		_("Speech Timing"),
+		_("Text Processing"),
+		_("Number Processing"),
+		_("Document Reading / Proofing"),
+		_("Menus"),
+		_("Key Labels"),
+		_("Hotkeys"),
+		_("Misc"),
+		_("Advanced"),
 	]
 
 	def __init__(self, parent):
 		super().__init__(
 			parent,
-			title="ClassicSpeech Settings",
+			title=_("ClassicSpeech Settings"),
 			style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER | wx.MAXIMIZE_BOX,
 		)
 
@@ -92,7 +94,7 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 
 		leftSizer = wx.BoxSizer(wx.VERTICAL)
 
-		self.categoryLabel = wx.StaticText(self, label="Categories")
+		self.categoryLabel = wx.StaticText(self, label=_("Categories"))
 		leftSizer.Add(self.categoryLabel, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
 
 		listClass = nvdaControls.AutoWidthColumnListCtrl if nvdaControls else wx.ListCtrl
@@ -100,8 +102,8 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 			self,
 			style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.LC_NO_HEADER,
 		)
-		self.categoryList.SetName("Categories")
-		self.categoryList.InsertColumn(0, "Categories")
+		self.categoryList.SetName(_("Categories"))
+		self.categoryList.InsertColumn(0, _("Categories"))
 		for categoryName in self.CATEGORY_NAMES:
 			self.categoryList.Append((categoryName,))
 		self.categoryList.Select(0)
@@ -157,14 +159,14 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 
 		bottomRow = wx.BoxSizer(wx.HORIZONTAL)
 
-		self.resetActionBtn = wx.Button(self, label="Reset Profile Now")
+		self.resetActionBtn = wx.Button(self, label=_("Reset Profile Now"))
 		bottomRow.Add(self.resetActionBtn, 0, wx.ALL, 8)
 
 		bottomRow.AddStretchSpacer()
 
-		self.applyBtn = wx.Button(self, label="Apply")
-		self.okBtn = wx.Button(self, wx.ID_OK, label="OK")
-		self.cancelBtn = wx.Button(self, wx.ID_CANCEL, label="Cancel")
+		self.applyBtn = wx.Button(self, label=_("Apply"))
+		self.okBtn = wx.Button(self, wx.ID_OK, label=_("OK"))
+		self.cancelBtn = wx.Button(self, wx.ID_CANCEL, label=_("Cancel"))
 		self.okBtn.SetDefault()
 
 		bottomRow.Add(self.applyBtn, 0, wx.ALL, 8)
@@ -286,15 +288,15 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 
 		if index == 0:
 			self.resetActionBtn.Show()
-			self.resetActionBtn.SetLabel("Reset Profile Now")
+			self.resetActionBtn.SetLabel(_("Reset Profile Now"))
 			self.resetActionBtn.Enable(True)
 		elif index == 1:
 			self.resetActionBtn.Show()
-			self.resetActionBtn.SetLabel("Reset Tokens to Defaults Now")
+			self.resetActionBtn.SetLabel(_("Reset Tokens to Defaults Now"))
 			self.resetActionBtn.Enable(True)
 		elif index == 7:
 			self.resetActionBtn.Show()
-			self.resetActionBtn.SetLabel("Reset Key Labels to Defaults Now")
+			self.resetActionBtn.SetLabel(_("Reset Key Labels to Defaults Now"))
 			self.resetActionBtn.Enable(True)
 		else:
 			self.resetActionBtn.Hide()
