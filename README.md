@@ -2,7 +2,7 @@
 
 ClassicSpeech is an NVDA add-on for configurable speech verbosity, conservative text and number processing, Web / Browse Mode tools, and same-synth Voice Profiles.
 
-> **Current release:** [ClassicSpeech 1.0](https://github.com/trssharp/classicspeech-nvda/releases/tag/v1.0) is the latest stable release. The `main` branch remains active development; commits after a release may not yet have completed live NVDA validation.
+> **Current release:** [ClassicSpeech 1.01](https://github.com/trssharp/classicspeech-nvda/releases/tag/v1.01) is the latest stable release. The `main` branch remains active development; commits after a release may not yet have completed live NVDA validation.
 
 ## Settings access
 
