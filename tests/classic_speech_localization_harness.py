@@ -111,7 +111,7 @@ class LocalizationTests(unittest.TestCase):
         self.assertEqual(translations.gettext("Cancel"), "Cancelar")
         self.assertEqual(
             translations.gettext("Page summary is not available here."),
-            "Page summary is not available here.",
+            "El resumen de página no está disponible aquí.",
         )
 
     def test_addon_translation_takes_precedence(self):
