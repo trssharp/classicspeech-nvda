@@ -5,8 +5,10 @@
 - Active repository: `classicspeech-nvda`.
 - Project roadmap/spec: `../spec.docx`.
 - New work belongs in this repository, on a focused Git branch from `main`.
-- Do not create a new `vNN` source folder for ordinary feature work. The historical/versioned folders outside this repository are reference material, not active workspaces.
-- Use a separate Git worktree only when explicitly needed for a long-lived parallel experiment or comparison.
+- Do not create independent repository copies, branch-named source folders, or a new `vNN` source folder for ordinary feature work. The historical/versioned folders outside this repository are reference material, not active workspaces.
+- Use a separate managed Git worktree only when explicitly needed for a long-lived parallel experiment or comparison.
+- After a pull request is merged, remove its temporary worktree and delete its unneeded local branch. Run `git worktree list` first so an active worktree is never removed accidentally.
+- Preserve important build artifacts through GitHub Releases or `Classic Speech Historical` before removing a worktree. Generated `dist` output is not source history.
 
 ## Delivery boundaries
 
