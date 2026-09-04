@@ -628,6 +628,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._pendingContainerSequence = None
         self._pendingContainerFlush = None
         self._flushingPendingContainer = False
+        self._rawHistorySequenceOverride = None
+        self._pendingReviewMovementBoundary = None
+        self._pendingReviewMovementBoundaryRaw = None
         self._speechHookRegistered = False
         self._webPageLifecycle = WebPageLifecycle(
             self._report_page_summary_for_document, self._log_web_page_lifecycle
@@ -746,6 +749,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 pass
             self._cancel_pending_container_flush()
             self._pendingContainerSequence = None
+            self._rawHistorySequenceOverride = None
+            self._pendingReviewMovementBoundary = None
+            self._pendingReviewMovementBoundaryRaw = None
 
 
     def _string_tokens(self, sequence):
@@ -847,16 +853,24 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         try:
             self._flushingPendingContainer = True
             raw = pending.get("raw") if isinstance(pending, dict) else pending
+            if isinstance(pending, dict):
+                self._rawHistorySequenceOverride = list(pending.get("historyRaw") or [])
             speech.speak(list(raw or []))
         except Exception:
             log.debug("ClassicSpeech: failed to flush pending container sequence", exc_info=True)
         finally:
+            self._rawHistorySequenceOverride = None
             self._flushingPendingContainer = False
 
-    def _hold_container_sequence(self, sequence):
+    def _hold_container_sequence(self, sequence, historyRaw):
         self._cancel_pending_container_flush()
         core, hotkey = self._split_container_hotkey_tail(sequence)
-        self._pendingContainerSequence = {"core": core, "hotkey": hotkey, "raw": list(sequence)}
+        self._pendingContainerSequence = {
+            "core": core,
+            "hotkey": hotkey,
+            "raw": list(sequence),
+            "historyRaw": list(historyRaw),
+        }
         log.debug(f"ClassicSpeech: holding split container speech briefly: {sequence}")
         try:
             self._pendingContainerFlush = wx.CallLater(50, self._flush_pending_container_sequence)
@@ -864,12 +878,13 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             self._pendingContainerFlush = None
         return []
 
-    def _consume_pending_container_for(self, sequence):
+    def _consume_pending_container_for(self, sequence, historyRaw):
         pending = getattr(self, "_pendingContainerSequence", None)
         if not pending:
             return None
         self._cancel_pending_container_flush()
         self._pendingContainerSequence = None
+        mergedHistoryRaw = list(pending.get("historyRaw") or []) + list(historyRaw)
         if self._is_mergeable_item_followup(sequence):
             merged = list(pending.get("core") or pending.get("raw") or [])
             if merged and isinstance(merged[-1], str):
@@ -879,14 +894,14 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 merged.append(BreakCommand(time=80))
                 merged.extend(list(pending.get("hotkey") or []))
             log.debug(f"ClassicSpeech: merged generic container/item sequence: {pending.get('raw')} -> {merged}")
-            return merged
+            return merged, mergedHistoryRaw
         # If the held sequence was a false positive, do not drop it. Speak it
         # immediately before the current sequence as one conservative utterance.
         merged = list(pending.get("raw") or [])
         if merged and isinstance(merged[-1], str):
             merged.append(BreakCommand(time=80))
         merged.extend(list(sequence))
-        return merged
+        return merged, mergedHistoryRaw
 
     def _merge_prefix_sequence(self, prefix, sequence):
         if not prefix:
@@ -910,8 +925,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 out.append(BreakCommand(time=80))
         return out
 
-    def _record_history(self, sequence):
+    def _record_history(self, sequence, emittedSequence=None):
         try:
+            if emittedSequence is not None and not self._sequence_has_text(emittedSequence):
+                return
             self.history.append_sequence(sequence)
         except Exception:
             log.debug("ClassicSpeech: failed to append speech history", exc_info=True)
@@ -987,12 +1004,19 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if consume_history_native_passthrough():
                 return speechSequence
 
+            rawHistorySequence = getattr(self, "_rawHistorySequenceOverride", None)
+            if rawHistorySequence is None:
+                rawHistorySequence = list(speechSequence)
+            else:
+                rawHistorySequence = list(rawHistorySequence)
+                self._rawHistorySequenceOverride = None
+
             # Input help is a native diagnostic mode. Do not tokenize it, do not
             # extract/apply hotkeys, and do not let a previously extracted hotkey
             # leak into the following input-help description.
             if self._is_input_help_active():
                 self._clear_hotkey_carryover()
-                self._record_history(speechSequence)
+                self._record_history(rawHistorySequence, speechSequence)
                 self._debug_log("bypass: input help")
                 return speechSequence
 
@@ -1003,7 +1027,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if getattr(self.processor, "_bypass_next_sequence", False):
                 self.processor._bypass_next_sequence = False
                 self._clear_hotkey_carryover()
-                self._record_history(speechSequence)
+                self._record_history(rawHistorySequence, speechSequence)
                 self._debug_log("bypass: requested native pass-through")
                 return speechSequence
 
@@ -1013,28 +1037,28 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if is_keyboard_entry_profile_routing_active():
                 self._clear_hotkey_carryover()
                 output = wrap_keyboard_entry_sequence(speechSequence)
-                self._record_history(output)
+                self._record_history(rawHistorySequence, output)
                 self._debug_log("typed keyboard/braille entry uses Keyboard profile")
                 return output
 
             if is_mouse_pointer_profile_routing_active():
                 self._clear_hotkey_carryover()
                 output = wrap_review_literal_sequence(speechSequence)
-                self._record_history(output)
+                self._record_history(rawHistorySequence, output)
                 self._debug_log("mouse pointer feedback uses Review profile")
                 return output
 
             if is_system_notification_profile_routing_active() or self._is_system_voice_script_active():
                 self._clear_hotkey_carryover()
                 output = wrap_system_notification_sequence(speechSequence)
-                self._record_history(output)
+                self._record_history(rawHistorySequence, output)
                 self._debug_log("scoped System notification uses System profile")
                 return output
 
             if self._is_review_cursor_status_script_active():
                 self._clear_hotkey_carryover()
                 output = wrap_review_literal_sequence(speechSequence)
-                self._record_history(output)
+                self._record_history(rawHistorySequence, output)
                 self._debug_log("review cursor status uses Review profile")
                 return output
 
@@ -1044,16 +1068,22 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             isReviewCursorLiteral = self._is_review_cursor_literal_script_active()
             if not isReviewCursorLiteral and getattr(self, "_pendingReviewMovementBoundary", None):
                 self._pendingReviewMovementBoundary = None
+                self._pendingReviewMovementBoundaryRaw = None
                 self._debug_log("discarded incomplete Review movement boundary")
             if self._is_review_movement_boundary_sequence(speechSequence):
                 self._pendingReviewMovementBoundary = list(speechSequence)
+                self._pendingReviewMovementBoundaryRaw = list(rawHistorySequence)
                 self._debug_log("held Review movement boundary for following Review text")
                 return []
             if isReviewCursorLiteral:
                 pendingBoundary = getattr(self, "_pendingReviewMovementBoundary", None)
                 if pendingBoundary and self._sequence_has_text(speechSequence):
                     speechSequence = list(pendingBoundary) + list(speechSequence)
+                    rawHistorySequence = list(
+                        getattr(self, "_pendingReviewMovementBoundaryRaw", None) or []
+                    ) + list(rawHistorySequence)
                     self._pendingReviewMovementBoundary = None
+                    self._pendingReviewMovementBoundaryRaw = None
                     self._debug_log("merged Review movement boundary with following Review text")
                 elif pendingBoundary:
                     self._debug_log("kept Review movement boundary across command-only fragment")
@@ -1064,7 +1094,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if (not get_object_navigation_processing_enabled()) and isObjectNavigation:
                 self._clear_hotkey_carryover()
                 output = wrap_review_literal_sequence(speechSequence)
-                self._record_history(output)
+                self._record_history(rawHistorySequence, output)
                 self._debug_log("object navigation native sequence uses Review profile")
                 return output
 
@@ -1075,7 +1105,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if isReviewCursorLiteral:
                 self._clear_hotkey_carryover()
                 output = wrap_review_literal_sequence(speechSequence)
-                self._record_history(output)
+                self._record_history(rawHistorySequence, output)
                 self._debug_log("review cursor sequence uses Review profile")
                 return output
 
@@ -1087,7 +1117,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             # recursive history entries.
             if is_history_list_focus(speechSequence):
                 self._clear_hotkey_carryover()
-                self._record_history(speechSequence)
+                self._record_history(rawHistorySequence, speechSequence)
                 self._debug_log("bypass: speech history list focus")
                 return speechSequence
 
@@ -1107,11 +1137,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 mergeAllowed = True
 
             if mergeAllowed and not getattr(self, "_flushingPendingContainer", False):
-                mergedSequence = self._consume_pending_container_for(speechSequence)
-                if mergedSequence is not None:
-                    speechSequence = mergedSequence
+                mergedResult = self._consume_pending_container_for(speechSequence, rawHistorySequence)
+                if mergedResult is not None:
+                    speechSequence, rawHistorySequence = mergedResult
                 elif self._is_mergeable_container_sequence(speechSequence):
-                    return self._hold_container_sequence(speechSequence)
+                    return self._hold_container_sequence(speechSequence, rawHistorySequence)
 
             # Literal review/caret text must be completely raw. Run this after
             # the compact split-container guard above so unlabeled container
@@ -1123,7 +1153,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                     if isReviewCursorLiteral
                     else speechSequence
                 )
-                self._record_history(output)
+                self._record_history(rawHistorySequence, output)
                 self._debug_log(
                     "review cursor literal sequence uses Review profile"
                     if isReviewCursorLiteral
@@ -1163,12 +1193,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 try:
                     if any(not isinstance(item, str) for item in output):
                         log.debug("ClassicSpeech: command-only output detected; falling back to native speech")
-                        self._record_history(speechSequence)
+                        self._record_history(rawHistorySequence, speechSequence)
                         return speechSequence
                 except Exception:
                     pass
 
-            self._record_history(output)
+            self._record_history(rawHistorySequence, output)
             self._debug_log(f"filter output: {output}")
             return output
         except Exception as e:

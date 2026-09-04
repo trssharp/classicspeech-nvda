@@ -1217,9 +1217,119 @@ class ClassicSpeechNVDAConfigStartupTests(unittest.TestCase):
 		module = _import_classic_speech_like_nvda()
 		plugin = module.GlobalPlugin()
 		try:
-			sequence = ["1234567890\r"]
+			sequence = ["1234567890" + chr(13)]
 			plugin._filterSpeechSequence(sequence)
-			self.assertEqual(sequence, ["one two three four five six seven eight nine zero\r"])
+			self.assertEqual(sequence, ["one two three four five six seven eight nine zero" + chr(13)])
+		finally:
+			plugin.terminate()
+
+	def test_history_and_f12_copy_raw_number_input_while_speech_uses_processed_output(self):
+		config.conf.profiles[0]["classicSpeech"] = {
+			"speechHookEnabled": True,
+			"debugLogging": False,
+			"numberProcessingData": {
+				"numberProcessingMode": "fullNumbers",
+				"singleDigitsIfNumberContains": "synthesizer",
+			},
+		}
+		api.getFocusObject = lambda: types.SimpleNamespace(
+			role=types.SimpleNamespace(name="EDITABLETEXT"), name="Editor", parent=None
+		)
+		api.clipboard.clear()
+		module = _import_classic_speech_like_nvda()
+		plugin = module.GlobalPlugin()
+		try:
+			sequence = ["2026"]
+			result = plugin._filterSpeechSequence(sequence)
+
+			self.assertEqual(result, ["two thousand twenty six"])
+			self.assertEqual(plugin.history.items(), ["2026"])
+			self.assertTrue(plugin.history.copy_current())
+			self.assertEqual(api.clipboard[-1], "2026")
+			plugin._filterSpeechSequence(["2026", "copied"])
+			self.assertEqual(plugin.history.items(), ["2026"])
+		finally:
+			plugin.terminate()
+
+	def test_history_preserves_raw_numeric_date_input(self):
+		config.conf.profiles[0]["classicSpeech"] = {
+			"speechHookEnabled": True,
+			"debugLogging": False,
+			"numberProcessingData": {"numericDateProcessing": "some"},
+		}
+		api.getFocusObject = lambda: types.SimpleNamespace(
+			role=types.SimpleNamespace(name="EDITABLETEXT"), name="Editor", parent=None
+		)
+		module = _import_classic_speech_like_nvda()
+		plugin = module.GlobalPlugin()
+		try:
+			sequence = ["Due 5/9/2026."]
+			result = plugin._filterSpeechSequence(sequence)
+
+			self.assertEqual(result, ["Due May ninth, twenty twenty six."])
+			self.assertEqual(plugin.history.items(), ["Due 5/9/2026."])
+		finally:
+			plugin.terminate()
+
+	def test_history_combines_raw_fragments_for_merged_container_utterance(self):
+		config.conf.profiles[0]["classicSpeech"] = {
+			"speechHookEnabled": True,
+			"debugLogging": False,
+			"textProcessingData": {"splitMixedCaseWords": True},
+		}
+		api.getFocusObject = lambda: types.SimpleNamespace(
+			role=types.SimpleNamespace(name="LISTITEM"), name="Recycle Bin", parent=None
+		)
+		module = _import_classic_speech_like_nvda()
+		plugin = module.GlobalPlugin()
+		try:
+			self.assertEqual(plugin._filterSpeechSequence(["list"]), [])
+			self.assertEqual(plugin.history.items(), [])
+
+			result = plugin._filterSpeechSequence(["RecycleBin", "1 of 17"])
+
+			self.assertIn("Recycle Bin", result)
+			self.assertEqual(plugin.history.items(), ["list RecycleBin 1 of 17"])
+		finally:
+			plugin.terminate()
+
+	def test_history_flushes_held_container_with_its_original_raw_text(self):
+		config.conf.profiles[0]["classicSpeech"] = {
+			"speechHookEnabled": True,
+			"debugLogging": False,
+			"textProcessingData": {"splitMixedCaseWords": True},
+		}
+		api.getFocusObject = lambda: types.SimpleNamespace(
+			role=types.SimpleNamespace(name="LISTITEM"), name="Item", parent=None
+		)
+		module = _import_classic_speech_like_nvda()
+		plugin = module.GlobalPlugin()
+		original_speak = speech.speak
+		spoken = []
+		try:
+			speech.speak = lambda sequence: spoken.append(plugin._filterSpeechSequence(sequence))
+			self.assertEqual(plugin._filterSpeechSequence(["toolBar"]), [])
+			self.assertEqual(plugin.history.items(), [])
+
+			plugin._flush_pending_container_sequence()
+
+			self.assertTrue(spoken)
+			self.assertIn("tool Bar", spoken[-1])
+			self.assertEqual(plugin.history.items(), ["toolBar"])
+		finally:
+			speech.speak = original_speak
+			plugin.terminate()
+
+	def test_history_does_not_commit_raw_input_when_processing_suppresses_all_text(self):
+		module = _import_classic_speech_like_nvda()
+		plugin = module.GlobalPlugin()
+		try:
+			plugin.processor.should_process = lambda sequence: False
+			plugin.processor.should_bypass_literal_review = lambda sequence: False
+			plugin.processor.process = lambda sequence, speech_origin=None: []
+
+			self.assertEqual(plugin._filterSpeechSequence(["suppressed input"]), [])
+			self.assertEqual(plugin.history.items(), [])
 		finally:
 			plugin.terminate()
 

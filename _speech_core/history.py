@@ -1,10 +1,10 @@
 # history.py
 """ClassicSpeech speech history buffer.
 
-Stores the final speakable text that ClassicSpeech sends to NVDA after
-verbosity/profile/token formatting has been applied. Speech commands such as
-BreakCommand, CancellableSpeech, and CharacterModeCommand are intentionally
-ignored when creating the display/copy text.
+Stores raw text captured at ClassicSpeech's speech-hook boundary before text,
+number, token, or verbosity processing. Speech commands such as BreakCommand,
+CancellableSpeech, and CharacterModeCommand are intentionally ignored when
+creating the display/copy text.
 """
 from .localization import _
 
