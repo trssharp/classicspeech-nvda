@@ -590,7 +590,14 @@ li { margin: .25em 0; }
 <h2 id="updates">Updating ClassicSpeech</h2>
 <p>ClassicSpeech can check for a newer version on the GitHub page it comes from: the releases of the page shown as its homepage in NVDA's Add-on Store. A copy of ClassicSpeech without a GitHub homepage can't check. Check for Updates says so, and automatic checks don't run.</p>
 <ul>
-<li>To check now, press <kbd>NVDA+N</kbd>, then choose Preferences, then ClassicSpeech, then <strong>Check for Updates...</strong>. You can also assign a gesture to the <strong>Checks for ClassicSpeech updates</strong> command. You hear "Checking for ClassicSpeech updates", then a message says whether ClassicSpeech is up to date.</li>
+<li><p>To check now, press <kbd>NVDA+N</kbd>, then choose Preferences, then ClassicSpeech, then <strong>Check for Updates...</strong>. You can also assign a gesture to the <strong>Checks for ClassicSpeech updates</strong> command. You hear "Checking for ClassicSpeech updates", then a message says whether ClassicSpeech is up to date.</p>
+<p>The updater checks GitHub's latest published regular release. Draft releases, prereleases and ordinary workflow build artifacts are not offered. It compares version numbers, not the contents of the installed package:</p>
+<ul>
+<li>If the published version is newer, it offers the update.</li>
+<li>If the versions match, it reports that ClassicSpeech is up to date. A changed package published with the same version number is not offered again.</li>
+<li>If your installed version is newer, for example a local 2.0 build while GitHub still publishes 1.01, it reports both versions and explains that no update is available. This does not mean your local build has been published.</li>
+</ul>
+<p>To replace a local build with a published package of the same version, download and open the published add-on file yourself. Date-and-run development builds also compare numerically and may be ahead of regular release versions; install a regular release manually when switching back from such a build.</p></li>
 <li>With <strong>Check for ClassicSpeech updates automatically</strong> checked on the <a href="#advanced">Advanced</a> page, ClassicSpeech checks once a day, about 30 seconds after NVDA starts. It says nothing unless there is an update.</li>
 </ul>
 <p>When a newer version is available, a dialog opens. It says which version you have and which version is available, and then holds the new release's notes in a box called <strong>What's new</strong>.</p>

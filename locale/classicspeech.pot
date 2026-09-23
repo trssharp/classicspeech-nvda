@@ -26,7 +26,7 @@ msgstr ""
 msgid "&Clickable"
 msgstr ""
 
-#: _speech_core/update_check.py:445 _speech_core/update_dialog.py:55
+#: _speech_core/update_check.py:452 _speech_core/update_dialog.py:55
 msgid "&Close"
 msgstr ""
 
@@ -38,7 +38,7 @@ msgstr ""
 msgid "&Copy"
 msgstr ""
 
-#: _speech_core/update_check.py:425
+#: _speech_core/update_check.py:432
 msgid "&Download and install"
 msgstr ""
 
@@ -86,7 +86,7 @@ msgstr ""
 msgid "&Maximum number of characters on one line"
 msgstr ""
 
-#: _speech_core/update_check.py:445
+#: _speech_core/update_check.py:452
 msgid "&Not now"
 msgstr ""
 
@@ -534,7 +534,7 @@ msgstr ""
 msgid "ClassicSpeech could not check for updates. {reason}"
 msgstr ""
 
-#: _speech_core/update_check.py:467
+#: _speech_core/update_check.py:474
 msgid "ClassicSpeech could not download the update. {reason}"
 msgstr ""
 
@@ -546,7 +546,7 @@ msgstr ""
 msgid "ClassicSpeech could not load the {engine} synthesizer. The item keeps using the active synthesizer."
 msgstr ""
 
-#: _speech_core/update_check.py:393
+#: _speech_core/update_check.py:398
 msgid "ClassicSpeech is up to date. You have version {version}, the latest release."
 msgstr ""
 
@@ -558,7 +558,7 @@ msgstr ""
 msgid "ClassicSpeech settings were reset, and the NVDA settings it changed were put back. ClassicSpeech now uses its default settings. To remove ClassicSpeech, uninstall it from the Add-on Store."
 msgstr ""
 
-#: _speech_core/update_check.py:440 _speech_core/update_check.py:491
+#: _speech_core/update_check.py:447 _speech_core/update_check.py:498
 msgid "ClassicSpeech update"
 msgstr ""
 
@@ -566,7 +566,7 @@ msgstr ""
 msgid "ClassicSpeech voice profiles"
 msgstr ""
 
-#: _speech_core/update_check.py:401
+#: _speech_core/update_check.py:408
 msgid "ClassicSpeech {new} is available. You have version {installed}."
 msgstr ""
 
@@ -750,11 +750,11 @@ msgstr ""
 msgid "Double strikethrough"
 msgstr ""
 
-#: _speech_core/update_check.py:421
+#: _speech_core/update_check.py:428
 msgid "Download and install it now? NVDA asks you to confirm the installation, then offers to restart. Your ClassicSpeech settings are kept."
 msgstr ""
 
-#: _speech_core/update_check.py:453
+#: _speech_core/update_check.py:460
 msgid "Downloading ClassicSpeech {version}"
 msgstr ""
 
@@ -1286,7 +1286,7 @@ msgstr ""
 msgid "NVDA announces the new font size. Specific sizes are listed separately."
 msgstr ""
 
-#: _speech_core/update_check.py:475
+#: _speech_core/update_check.py:482
 msgid "NVDA could not install the update. Details are in the NVDA log."
 msgstr ""
 
@@ -2282,11 +2282,11 @@ msgstr ""
 msgid "This file is not a ClassicSpeech voice profiles file, or it has no voice profiles."
 msgstr ""
 
-#: _speech_core/update_check.py:413
+#: _speech_core/update_check.py:420
 msgid "This release has no add-on file to install. Download it from {url}"
 msgstr ""
 
-#: _speech_core/update_check.py:408
+#: _speech_core/update_check.py:415
 msgid "This release has no notes."
 msgstr ""
 
@@ -2484,6 +2484,10 @@ msgstr ""
 
 #: _speech_core/settings/number_processing_panel.py:86
 msgid "Year month day"
+msgstr ""
+
+#: _speech_core/update_check.py:393
+msgid "You have ClassicSpeech {version}. The latest published release is {latest}. Your installed version is newer; no update is available."
 msgstr ""
 
 #: _speech_core/processors/web/summary.py:28

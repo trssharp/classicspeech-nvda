@@ -2,7 +2,7 @@
 
 ClassicSpeech is an NVDA add-on for configurable speech verbosity, conservative text and number processing, Web / Browse Mode tools, and same-synth Voice Profiles.
 
-> **Current release:** [ClassicSpeech 1.01](https://github.com/trssharp/classicspeech-nvda/releases/tag/v1.01) is the latest stable release. The `main` branch remains active development; commits after a release may not yet have completed live NVDA validation.
+> **Current release:** Download the [latest stable ClassicSpeech release](https://github.com/trssharp/classicspeech-nvda/releases/latest). The `main` branch remains active development; commits after a release may not yet have completed live NVDA validation.
 
 ## Settings access
 
@@ -35,7 +35,7 @@ Position announcements are separate from the Position token and are set per verb
 
 The Intermediate profile leaves Description and Hotkey off by default. You can change these choices in **General Settings → Verbosity**.
 
-**Read edit field contents when focused**, also in **General Settings → Verbosity**, is on for every profile by default. Moving to an edit field then speaks its current line, or "blank" when it is empty, as NVDA does natively. Clear it to hear only selected text, which was the behavior before 1.02.
+**Read edit field contents when focused**, also in **General Settings → Verbosity**, is on for every profile by default. Moving to an edit field then speaks its current line, or "blank" when it is empty, as NVDA does natively. Clear it to hear only selected text, which was the behavior in 1.01.
 
 ### Voice Profiles
 

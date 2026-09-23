@@ -389,9 +389,16 @@ class UpdateChecker:
 		release = outcome
 		if not is_newer(release.version, version):
 			if manual:
-				self._message(
-					_("ClassicSpeech is up to date. You have version {version}, the latest release.").format(version=version)
-				)
+				if is_newer(version, release.version):
+					message = _(
+						"You have ClassicSpeech {version}. The latest published release is {latest}. "
+						"Your installed version is newer; no update is available."
+					).format(version=version, latest=release.version)
+				else:
+					message = _(
+						"ClassicSpeech is up to date. You have version {version}, the latest release."
+					).format(version=version)
+				self._message(message)
 			return
 		self._offer(release, version, repository)
 
