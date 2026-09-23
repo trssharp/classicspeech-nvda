@@ -647,37 +647,59 @@ class BaseProcessorExtractionTests(unittest.TestCase):
         ]
         self.assertEqual(processor._restore_native_item_state_order(tokens), tokens)
 
-    def test_state_only_selected_change_still_speaks_focused_item_value(self):
-        config.conf["classicSpeech"]["textProcessingData"]["listItemStateReporting"] = "notSelected"
+    def _speak_with_item_focus(self, sequence, mode, name="DSpeech", role="LISTITEM"):
+        config.conf["classicSpeech"]["textProcessingData"]["listItemStateReporting"] = mode
         processor = BaseSpeechProcessor()
         processor.verbosity.get_profile_config = lambda: DEFAULT_PROFILE
         focus = types.SimpleNamespace(
-            role=types.SimpleNamespace(name="LISTITEM"),
+            role=types.SimpleNamespace(name=role),
             parent=types.SimpleNamespace(role=types.SimpleNamespace(name="LIST"), parent=None),
-            name="DSpeech",
+            name=name,
             value="",
             treeInterceptor=None,
         )
         api.getFocusObject = lambda: focus
-        sequence = ["selected"]
+        sequence = list(sequence)
         processor.process(sequence)
-        self.assertEqual([item for item in sequence if isinstance(item, str)], ["DSpeech"])
+        return [item for item in sequence if isinstance(item, str)]
+
+    def test_state_only_selected_change_speaks_focused_item_value_and_selected(self):
+        # Control+Space on a file: NVDA says only "selected". "Say not selected"
+        # used to drop it, leaving just the file name.
+        self.assertEqual(self._speak_with_item_focus(["selected"], "notSelected"), ["DSpeech", "selected"])
 
     def test_state_only_not_selected_change_speaks_item_value_and_allowed_state(self):
-        config.conf["classicSpeech"]["textProcessingData"]["listItemStateReporting"] = "notSelected"
-        processor = BaseSpeechProcessor()
-        processor.verbosity.get_profile_config = lambda: DEFAULT_PROFILE
-        focus = types.SimpleNamespace(
-            role=types.SimpleNamespace(name="LISTITEM"),
-            parent=types.SimpleNamespace(role=types.SimpleNamespace(name="LIST"), parent=None),
-            name="DSpeech",
-            value="",
-            treeInterceptor=None,
+        self.assertEqual(self._speak_with_item_focus(["not selected"], "notSelected"), ["DSpeech", "not selected"])
+
+    def test_selection_change_says_new_state_whatever_list_item_state_reporting_says(self):
+        for mode in ("native", "notSelected", "none", "selected", "both"):
+            for state in ("selected", "not selected"):
+                with self.subTest(mode=mode, state=state):
+                    self.assertEqual(self._speak_with_item_focus([state], mode), ["DSpeech", state])
+
+    def test_selection_change_in_tree_view_says_new_state(self):
+        self.assertEqual(
+            self._speak_with_item_focus(["selected"], "notSelected", name="Documents", role="TREEVIEWITEM"),
+            ["Documents", "selected"],
         )
-        api.getFocusObject = lambda: focus
-        sequence = ["not selected"]
-        processor.process(sequence)
-        self.assertEqual([item for item in sequence if isinstance(item, str)], ["DSpeech", "not selected"])
+
+    def test_selection_change_of_unnamed_item_still_says_new_state(self):
+        self.assertEqual(self._speak_with_item_focus(["selected"], "notSelected", name=""), ["selected"])
+
+    def test_moving_to_an_item_still_follows_list_item_state_reporting(self):
+        focus_speech = ["DSpeech", "not selected", "1 of 14"]
+        self.assertEqual(self._speak_with_item_focus(focus_speech, "notSelected"), focus_speech)
+        self.assertEqual(self._speak_with_item_focus(focus_speech, "none"), ["DSpeech", "1 of 14"])
+        self.assertEqual(self._speak_with_item_focus(focus_speech, "selected"), ["DSpeech", "1 of 14"])
+        self.assertEqual(
+            self._speak_with_item_focus(["DSpeech", "selected", "1 of 14"], "notSelected"),
+            ["DSpeech", "1 of 14"],
+        )
+
+    def test_unnamed_item_announcement_is_not_a_selection_change(self):
+        # Focus or object navigation to an item without a name still has its
+        # position, so its state follows List item state reporting.
+        self.assertEqual(self._speak_with_item_focus(["not selected", "3 of 10"], "none", name=""), ["3 of 10"])
 
 
 class TokenPolicyTests(unittest.TestCase):

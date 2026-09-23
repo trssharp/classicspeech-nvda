@@ -220,23 +220,39 @@ class SemanticCleanup:
 		# Default: match the original spec's "Say Not Selected" behavior.
 		return state_text == "not selected"
 
-	def _ensure_list_item_state_change_has_value(self, semantic_tokens):
-		"""Add focused item text to state-only list item selection changes.
+	def _mark_selection_change(self, token):
+		meta = dict(getattr(token, "meta", {}) or {})
+		meta["selectionChange"] = True
+		if hasattr(token, "clone") and callable(token.clone):
+			return token.clone(meta=meta)
+		token.meta = meta
+		return token
 
-		NVDA state-change speech for Space/toggle selection can be just
-		"selected"/"not selected". If ClassicSpeech filters the state, for
-		example with "Say not selected", selecting an item becomes silent. Keep
-		this narrow to item-like focus and state-only sequences so ordinary focus
-		speech and token-editor ordering stay unchanged.
+	def _ensure_list_item_state_change_has_value(self, semantic_tokens):
+		"""Speak a list item's selection change as the item and its new state.
+
+		When the focused item is selected or unselected, for example with
+		Control+Space in a file list, NVDA speaks only the change: "selected" or
+		"not selected". List item state reporting chooses which of those words
+		you hear on items as you move to them. It must not silence the answer to
+		a selection change: with "Say not selected", selecting a file only
+		repeated its name. So the state is marked as a selection change, which
+		keeps it whatever that option says, and the focused item's text is added
+		in front. Keep this narrow to item-like focus and state-only sequences so
+		ordinary focus speech and token-editor ordering stay unchanged.
 		"""
 		focus_role_key = self._get_focus_role_key()
 		if focus_role_key not in {"listitem", "treeviewitem", "tablerow", "tablecell"}:
 			return semantic_tokens
-		if any(getattr(tok, "kind", None) in {TOKEN_NAME, TOKEN_VALUE, TOKEN_ROLE} for tok in semantic_tokens):
+		if not semantic_tokens or any(getattr(tok, "kind", None) != TOKEN_STATE for tok in semantic_tokens):
 			return semantic_tokens
 		if not any(self._selected_state_text(tok) for tok in semantic_tokens):
 			return semantic_tokens
 
+		semantic_tokens = [
+			self._mark_selection_change(tok) if self._selected_state_text(tok) else tok
+			for tok in semantic_tokens
+		]
 		focus = api.getFocusObject()
 		item_text = ""
 		for attr in ("name", "value"):
@@ -258,7 +274,9 @@ class SemanticCleanup:
 
 		ClassicSpeech only owns which list-item state words should speak.
 		Token order remains the token editor's job. Keep this narrow to item-like focus so unrelated
-		states such as checked, expanded, or default are not affected.
+		states such as checked, expanded, or default are not affected. A
+		selection change always keeps its state (see
+		_ensure_list_item_state_change_has_value).
 		"""
 		focus_role_key = self._get_focus_role_key()
 		if focus_role_key not in {
@@ -279,7 +297,8 @@ class SemanticCleanup:
 		for tok in semantic_tokens:
 			state_text = self._selected_state_text(tok)
 			if state_text:
-				if not self._list_item_state_allowed(state_text, reporting_mode):
+				selection_change = bool((getattr(tok, "meta", None) or {}).get("selectionChange"))
+				if not selection_change and not self._list_item_state_allowed(state_text, reporting_mode):
 					continue
 				restored.append(tok)
 				continue

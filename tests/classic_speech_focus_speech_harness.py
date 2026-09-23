@@ -5,6 +5,8 @@
 * A held container such as Chrome's "tool bar" is spoken on its own when the
   next sequence is not one of its items, so the field keeps its name and text.
 * Mouse tracking speech uses the Mouse Voice Profile.
+* Selecting or unselecting a list item, such as with Control+Space, says
+  "selected" or "not selected" whatever List item state reporting says.
 """
 from __future__ import annotations
 
@@ -85,6 +87,31 @@ class ContainerFollowUpTests(LatencyTestBase):
 		self.assertEqual(text[:2], ["Address and search bar", "edit"])
 		# The classifier joins the description and typed contents into one value.
 		self.assertTrue(text[-1].endswith(" A"), text)
+
+
+class SelectionChangeTests(LatencyTestBase):
+	def _plugin(self):
+		plugin = self.module.GlobalPlugin()
+		globalPluginHandler.runningPlugins.append(plugin)
+		self.addCleanup(plugin.terminate)
+		return plugin
+
+	def test_control_space_in_a_file_list_says_selected_and_not_selected(self):
+		# The sequences NVDA 2026.2 sent for Control+Down Arrow, then Control+Space
+		# twice, in File Explorer, with List item state reporting on its default.
+		plugin = self._plugin()
+		window = CountingObject("WINDOW", "File Explorer")
+		items = CountingObject("LIST", "Items View")
+		item = CountingObject("LISTITEM", "This PC")
+		_chain(item, items, window)
+		self._focus(item, items, window)
+
+		def speak(sequence):
+			return [part for part in plugin._filterSpeechSequence(list(sequence)) if isinstance(part, str)]
+
+		self.assertEqual(speak(["This PC", "not selected", "2 of 41"]), ["This PC", "not selected", "2 of 41"])
+		self.assertEqual(speak(["selected"]), ["This PC", "selected"])
+		self.assertEqual(speak(["not selected"]), ["This PC", "not selected"])
 
 
 class MouseRoutingTests(LatencyTestBase):
