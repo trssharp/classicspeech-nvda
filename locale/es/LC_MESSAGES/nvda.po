@@ -176,7 +176,7 @@ msgstr "Una voz se aplica al anuncio."
 
 #: _speech_core/settings/constants.py:33
 msgid "Abbreviated without plus"
-msgstr "Abreviado sin más"
+msgstr "Abreviado sin signos más"
 
 #: _speech_core/settings/constants.py:49
 msgid "Access keys"
@@ -572,7 +572,7 @@ msgstr "ClassicSpeech {new} está disponible. Tienes la versión {installed}."
 
 #: _speech_core/settings/rename_list_panel.py:24
 msgid "Clear Rename\tDelete"
-msgstr "Borrar Renombrar\tSuprimir"
+msgstr "Borrar nombre personalizado\tSuprimir"
 
 #: _speech_core/schemes/catalog.py:445
 msgid "Clickable"
@@ -816,7 +816,7 @@ msgstr "Errores"
 
 #: _speech_core/settings/constants.py:32
 msgid "Expanded without plus"
-msgstr "Expandido sin más"
+msgstr "Expandido sin signos más"
 
 #: _speech_core/settings/web/dialog.py:277
 msgid "Experimental heading presentation"
@@ -1104,7 +1104,7 @@ msgstr "Etiquetas de teclas"
 
 #: _speech_core/settings/key_labels_panel.py:25
 msgid "Key labels control what ClassicSpeech changes for normal keyboard speech. Input help is left native and does not use these key-label changes. They are separate from object speech tokens and hotkey tokens.\nSpace: mute or unmute. F2: rename. Delete: clear rename. Shift+F10: menu."
-msgstr "Las etiquetas de teclas controlan lo que ClassicSpeech cambia para la lectura normal del teclado. La ayuda de entrada se deja nativa y no usa estos cambios de etiquetas de teclas. Son independientes de los tokens de lectura de objetos y atajos de teclado.\nEspacio: silenciar o reactivar. F2: renombrar. Suprimir: borrar renombrar. Shift+F10: menú."
+msgstr "Las etiquetas de teclas controlan lo que ClassicSpeech cambia para la lectura normal del teclado. La ayuda de entrada se deja nativa y no usa estos cambios de etiquetas de teclas. Son independientes de los tokens de lectura de objetos y atajos de teclado.\nEspacio: silenciar o reactivar. F2: renombrar. Suprimir: borrar el nombre personalizado. Shift+F10: menú."
 
 #: _speech_core/settings/web/dialog.py:318
 msgid "Lan&dmarks"
@@ -1300,7 +1300,7 @@ msgstr "Nativo de NVDA"
 
 #: _speech_core/settings/number_processing_panel.py:223
 msgid "NVDA native is the safe default and leaves numbers unchanged for NVDA and the active synthesizer. Threshold digit spelling only rewrites standalone integer strings at the selected length or longer. Phone number processing handles common U.S.-style phone numbers as grouped digits when enabled. Friendly toll-free prefixes say numbers like 1-800 as one eight hundred. Currency processing can say simple dollar amounts as dollars and cents for synths that do not. Ordinal processing can say standalone tokens such as 1st and 22nd as words. ISO year-first recognition handles strict four-digit year-first dates such as 2026-09-05 without changing the selected numeric date format. When Windows locale is enabled, unsupported Windows date formats fall back to the selected numeric date format. Currency, times, non-phone codes, and alphanumeric strings are left unchanged."
-msgstr "Nativo de NVDA es el valor seguro predeterminado y deja los números sin cambios para NVDA y el sintetizador activo. El deletreo de dígitos por umbral solo reescribe cadenas de enteros independientes en la longitud seleccionada o mayor. El procesamiento de números de teléfono maneja números de teléfono comunes de estilo EE. UU. como dígitos agrupados cuando está activado. Los prefijos gratuitos amigables dicen números como 1-800 como un ocho cientos. El procesamiento de divisas puede decir importes simples en dólares como dólares y centavos para sintetizadores que no lo hacen. El procesamiento de ordinales puede decir tokens independientes como 1st (primero) y 22nd (vigésimo-segundo) como palabras. El reconocimiento de año primero ISO maneja fechas estrictas de cuatro dígitos con el año primero como 2026-09-05 sin cambiar el formato de fecha numérico seleccionado. Cuando la configuración regional de Windows está habilitada, los formatos de fecha de Windows no compatibles recurren al formato de fecha numérico seleccionado. Divisas, horas, códigos no telefónicos y cadenas alfanuméricas no se modifican."
+msgstr "Nativo de NVDA es el valor seguro predeterminado y deja los números sin cambios para NVDA y el sintetizador activo. El deletreo de dígitos por umbral solo reescribe cadenas de enteros independientes en la longitud seleccionada o mayor. El procesamiento de números de teléfono maneja números de teléfono comunes de estilo EE. UU. como dígitos agrupados cuando está activado. Los prefijos gratuitos amigables dicen números como 1-800 como «one eight hundred» (uno ochocientos). El procesamiento de divisas puede decir importes simples en dólares como dólares y centavos para sintetizadores que no lo hacen. El procesamiento de ordinales puede decir tokens independientes como 1st (primero) y 22nd (vigésimo segundo) como palabras. El reconocimiento de año primero ISO maneja fechas estrictas de cuatro dígitos con el año primero como 2026-09-05 sin cambiar el formato de fecha numérico seleccionado. Cuando la configuración regional de Windows está habilitada, los formatos de fecha de Windows no compatibles recurren al formato de fecha numérico seleccionado. Divisas, horas, códigos no telefónicos y cadenas alfanuméricas no se modifican."
 
 #: _speech_core/settings/web/dialog.py:373
 msgid "NVDA native, no summary"
@@ -1344,7 +1344,7 @@ msgstr "Región de navegación"
 
 #: _speech_core/settings/constants.py:68
 msgid "Navigator object"
-msgstr "Objeto del navegador"
+msgstr "Navegador de objetos"
 
 #: _speech_core/settings/schemes_dialog.py:65
 msgid "Ne&w scheme..."
@@ -1440,7 +1440,7 @@ msgstr "Sin objeto"
 
 #: _speech_core/processors/web/summary.py:57
 msgid "No selected element types found."
-msgstr "No se encontraron tipos de elementos seleccionados."
+msgstr "No se encontraron elementos de los tipos seleccionados."
 
 #: _speech_core/history.py:161 _speech_core/history.py:168 _speech_core/history.py:178
 msgid "No speech history"
@@ -1692,7 +1692,7 @@ msgstr "Quitar entrada a&gregada"
 
 #: _speech_core/settings/voice_profiles_dialog.py:346
 msgid "Remove every saved ClassicSpeech Voice Profile override for the active synthesizer? NVDA's native Voice Settings will be used until you save a new profile."
-msgstr "¿Eliminar cada anulación guardada del Perfil de Voz de ClassicSpeech para el sintetizador activo? Se usará la configuración de voz nativa de NVDA hasta que guardes un nuevo perfil."
+msgstr "¿Eliminar todos los ajustes personalizados guardados en los perfiles de voz de ClassicSpeech para el sintetizador activo? Se usará la configuración de voz original de NVDA hasta que guardes un nuevo perfil."
 
 #: _speech_core/settings/schemes_panel.py:215
 msgid "Remove so&und"
@@ -1740,7 +1740,7 @@ msgstr "Reportar valores de colores transparentes"
 
 #: classicSpeech.py:1735
 msgid "Reports selected Browse Mode element counts for the current page"
-msgstr "Reporta los recuentos de elementos seleccionados del Modo Exploración para la página actual"
+msgstr "Anuncia el número de elementos de los tipos seleccionados en el modo de exploración para la página actual"
 
 #: classicSpeech.py:1498
 msgid "Reset All ClassicSpeech Settings..."
@@ -1776,7 +1776,7 @@ msgstr "Restablecer Elementos (Tokens) a Valores Predeterminados Ahora"
 
 #: _speech_core/settings/voice_profiles_dialog.py:126 _speech_core/settings/voice_profiles_dialog.py:127 _speech_core/settings/voice_profiles_dialog.py:348
 msgid "Reset all Voice Profile overrides"
-msgstr "Restablecer todas las anulaciones de Perfiles de Voz"
+msgstr "Restablecer todos los ajustes personalizados de los perfiles de voz"
 
 #: _speech_core/settings/key_labels_panel.py:87
 msgid "Reset key label settings to defaults now?\n\nThis will immediately clear all custom key renames and muted keys.\n\nCancel will not undo this reset.\n\nChoose Yes to reset now, or No to keep your current settings."
@@ -1784,7 +1784,7 @@ msgstr "¿Restablecer la configuración de etiquetas de teclas a sus valores pre
 
 #: _speech_core/settings/verbosity_panel.py:235
 msgid "Reset the {profile} profile to its default settings now?\n\nThis will immediately clear saved overrides for this profile.\n\nCancel will not undo this reset.\n\nChoose Yes to reset now, or No to keep your current settings."
-msgstr "¿Restablecer el perfil {profile} a sus valores predeterminados ahora?\n\nEsto borrará inmediatamente las anulaciones guardadas para este perfil.\n\nCancelar no deshará este restablecimiento.\n\nElige Sí para restablecer ahora, o No para mantener tu configuración actual."
+msgstr "¿Restablecer el perfil {profile} a sus valores predeterminados ahora?\n\nEsto borrará inmediatamente los ajustes personalizados guardados para este perfil.\n\nCancelar no deshará este restablecimiento.\n\nElige Sí para restablecer ahora, o No para mantener tu configuración actual."
 
 #: _speech_core/settings/token_editor_panel.py:217
 msgid "Reset token editor settings to defaults now?\n\nThis will immediately clear all global token renames and muted labels, and restore the default token order.\n\nCancel will not undo this reset.\n\nChoose Yes to reset now, or No to keep your current settings."
@@ -2124,7 +2124,7 @@ msgstr "Suprimir"
 
 #: _speech_core/settings/text/panel.py:101
 msgid "Suppress dashes inside words, such as sister-in-law"
-msgstr "Suprimir guiones dentro de palabras, como cuñado (sister-in-law)"
+msgstr "Suprimir guiones dentro de palabras, como sister-in-law"
 
 #: classicSpeech.py:1676
 msgid "Switches to the next ClassicSpeech speech and sound scheme"
