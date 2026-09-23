@@ -26,7 +26,7 @@ msgstr "Buscar &sonido..."
 msgid "&Clickable"
 msgstr "&Cliqueable"
 
-#: _speech_core/update_check.py:445 _speech_core/update_dialog.py:55
+#: _speech_core/update_check.py:452 _speech_core/update_dialog.py:55
 msgid "&Close"
 msgstr "&Cerrar"
 
@@ -38,7 +38,7 @@ msgstr "&Colores"
 msgid "&Copy"
 msgstr "&Copiar"
 
-#: _speech_core/update_check.py:425
+#: _speech_core/update_check.py:432
 msgid "&Download and install"
 msgstr "&Descargar e instalar"
 
@@ -86,7 +86,7 @@ msgstr "&Listas"
 msgid "&Maximum number of characters on one line"
 msgstr "&Número máximo de caracteres en una línea"
 
-#: _speech_core/update_check.py:445
+#: _speech_core/update_check.py:452
 msgid "&Not now"
 msgstr "&Ahora no"
 
@@ -534,7 +534,7 @@ msgstr "Configuraciones de ClassicSpeech para Web / Modo Exploración"
 msgid "ClassicSpeech could not check for updates. {reason}"
 msgstr "ClassicSpeech no pudo buscar actualizaciones. {reason}"
 
-#: _speech_core/update_check.py:467
+#: _speech_core/update_check.py:474
 msgid "ClassicSpeech could not download the update. {reason}"
 msgstr "ClassicSpeech no pudo descargar la actualización. {reason}"
 
@@ -546,7 +546,7 @@ msgstr "ClassicSpeech no pudo completar el restablecimiento. Los detalles están
 msgid "ClassicSpeech could not load the {engine} synthesizer. The item keeps using the active synthesizer."
 msgstr "ClassicSpeech no pudo cargar el sintetizador {engine}. El elemento seguirá usando el sintetizador activo."
 
-#: _speech_core/update_check.py:393
+#: _speech_core/update_check.py:398
 msgid "ClassicSpeech is up to date. You have version {version}, the latest release."
 msgstr "ClassicSpeech está actualizado. Tienes la versión {version}, la última publicada."
 
@@ -558,7 +558,7 @@ msgstr "Paquete de esquemas de ClassicSpeech"
 msgid "ClassicSpeech settings were reset, and the NVDA settings it changed were put back. ClassicSpeech now uses its default settings. To remove ClassicSpeech, uninstall it from the Add-on Store."
 msgstr "Se restablecieron los ajustes de ClassicSpeech y se recuperaron los ajustes de NVDA que había cambiado. ClassicSpeech utiliza ahora sus ajustes predeterminados. Para quitar ClassicSpeech, desinstálalo desde la Tienda de complementos."
 
-#: _speech_core/update_check.py:440 _speech_core/update_check.py:491
+#: _speech_core/update_check.py:447 _speech_core/update_check.py:498
 msgid "ClassicSpeech update"
 msgstr "Actualización de ClassicSpeech"
 
@@ -566,7 +566,7 @@ msgstr "Actualización de ClassicSpeech"
 msgid "ClassicSpeech voice profiles"
 msgstr "Perfiles de voz de ClassicSpeech"
 
-#: _speech_core/update_check.py:401
+#: _speech_core/update_check.py:408
 msgid "ClassicSpeech {new} is available. You have version {installed}."
 msgstr "ClassicSpeech {new} está disponible. Tienes la versión {installed}."
 
@@ -750,11 +750,11 @@ msgstr "Dólares y centavos"
 msgid "Double strikethrough"
 msgstr "Doble tachado"
 
-#: _speech_core/update_check.py:421
+#: _speech_core/update_check.py:428
 msgid "Download and install it now? NVDA asks you to confirm the installation, then offers to restart. Your ClassicSpeech settings are kept."
 msgstr "¿Descargarla e instalarla ahora? NVDA te pedirá que confirmes la instalación y después ofrecerá reiniciarse. Se conservarán tus ajustes de ClassicSpeech."
 
-#: _speech_core/update_check.py:453
+#: _speech_core/update_check.py:460
 msgid "Downloading ClassicSpeech {version}"
 msgstr "Descargando ClassicSpeech {version}"
 
@@ -1286,7 +1286,7 @@ msgstr "NVDA anuncia el nuevo nombre de fuente. Las fuentes específicas se mues
 msgid "NVDA announces the new font size. Specific sizes are listed separately."
 msgstr "NVDA anuncia el nuevo tamaño de fuente. Los tamaños específicos se muestran por separado."
 
-#: _speech_core/update_check.py:475
+#: _speech_core/update_check.py:482
 msgid "NVDA could not install the update. Details are in the NVDA log."
 msgstr "NVDA no pudo instalar la actualización. Los detalles están en el registro de NVDA."
 
@@ -2282,11 +2282,11 @@ msgstr "Este archivo no es un paquete de esquemas de ClassicSpeech."
 msgid "This file is not a ClassicSpeech voice profiles file, or it has no voice profiles."
 msgstr "Este archivo no es un archivo de perfiles de voz de ClassicSpeech o no contiene perfiles de voz."
 
-#: _speech_core/update_check.py:413
+#: _speech_core/update_check.py:420
 msgid "This release has no add-on file to install. Download it from {url}"
 msgstr "Esta versión publicada no contiene un archivo de complemento que instalar. Descárgalo desde {url}"
 
-#: _speech_core/update_check.py:408
+#: _speech_core/update_check.py:415
 msgid "This release has no notes."
 msgstr "Esta versión publicada no contiene notas."
 
@@ -2485,6 +2485,10 @@ msgstr "Clases de ventana"
 #: _speech_core/settings/number_processing_panel.py:86
 msgid "Year month day"
 msgstr "Año mes día"
+
+#: _speech_core/update_check.py:393
+msgid "You have ClassicSpeech {version}. The latest published release is {latest}. Your installed version is newer; no update is available."
+msgstr "Tiene ClassicSpeech {version}. La última versión publicada es la {latest}. La versión instalada es más reciente; no hay ninguna actualización disponible."
 
 #: _speech_core/processors/web/summary.py:28
 msgid "annotation"

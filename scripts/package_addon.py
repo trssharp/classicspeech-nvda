@@ -18,7 +18,7 @@ APP_MODULE_DIRECTORIES = ("appModules",)
 # NVDA's Add-on Store Help opens doc/<language>/<docFileName> from the add-on root.
 DOC_DIRECTORIES = ("doc",)
 LOCALE_DIRECTORIES = ("locale",)
-RELEASE_NOTES = "RELEASE-1.02.md"
+RELEASE_NOTES = "RELEASE-2.0.md"
 # NVDA 2026.1 and later show the manifest's changelog, rendered from Markdown, when you choose
 # "What's new" for an add-on in the Add-on Store. Every release's changelog is this section of
 # its release notes; --sync-changelog copies it into manifest.ini.

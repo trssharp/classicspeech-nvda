@@ -237,6 +237,42 @@ class UpdateCheckTests(unittest.TestCase):
 		checker._checked(self.updates.UpdateError("GitHub could not be reached."), "1.07", "o/n", manual=True)
 		self.assertIn("could not check for updates. GitHub could not be reached.", checker.messages[-1])
 
+	def test_a_newer_installed_build_reports_both_versions_without_an_offer(self):
+		checker = self._checker()
+		release = self.updates.release_from_github(_github_release(tag="v1.01"))
+		checker._checked(release, "2.0", "o/n", manual=True)
+		self.assertEqual(checker.messages, [
+			"You have ClassicSpeech 2.0. The latest published release is 1.01. "
+			"Your installed version is newer; no update is available."
+		])
+		self.assertEqual(checker.offers, [])
+		self.assertEqual(checker.downloads, [])
+
+	def test_equivalent_versions_report_up_to_date_not_a_newer_build(self):
+		checker = self._checker()
+		release = self.updates.release_from_github(_github_release(tag="v2.0.0"))
+		checker._checked(release, "2.0", "o/n", manual=True)
+		self.assertIn("ClassicSpeech is up to date", checker.messages[0])
+		self.assertNotIn("installed version is newer", checker.messages[0])
+		self.assertEqual(checker.offers, [])
+
+	def test_an_older_installed_build_is_offered_the_published_update(self):
+		checker = self._checker()
+		release = self.updates.release_from_github(_github_release(tag="v2.0"))
+		checker._checked(release, "1.01", "o/n", manual=True)
+		self.assertEqual(checker.messages, [])
+		self.assertEqual(len(checker.offers), 1)
+		self.assertIn("ClassicSpeech 2.0 is available. You have version 1.01.", checker.offers[0][0])
+		self.assertEqual(checker.downloads, [])
+
+	def test_a_newer_installed_build_is_silent_during_automatic_checks(self):
+		checker = self._checker()
+		release = self.updates.release_from_github(_github_release(tag="v1.01"))
+		checker._checked(release, "2.0", "o/n", manual=False)
+		self.assertEqual(checker.messages, [])
+		self.assertEqual(checker.offers, [])
+		self.assertEqual(checker.downloads, [])
+
 	def test_an_automatic_check_is_silent_unless_there_is_an_update(self):
 		checker = self._checker()
 		checker._checked(self.updates.UpdateError("offline"), "1.07", "o/n", manual=False)
