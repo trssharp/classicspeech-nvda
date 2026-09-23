@@ -1860,35 +1860,35 @@ msgstr "Esquema {name}"
 
 #: _speech_core/schemes/catalog.py:245
 msgid "Screen curtain turned off"
-msgstr ""
+msgstr "Cortina de Pantalla desactivada"
 
 #: _speech_core/schemes/catalog.py:242
 msgid "Screen curtain turned on"
-msgstr ""
+msgstr "Cortina de Pantalla activada"
 
 #: _speech_core/settings/schemes_panel.py:151
 msgid "Search items"
-msgstr ""
+msgstr "Buscar elementos"
 
 #: _speech_core/schemes/catalog.py:129
 msgid "Search landmark"
-msgstr ""
+msgstr "Región de búsqueda"
 
 #: _speech_core/schemes/catalog.py:397
 msgid "Section breaks"
-msgstr ""
+msgstr "Saltos de sección"
 
 #: _speech_core/schemes/catalog.py:395
 msgid "Section numbers"
-msgstr ""
+msgstr "Números de sección"
 
 #: _speech_core/settings/schemes_panel.py:384
 msgid "Select an item in the tree to change its sound or voice."
-msgstr ""
+msgstr "Selecciona un elemento del árbol para cambiar su sonido o voz."
 
 #: _speech_core/settings/schemes_panel.py:197
 msgid "Selected item"
-msgstr ""
+msgstr "Elemento seleccionado"
 
 #: _speech_core/processors/web/summary.py:42
 msgid "Separators"
@@ -1924,15 +1924,15 @@ msgstr "Algunos"
 
 #: classicSpeech.py:2054
 msgid "Some files could not be deleted. Delete this folder yourself: {folder}"
-msgstr ""
+msgstr "No se pudieron eliminar algunos archivos. Elimina esta carpeta manualmente: {folder}"
 
 #: _speech_core/settings/schemes_panel.py:207
 msgid "Sound &file:"
-msgstr ""
+msgstr "&Archivo de sonido:"
 
 #: _speech_core/settings/schemes_panel.py:209
 msgid "Sound file"
-msgstr ""
+msgstr "Archivo de sonido"
 
 #: _speech_core/settings/edge_notifications_panel.py:18
 msgid "Space: announce or suppress. F2: set a custom announcement. Delete: restore the native Edge announcement. Shift+F10: menu."
@@ -1940,7 +1940,7 @@ msgstr "Espacio: anunciar o suprimir. F2: establecer un anuncio personalizado. S
 
 #: _speech_core/settings/schemes_panel.py:251
 msgid "Spea&k a voice preview"
-msgstr ""
+msgstr "Reproducir una &vista previa de la voz"
 
 #: _speech_core/settings/advanced_panel.py:45
 msgid "Speak a message when the speech hook loads"
@@ -1948,11 +1948,11 @@ msgstr "Decir un mensaje cuando cargue el gancho de voz"
 
 #: _speech_core/settings/hotkeys_panel.py:60
 msgid "Speak hotkeys &in:"
-msgstr ""
+msgstr "Anunciar atajos &en:"
 
 #: _speech_core/settings/hotkeys_panel.py:63
 msgid "Speak hotkeys in"
-msgstr ""
+msgstr "Anunciar atajos en"
 
 #: _speech_core/settings/number_processing_panel.py:125
 msgid "Speak single digits if number contains"
@@ -1968,15 +1968,15 @@ msgstr "Verbaliza el objeto actual. Pulsa dos veces rápido para deletrear y cop
 
 #: _speech_core/schemes/catalog.py:529
 msgid "Specific font names"
-msgstr ""
+msgstr "Nombres de fuente específicos"
 
 #: _speech_core/schemes/catalog.py:539
 msgid "Specific font sizes"
-msgstr ""
+msgstr "Tamaños de fuente específicos"
 
 #: _speech_core/schemes/catalog.py:546
 msgid "Specific styles"
-msgstr ""
+msgstr "Estilos específicos"
 
 #: _speech_core/history_viewer.py:97
 msgid "Speech History"
@@ -1988,19 +1988,19 @@ msgstr "Sincronización de Voz"
 
 #: _speech_core/settings/schemes_dialog.py:261 _speech_core/settings/schemes_dialog.py:278 _speech_core/settings/schemes_panel.py:480 _speech_core/settings/schemes_panel.py:617
 msgid "Speech and Sound Schemes"
-msgstr ""
+msgstr "Esquemas de voz y sonido"
 
 #: classicSpeech.py:1495
 msgid "Speech and Sound Schemes..."
-msgstr ""
+msgstr "Esquemas de voz y sonido..."
 
 #: classicSpeech.py:1671
 msgid "Speech and sound schemes off"
-msgstr ""
+msgstr "Esquemas de voz y sonido desactivados"
 
 #: classicSpeech.py:1671
 msgid "Speech and sound schemes on"
-msgstr ""
+msgstr "Esquemas de voz y sonido activados"
 
 #: _speech_core/history_viewer.py:162
 msgid "Speech history cleared"
@@ -2040,7 +2040,7 @@ msgstr "Deletrear letras y números mezclados fonéticamente"
 
 #: _speech_core/schemes/catalog.py:385
 msgid "Spelling errors"
-msgstr ""
+msgstr "Errores ortográficos"
 
 #: _speech_core/settings/document_reading_proofing_panel.py:131
 msgid "Spelling or grammar e&rrors"
@@ -2048,7 +2048,7 @@ msgstr "E&rrores de ortografía o gramática"
 
 #: _speech_core/schemes/catalog.py:233
 msgid "Spelling or grammar error"
-msgstr ""
+msgstr "Error ortográfico o gramatical"
 
 #: _speech_core/settings/text/panel.py:94
 msgid "Split mixed-case words, such as SayAll into Say All"
@@ -2084,23 +2084,23 @@ msgstr "Estados"
 
 #: _speech_core/schemes/catalog.py:347
 msgid "Strikethrough"
-msgstr ""
+msgstr "Tachado"
 
 #: _speech_core/schemes/catalog.py:355
 msgid "Strong (emphasis)"
-msgstr ""
+msgstr "Énfasis fuerte"
 
 #: _speech_core/schemes/catalog.py:363
 msgid "Style changes (any style)"
-msgstr ""
+msgstr "Cambios de estilo (cualquier estilo)"
 
 #: _speech_core/settings/schemes_panel.py:736
 msgid "Style name to add, as NVDA reports it (for example Heading 1 or Quote):"
-msgstr ""
+msgstr "Nombre de estilo que agregar, tal como lo anuncia NVDA (por ejemplo, Encabezado 1 o Cita):"
 
 #: _speech_core/schemes/catalog.py:311
 msgid "Style: {name}"
-msgstr ""
+msgstr "Estilo: {name}"
 
 #: _speech_core/settings/document_reading_proofing_panel.py:111
 msgid "Su&perscripts and subscripts"
@@ -2108,7 +2108,7 @@ msgstr "Su&períndices y subíndices"
 
 #: _speech_core/schemes/catalog.py:353
 msgid "Subscript"
-msgstr ""
+msgstr "Subíndice"
 
 #: _speech_core/settings/web/dialog.py:374
 msgid "Summary after page is ready"
@@ -2116,7 +2116,7 @@ msgstr "Resumen después de que la página esté lista"
 
 #: _speech_core/schemes/catalog.py:352
 msgid "Superscript"
-msgstr ""
+msgstr "Superíndice"
 
 #: _speech_core/settings/edge_notifications_panel.py:46
 msgid "Suppress"
@@ -2128,19 +2128,19 @@ msgstr "Suprimir guiones dentro de palabras, como cuñado (sister-in-law)"
 
 #: classicSpeech.py:1676
 msgid "Switches to the next ClassicSpeech speech and sound scheme"
-msgstr ""
+msgstr "Cambia al siguiente esquema de voz y sonido de ClassicSpeech"
 
 #: _speech_core/schemes/catalog.py:217
 msgid "Switching to browse mode"
-msgstr ""
+msgstr "Cambiando a modo exploración"
 
 #: _speech_core/schemes/catalog.py:221
 msgid "Switching to focus mode"
-msgstr ""
+msgstr "Cambiando a modo foco"
 
 #: _speech_core/settings/schemes_panel.py:235
 msgid "Synthesizer"
-msgstr ""
+msgstr "Sintetizador"
 
 #: _speech_core/settings/web/dialog.py:255
 msgid "T&ouch navigation elements:"
@@ -2148,7 +2148,7 @@ msgstr "Elementos de navegación t&áctil:"
 
 #: _speech_core/schemes/catalog.py:416
 msgid "Table cell coordinates (row and column numbers)"
-msgstr ""
+msgstr "Coordenadas de celdas de tabla (números de fila y columna)"
 
 #: _speech_core/schemes/catalog.py:556 _speech_core/settings/document_reading_proofing_panel.py:165
 msgid "Table information"
@@ -2156,7 +2156,7 @@ msgstr "Información de tabla"
 
 #: _speech_core/schemes/catalog.py:417
 msgid "Table row and column headers"
-msgstr ""
+msgstr "Encabezados de filas y columnas de tabla"
 
 #: _speech_core/processors/web/summary.py:43 _speech_core/schemes/catalog.py:415 _speech_core/settings/web/dialog.py:198
 msgid "Tables"
@@ -2168,19 +2168,19 @@ msgstr "Procesamiento de Texto"
 
 #: _speech_core/schemes/catalog.py:365
 msgid "Text color changes"
-msgstr ""
+msgstr "Cambios de color de texto"
 
 #: _speech_core/schemes/catalog.py:396
 msgid "Text columns"
-msgstr ""
+msgstr "Columnas de texto"
 
 #: _speech_core/user_guide.py:68
 msgid "The ClassicSpeech user guide could not be found."
-msgstr ""
+msgstr "No se encontró la guía del usuario de ClassicSpeech."
 
 #: _speech_core/user_guide.py:74
 msgid "The ClassicSpeech user guide could not be opened."
-msgstr ""
+msgstr "No se pudo abrir la guía del usuario de ClassicSpeech."
 
 #: _speech_core/settings/voice_profiles_dialog.py:214
 msgid "The active synthesizer exposes no editable settings."
@@ -2188,63 +2188,63 @@ msgstr "El sintetizador activo no expone configuraciones editables."
 
 #: _speech_core/settings/schemes_panel.py:240
 msgid "The active synthesizer switches voices fastest. Another synthesizer is loaded each time this item is spoken and unloaded afterwards, which adds a noticeable delay."
-msgstr ""
+msgstr "El sintetizador activo cambia de voz más rápidamente. Otro sintetizador se carga cada vez que se anuncia este elemento y se descarga después, lo que añade un retraso perceptible."
 
 #: _speech_core/update_check.py:268
 msgid "The add-on file could not be downloaded."
-msgstr ""
+msgstr "No se pudo descargar el archivo del complemento."
 
 #: _speech_core/update_check.py:232 _speech_core/update_check.py:258
 msgid "The add-on file is larger than expected."
-msgstr ""
+msgstr "El archivo del complemento es más grande de lo esperado."
 
 #: _speech_core/update_check.py:243
 msgid "The checksum file could not be downloaded."
-msgstr ""
+msgstr "No se pudo descargar el archivo de suma de comprobación."
 
 #: _speech_core/update_check.py:245
 msgid "The checksum file could not be read."
-msgstr ""
+msgstr "No se pudo leer el archivo de suma de comprobación."
 
 #: _speech_core/update_check.py:272
 msgid "The downloaded file does not match its checksum, so it was deleted."
-msgstr ""
+msgstr "El archivo descargado no coincide con su suma de comprobación, por lo que se eliminó."
 
 #: _speech_core/settings/voice_profiles_dialog.py:412
 msgid "The file has no voice profiles for your current synthesizer. They are used when you switch to one of those synthesizers."
-msgstr ""
+msgstr "El archivo no contiene perfiles de voz para tu sintetizador actual. Se utilizarán cuando cambies a uno de esos sintetizadores."
 
 #: _speech_core/update_check.py:217
 msgid "The latest release on GitHub has no version number ClassicSpeech understands."
-msgstr ""
+msgstr "La última versión publicada en GitHub no tiene un número de versión que ClassicSpeech reconozca."
 
 #: _speech_core/update_check.py:228
 msgid "The release has no add-on file."
-msgstr ""
+msgstr "La versión publicada no contiene un archivo de complemento."
 
 #: _speech_core/update_check.py:230
 msgid "The release has no checksum file, so its add-on file can't be checked."
-msgstr ""
+msgstr "La versión publicada no contiene un archivo de suma de comprobación, por lo que no se puede verificar el archivo del complemento."
 
 #: _speech_core/settings/schemes_dialog.py:220
 msgid "The scheme could not be exported. See the NVDA log for details."
-msgstr ""
+msgstr "No se pudo exportar el esquema. Consulta el registro de NVDA para obtener detalles."
 
 #: _speech_core/settings/schemes_dialog.py:239
 msgid "The scheme could not be imported. See the NVDA log for details."
-msgstr ""
+msgstr "No se pudo importar el esquema. Consulta el registro de NVDA para obtener detalles."
 
 #: _speech_core/settings/schemes_dialog.py:277
 msgid "The schemes could not be saved. See the NVDA log for details."
-msgstr ""
+msgstr "No se pudieron guardar los esquemas. Consulta el registro de NVDA para obtener detalles."
 
 #: _speech_core/settings/schemes_dialog.py:260
 msgid "The schemes folder could not be opened. It is {path}."
-msgstr ""
+msgstr "No se pudo abrir la carpeta de esquemas. Está en {path}."
 
 #: _speech_core/settings/schemes_panel.py:616
 msgid "The sound file could not be found:\n{path}"
-msgstr ""
+msgstr "No se encontró el archivo de sonido:\n{path}"
 
 #: _speech_core/settings/token_editor_panel.py:30
 msgid "The token editor is global. Use it to rename or mute individual role and state labels for all verbosity profiles.\nUse Control+Up and Control+Down to reorder the spoken token sequence.\nSpace: mute or unmute. F2: rename. Delete: clear rename. Shift+F10: menu."
@@ -2252,47 +2252,47 @@ msgstr "El editor de tokens es global. Úsalo para renombrar o silenciar roles i
 
 #: _speech_core/settings/voice_profiles_dialog.py:385
 msgid "The voice profiles could not be exported. See the NVDA log for details."
-msgstr ""
+msgstr "No se pudieron exportar los perfiles de voz. Consulta el registro de NVDA para obtener detalles."
 
 #: _speech_core/settings/voice_profiles_dialog.py:402
 msgid "The voice profiles could not be imported. See the NVDA log for details."
-msgstr ""
+msgstr "No se pudieron importar los perfiles de voz. Consulta el registro de NVDA para obtener detalles."
 
 #: _speech_core/update_check.py:209
 msgid "There are no ClassicSpeech releases on GitHub yet."
-msgstr ""
+msgstr "Todavía no hay versiones de ClassicSpeech publicadas en GitHub."
 
 #: _speech_core/settings/voice_profiles_dialog.py:374
 msgid "There are no voice profiles to export."
-msgstr ""
+msgstr "No hay perfiles de voz que exportar."
 
 #: _speech_core/settings/schemes_dialog.py:224
 msgid "These sounds were not found and were left out:"
-msgstr ""
+msgstr "No se encontraron estos sonidos y se omitieron:"
 
 #: _speech_core/update_check.py:346
 msgid "This copy of ClassicSpeech doesn't know where its updates are published, so it can't check for them."
-msgstr ""
+msgstr "Esta copia de ClassicSpeech no sabe dónde se publican sus actualizaciones, por lo que no puede buscarlas."
 
 #: _speech_core/settings/schemes_dialog.py:235
 msgid "This file is not a ClassicSpeech scheme package."
-msgstr ""
+msgstr "Este archivo no es un paquete de esquemas de ClassicSpeech."
 
 #: _speech_core/settings/voice_profiles_dialog.py:398
 msgid "This file is not a ClassicSpeech voice profiles file, or it has no voice profiles."
-msgstr ""
+msgstr "Este archivo no es un archivo de perfiles de voz de ClassicSpeech o no contiene perfiles de voz."
 
 #: _speech_core/update_check.py:413
 msgid "This release has no add-on file to install. Download it from {url}"
-msgstr ""
+msgstr "Esta versión publicada no contiene un archivo de complemento que instalar. Descárgalo desde {url}"
 
 #: _speech_core/update_check.py:408
 msgid "This release has no notes."
-msgstr ""
+msgstr "Esta versión publicada no contiene notas."
 
 #: _speech_core/settings/schemes_panel.py:543
 msgid "This synthesizer exposes no editable settings."
-msgstr ""
+msgstr "Este sintetizador no ofrece ajustes editables."
 
 #: _speech_core/settings/web/dialog.py:406
 msgid "Title"
@@ -2316,19 +2316,19 @@ msgstr "Desactivar el hook de voz deja disponibles las órdenes de ClassicSpeech
 
 #: classicSpeech.py:1664
 msgid "Turns ClassicSpeech speech and sound schemes on or off"
-msgstr ""
+msgstr "Activa o desactiva los esquemas de voz y sonido de ClassicSpeech"
 
 #: _speech_core/schemes/catalog.py:345
 msgid "Underlined"
-msgstr ""
+msgstr "Subrayado"
 
 #: _speech_core/schemes/catalog.py:561
 msgid "Unknown and unlabeled objects"
-msgstr ""
+msgstr "Objetos desconocidos y sin etiqueta"
 
 #: _speech_core/schemes/catalog.py:487
 msgid "Unknown objects"
-msgstr ""
+msgstr "Objetos desconocidos"
 
 #: _speech_core/settings/rename_list_panel.py:25
 msgid "Unmute"
@@ -2344,7 +2344,7 @@ msgstr "Usar configuración regional de Windows para formato de fecha"
 
 #: _speech_core/settings/schemes_panel.py:230
 msgid "Use a custom &voice for this item"
-msgstr ""
+msgstr "Usar una &voz personalizada para este elemento"
 
 #: _speech_core/settings/number_processing_panel.py:146 _speech_core/settings/number_processing_panel.py:148
 msgid "Use friendly toll-free prefixes"
@@ -2364,11 +2364,11 @@ msgstr "Verbosidad"
 
 #: _speech_core/schemes/catalog.py:408
 msgid "Vertical alignment"
-msgstr ""
+msgstr "Alineación vertical"
 
 #: _speech_core/schemes/catalog.py:432
 msgid "Visited links"
-msgstr ""
+msgstr "Enlaces visitados"
 
 #: classicSpeech.py:1494
 msgid "Voice Profiles..."
@@ -2380,7 +2380,7 @@ msgstr "Perfiles de voz"
 
 #: _speech_core/settings/schemes_panel.py:591
 msgid "Wave files (*.wav)|*.wav"
-msgstr ""
+msgstr "Archivos de onda (*.wav)|*.wav"
 
 #: classicSpeech.py:1493
 msgid "Web / Browse Mode Settings..."
@@ -2392,79 +2392,79 @@ msgstr "Reporte de Elementos Web"
 
 #: _speech_core/schemes/catalog.py:214
 msgid "When NVDA exits, if Play sounds when starting or exiting NVDA is checked in NVDA's General settings."
-msgstr ""
+msgstr "Cuando NVDA se cierra, si está marcada la opción Reproducir sonidos al iniciar o salir de NVDA en los ajustes Generales de NVDA."
 
 #: _speech_core/schemes/catalog.py:209
 msgid "When NVDA starts, if Play sounds when starting or exiting NVDA is checked in NVDA's General settings. NVDA plays it before add-ons load, so while this item has a sound, ClassicSpeech turns that option off and plays the start and exit sounds itself."
-msgstr ""
+msgstr "Cuando NVDA se inicia, si está marcada la opción Reproducir sonidos al iniciar o salir de NVDA en los ajustes Generales de NVDA. NVDA reproduce ese sonido antes de cargar los complementos, así que, mientras este elemento tenga un sonido, ClassicSpeech desactiva esa opción y reproduce por sí mismo los sonidos de inicio y salida."
 
 #: _speech_core/schemes/catalog.py:217
 msgid "When NVDA switches to browse mode, if Audio indication of focus and browse modes is checked in NVDA's Browse Mode settings."
-msgstr ""
+msgstr "Cuando NVDA cambia a modo exploración, si está marcada la indicación de audio de los modos foco y exploración en los ajustes de Modo exploración de NVDA."
 
 #: _speech_core/schemes/catalog.py:221
 msgid "When NVDA switches to focus mode, if Audio indication of focus and browse modes is checked in NVDA's Browse Mode settings."
-msgstr ""
+msgstr "Cuando NVDA cambia a modo foco, si está marcada la indicación de audio de los modos foco y exploración en los ajustes de Modo exploración de NVDA."
 
 #: _speech_core/schemes/catalog.py:238
 msgid "When NVDA writes an error to its log, if Play a sound for logged errors allows it in NVDA's Advanced settings. By default NVDA plays it only in its test versions."
-msgstr ""
+msgstr "Cuando NVDA escribe un error en su registro, si la opción Reproducir un sonido para errores registrados lo permite en los ajustes Avanzados de NVDA. De forma predeterminada, NVDA solo lo reproduce en sus versiones de prueba."
 
 #: _speech_core/schemes/catalog.py:251
 msgid "When NVDA's Remote Access connects this computer so that another computer can control it."
-msgstr ""
+msgstr "Cuando el Acceso remoto de NVDA conecta este equipo para que otro equipo pueda controlarlo."
 
 #: _speech_core/schemes/catalog.py:248
 msgid "When NVDA's Remote Access connects this computer to control another computer."
-msgstr ""
+msgstr "Cuando el Acceso remoto de NVDA conecta este equipo para controlar otro equipo."
 
 #: _speech_core/schemes/catalog.py:257
 msgid "When Remote Access disconnects, or another computer leaves the session."
-msgstr ""
+msgstr "Cuando se desconecta el Acceso remoto o cuando otro equipo abandona la sesión."
 
 #: _speech_core/schemes/catalog.py:263
 msgid "When Remote Access receives the other computer's clipboard."
-msgstr ""
+msgstr "Cuando el Acceso remoto recibe el portapapeles del otro equipo."
 
 #: _speech_core/schemes/catalog.py:260
 msgid "When Remote Access sends this computer's clipboard to the other computer."
-msgstr ""
+msgstr "Cuando el Acceso remoto envía el portapapeles de este equipo al otro."
 
 #: _speech_core/schemes/catalog.py:254
 msgid "When another computer joins this computer's Remote Access session."
-msgstr ""
+msgstr "Cuando otro equipo se une a la sesión de Acceso remoto de este equipo."
 
 #: _speech_core/settings/schemes_panel.py:220
 msgid "When playin&g the sound:"
-msgstr ""
+msgstr "Al &reproducir el sonido:"
 
 #: _speech_core/settings/schemes_panel.py:222
 msgid "When playing the sound"
-msgstr ""
+msgstr "Al reproducir el sonido"
 
 #: _speech_core/schemes/catalog.py:225
 msgid "When suggestions appear as you type in a search field or another field that offers them, if Play a sound when auto-suggestions appear is checked in NVDA's Object Presentation settings."
-msgstr ""
+msgstr "Cuando aparecen sugerencias mientras escribes en un campo de búsqueda u otro campo que las ofrezca, si está marcada la opción Reproducir un sonido cuando aparecen sugerencias automáticas en los ajustes de Presentación de objetos de NVDA."
 
 #: _speech_core/schemes/catalog.py:245
 msgid "When the screen curtain turns off, if Play sound when toggling Screen Curtain is checked in NVDA's settings."
-msgstr ""
+msgstr "Cuando se desactiva la Cortina de Pantalla, si está marcada la opción Reproducir sonido al alternar la Cortina de Pantalla en los ajustes de NVDA."
 
 #: _speech_core/schemes/catalog.py:242
 msgid "When the screen curtain turns on, if Play sound when toggling Screen Curtain is checked in NVDA's settings."
-msgstr ""
+msgstr "Cuando se activa la Cortina de Pantalla, si está marcada la opción Reproducir sonido al alternar la Cortina de Pantalla en los ajustes de NVDA."
 
 #: _speech_core/schemes/catalog.py:229
 msgid "When those suggestions close, if Play a sound when auto-suggestions appear is checked in NVDA's Object Presentation settings."
-msgstr ""
+msgstr "Cuando se cierran esas sugerencias, si está marcada la opción Reproducir un sonido cuando aparecen sugerencias automáticas en los ajustes de Presentación de objetos de NVDA."
 
 #: _speech_core/schemes/catalog.py:233
 msgid "When you type a word with a spelling error, if Play sound for spelling errors while typing is checked in NVDA's Keyboard settings, and when NVDA reads a spelling or grammar error, if Spelling or grammar errors includes Sound in NVDA's Document Formatting settings."
-msgstr ""
+msgstr "Cuando escribes una palabra con un error ortográfico, si está marcada la opción Reproducir sonido para errores ortográficos mientras escribes en los ajustes de Teclado de NVDA, y cuando NVDA lee un error ortográfico o gramatical, si Errores ortográficos o gramaticales incluye Sonido en los ajustes de Formato de documentos de NVDA."
 
 #: _speech_core/settings/hotkeys_panel.py:76
 msgid "Which shortcuts to &speak:"
-msgstr ""
+msgstr "Qué atajos &anunciar:"
 
 #: _speech_core/settings/hotkeys_panel.py:79
 msgid "Which shortcuts to speak"
@@ -2472,15 +2472,15 @@ msgstr "Qué atajos decir"
 
 #: _speech_core/settings/schemes_panel.py:737
 msgid "Window class name to add:"
-msgstr ""
+msgstr "Nombre de clase de ventana que agregar:"
 
 #: _speech_core/schemes/catalog.py:309
 msgid "Window class {name}"
-msgstr ""
+msgstr "Clase de ventana {name}"
 
 #: _speech_core/schemes/catalog.py:564
 msgid "Window classes"
-msgstr ""
+msgstr "Clases de ventana"
 
 #: _speech_core/settings/number_processing_panel.py:86
 msgid "Year month day"
@@ -2556,7 +2556,7 @@ msgstr "lista"
 
 #: _speech_core/schemes/catalog.py:116
 msgid "not {state}"
-msgstr ""
+msgstr "no {state}"
 
 #: _speech_core/processors/web/summary.py:41
 msgid "radio button"
@@ -2572,11 +2572,11 @@ msgstr "separador"
 
 #: _speech_core/settings/schemes_panel.py:91
 msgid "sound"
-msgstr ""
+msgstr "sonido"
 
 #: _speech_core/settings/schemes_panel.py:91
 msgid "sound only"
-msgstr ""
+msgstr "solo sonido"
 
 #: _speech_core/processors/web/summary.py:43
 msgid "table"
@@ -2588,15 +2588,15 @@ msgstr "desconocido"
 
 #: _speech_core/settings/schemes_panel.py:94
 msgid "voice"
-msgstr ""
+msgstr "voz"
 
 #: _speech_core/settings/schemes_panel.py:94
 msgid "voice on {engine}"
-msgstr ""
+msgstr "voz en {engine}"
 
 #: classicSpeech.py:2049
 msgid "{count} NVDA settings were left as they are, because they were changed in NVDA's own settings after ClassicSpeech last changed them."
-msgstr ""
+msgstr "Se conservaron {count} ajustes de NVDA tal como estaban porque se modificaron en los propios ajustes de NVDA después de que ClassicSpeech los cambiara por última vez."
 
 #: _speech_core/settings/constants.py:85 _speech_core/settings/constants.py:86
 msgid "{ms} ms"
@@ -2604,7 +2604,7 @@ msgstr "{ms} ms"
 
 #: _speech_core/settings/schemes_dialog.py:160
 msgid "{name} copy"
-msgstr ""
+msgstr "Copia de {name}"
 
 #: _speech_core/settings/speech_timing_panel.py:81
 msgid "{tokenLabel} pause"
@@ -2617,4 +2617,4 @@ msgstr "Pausa de {tokenLabel}:"
 #: _speech_core/base_processor/default_button.py:28
 msgctxt "default button"
 msgid "default"
-msgstr ""
+msgstr "predeterminado"
