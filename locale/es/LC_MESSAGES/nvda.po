@@ -20,7 +20,7 @@ msgstr "&Marcadores"
 
 #: _speech_core/settings/schemes_panel.py:213
 msgid "&Browse for sound..."
-msgstr "&Buscar sonido..."
+msgstr "Buscar &sonido..."
 
 #: _speech_core/settings/web/dialog.py:322
 msgid "&Clickable"
@@ -52,7 +52,7 @@ msgstr "&Activar modo exploración al cargar la página"
 
 #: _speech_core/settings/schemes_dialog.py:56
 msgid "&Enable speech and sound schemes"
-msgstr "&Activar esquemas de voz y sonido"
+msgstr "&Habilitar esquemas de voz y sonido"
 
 #: _speech_core/settings/document_reading_proofing_panel.py:97
 msgid "&Font name"
@@ -108,7 +108,7 @@ msgstr "&Reproducir sonido"
 
 #: _speech_core/settings/schemes_panel.py:252
 msgid "&Reset this item"
-msgstr "&Restablecer este elemento"
+msgstr "Restablecer los a&justes de este elemento"
 
 #: _speech_core/settings/schemes_panel.py:149
 msgid "&Search items:"
@@ -280,7 +280,7 @@ msgstr "Todos los caracteres repetidos"
 
 #: _speech_core/settings/schemes_panel.py:40
 msgid "Also speak the announcement"
-msgstr "Anunciar también la descripción"
+msgstr "Anunciar también el mensaje"
 
 #: _speech_core/processors/web/summary.py:28
 msgid "Annotations"
@@ -696,7 +696,7 @@ msgstr "Estilo predeterminado"
 
 #: _speech_core/settings/schemes_dialog.py:68
 msgid "Dele&te scheme"
-msgstr "E&liminar esquema"
+msgstr "&Eliminar esquema"
 
 #: _speech_core/settings/schemes_dialog.py:186
 msgid "Delete scheme"
@@ -720,7 +720,7 @@ msgstr "Diálogos"
 
 #: _speech_core/settings/schemes_panel.py:41
 msgid "Do not speak the announcement (sound only)"
-msgstr "No anunciar la descripción (solo sonido)"
+msgstr "No anunciar el mensaje (solo sonido)"
 
 #: classicSpeech.py:2020
 msgid "Do you really want to reset all ClassicSpeech settings?\n\nThis deletes every ClassicSpeech setting, voice profile and speech and sound scheme, including the sounds copied into your schemes, and puts back the NVDA settings ClassicSpeech changed. To keep your schemes or voice profiles, export them first. You can't undo a reset.\n\nNVDA saves its configuration after the reset."
@@ -1348,7 +1348,7 @@ msgstr "Objeto del navegador"
 
 #: _speech_core/settings/schemes_dialog.py:65
 msgid "Ne&w scheme..."
-msgstr "Nu&evo esquema..."
+msgstr "N&uevo esquema..."
 
 #: _speech_core/settings/text/panel.py:88
 msgid "New line message"
@@ -1696,11 +1696,11 @@ msgstr "¿Eliminar cada anulación guardada del Perfil de Voz de ClassicSpeech p
 
 #: _speech_core/settings/schemes_panel.py:215
 msgid "Remove so&und"
-msgstr "Quitar so&nido"
+msgstr "Quitar son&ido"
 
 #: _speech_core/settings/schemes_dialog.py:67
 msgid "Rena&me scheme..."
-msgstr "Cambiar &nombre del esquema..."
+msgstr "Cambiar no&mbre del esquema..."
 
 #: _speech_core/settings/rename_list_panel.py:23
 msgid "Rename\tF2"
@@ -1824,7 +1824,7 @@ msgstr "Roles"
 
 #: _speech_core/settings/schemes_panel.py:233
 msgid "S&ynthesizer:"
-msgstr "&Sintetizador:"
+msgstr "Sinteti&zador:"
 
 #: _speech_core/schemes/catalog.py:433
 msgid "Same page links"
@@ -1848,7 +1848,7 @@ msgstr "Decir seleccionado"
 
 #: _speech_core/settings/schemes_panel.py:163
 msgid "Scheme &items:"
-msgstr "&Elementos del esquema:"
+msgstr "Elemen&tos del esquema:"
 
 #: _speech_core/settings/schemes_dialog.py:153
 msgid "Scheme name:"
@@ -1928,7 +1928,7 @@ msgstr "No se pudieron eliminar algunos archivos. Elimina esta carpeta manualmen
 
 #: _speech_core/settings/schemes_panel.py:207
 msgid "Sound &file:"
-msgstr "&Archivo de sonido:"
+msgstr "&Fichero de sonido:"
 
 #: _speech_core/settings/schemes_panel.py:209
 msgid "Sound file"
@@ -1940,7 +1940,7 @@ msgstr "Espacio: anunciar o suprimir. F2: establecer un anuncio personalizado. S
 
 #: _speech_core/settings/schemes_panel.py:251
 msgid "Spea&k a voice preview"
-msgstr "Reproducir una &vista previa de la voz"
+msgstr "Escuchar una muestra &de voz"
 
 #: _speech_core/settings/advanced_panel.py:45
 msgid "Speak a message when the speech hook loads"
@@ -2436,7 +2436,7 @@ msgstr "Cuando otro equipo se une a la sesión de Acceso remoto de este equipo."
 
 #: _speech_core/settings/schemes_panel.py:220
 msgid "When playin&g the sound:"
-msgstr "Al &reproducir el sonido:"
+msgstr "Al re&producir el sonido:"
 
 #: _speech_core/settings/schemes_panel.py:222
 msgid "When playing the sound"

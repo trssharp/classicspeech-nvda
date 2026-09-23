@@ -114,6 +114,64 @@ class LocalizationTests(unittest.TestCase):
             "El resumen de página no está disponible aquí.",
         )
 
+    def test_every_spanish_po_entry_matches_the_runtime_catalog(self):
+        script = _load_translation_script()
+        entries = script.parse_po(SPANISH_CATALOG.with_suffix(".po"))
+        with SPANISH_CATALOG.open("rb") as catalog_file:
+            translations = gettext.GNUTranslations(catalog_file)
+        for key, expected in entries.items():
+            if not script._has_translation(expected):
+                continue
+            with self.subTest(message=key.singular, context=key.context):
+                if key.plural:
+                    for count, form in ((1, 0), (2, 1)):
+                        actual = (
+                            translations.npgettext(key.context, key.singular, key.plural, count)
+                            if key.context else translations.ngettext(key.singular, key.plural, count)
+                        )
+                        self.assertEqual(actual, expected[form])
+                else:
+                    actual = (
+                        translations.pgettext(key.context, key.singular)
+                        if key.context else translations.gettext(key.singular)
+                    )
+                    self.assertEqual(actual, expected)
+
+    def test_spanish_scheme_dialog_accelerators_are_unique(self):
+        import ast
+        import re
+
+        script = _load_translation_script()
+        entries = script.parse_po(SPANISH_CATALOG.with_suffix(".po"))
+        labels = set()
+        for filename in ("schemes_dialog.py", "schemes_panel.py"):
+            tree = ast.parse((ROOT / "_speech_core" / "settings" / filename).read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                        and node.func.id == "_" and node.args
+                        and isinstance(node.args[0], ast.Constant)
+                        and isinstance(node.args[0].value, str) and "&" in node.args[0].value):
+                    labels.add(node.args[0].value)
+        # This alternative tree label is displayed only in the Voice Profiles dialog.
+        labels.remove("Document and web formatting &items:")
+        used = {}
+        for label in sorted(labels):
+            translated = entries[script.MessageKey("", label)]
+            keys = re.findall(r"(?<!&)&([^&])", translated)
+            self.assertEqual(len(keys), 1, (label, translated))
+            key = keys[0].casefold()
+            self.assertNotIn(key, used, (translated, used.get(key)))
+            used[key] = translated
+
+    def test_spanish_sound_modes_refer_to_messages_not_descriptions(self):
+        with SPANISH_CATALOG.open("rb") as catalog_file:
+            translations = gettext.GNUTranslations(catalog_file)
+        self.assertEqual(translations.gettext("Also speak the announcement"), "Anunciar también el mensaje")
+        self.assertEqual(
+            translations.gettext("Do not speak the announcement (sound only)"),
+            "No anunciar el mensaje (solo sonido)",
+        )
+
     def test_addon_translation_takes_precedence(self):
         addon_translation = _FakeTranslations({"Cancel": "Cancelar desde ClassicSpeech"})
         with mock.patch.object(builtins, "_", return_value="Cancelar desde NVDA", create=True):
