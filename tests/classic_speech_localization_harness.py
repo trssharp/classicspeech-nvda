@@ -172,6 +172,37 @@ class LocalizationTests(unittest.TestCase):
             "No anunciar el mensaje (solo sonido)",
         )
 
+    def test_spanish_reviewed_meaning_corrections(self):
+        with SPANISH_CATALOG.open("rb") as catalog_file:
+            translations = gettext.GNUTranslations(catalog_file)
+        expected = {
+            "Abbreviated without plus": "Abreviado sin signos más",
+            "Expanded without plus": "Expandido sin signos más",
+            "Clear Rename\tDelete": "Borrar nombre personalizado\tSuprimir",
+            "Navigator object": "Navegador de objetos",
+            "No selected element types found.": "No se encontraron elementos de los tipos seleccionados.",
+            "Reports selected Browse Mode element counts for the current page":
+                "Anuncia el número de elementos de los tipos seleccionados en el modo de exploración para la página actual",
+            "Suppress dashes inside words, such as sister-in-law":
+                "Suprimir guiones dentro de palabras, como sister-in-law",
+            "Reset all Voice Profile overrides":
+                "Restablecer todos los ajustes personalizados de los perfiles de voz",
+        }
+        for source, spanish in expected.items():
+            with self.subTest(source=source):
+                self.assertEqual(translations.gettext(source), spanish)
+        entries = _load_translation_script().parse_po(SPANISH_CATALOG.with_suffix(".po"))
+        for key in entries:
+            if "saved overrides" in key.singular or "Voice Profile override" in key.singular:
+                with self.subTest(source=key.singular):
+                    self.assertIn("ajustes personalizados", translations.gettext(key.singular))
+            if key.singular.startswith("Key labels control"):
+                self.assertIn("borrar el nombre personalizado", translations.gettext(key.singular))
+            if key.singular.startswith("NVDA native is the safe default"):
+                translated = translations.gettext(key.singular)
+                self.assertIn("«one eight hundred» (uno ochocientos)", translated)
+                self.assertNotIn("vigésimo-segundo", translated)
+
     def test_addon_translation_takes_precedence(self):
         addon_translation = _FakeTranslations({"Cancel": "Cancelar desde ClassicSpeech"})
         with mock.patch.object(builtins, "_", return_value="Cancelar desde NVDA", create=True):
