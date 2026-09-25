@@ -300,6 +300,12 @@ li { margin: .25em 0; }
 <li><strong>Check for ClassicSpeech updates automatically</strong>: once a day, shortly after NVDA starts, ask GitHub whether a newer ClassicSpeech has been released, and tell you only if there is one. See <a href="#updates">Updating ClassicSpeech</a>. Default: checked.</li>
 </ul>
 
+<h3 id="compact-windows-toasts">Windows toast announcements</h3>
+<p>When a new Windows toast arrives, ClassicSpeech automatically removes the exact leading English phrase <code>New notification from </code> from its spoken name while the ClassicSpeech speech hook is enabled. There is no separate setting.</p>
+<p>For a recognized announcement containing just the exact toast name followed by a separate <code>window</code> text item, ClassicSpeech also removes a trailing numeric <code>N of M</code> count and that window item. If the exact Windows <code> . Actions.</code> marker immediately precedes the count, it is removed too. Non-text speech commands are preserved. For example, <code>New notification from Hermes, Hermes finished, Hi Tim! What’s up?.. 1 of 1</code> followed by <code>window</code> becomes <code>Hermes, Hermes finished, Hi Tim! What’s up?..</code>.</p>
+<p>The remaining message, including punctuation, line breaks and mentions of Actions, window or counts, stays unchanged. Unrecognized suffixes or speech layouts receive only the existing prefix cleanup. The prefix phrase is retained within a message. Suffix recognition uses exact English spelling, ASCII digits and spaces; it does not translate or normalize other forms. Notification Center navigation, Microsoft Edge notification rules, and ordinary application messages are unchanged.</p>
+<p>This is text formatting only. Existing System Voice/Profile routing, Speech and Sound Schemes, and message priority are unchanged. NVDA still controls whether notifications are announced, duplicate handling and braille. The source object and speech history retain the original announcement.</p>
+
 <h2 id="web-browse-mode-settings">Web / Browse Mode Settings</h2>
 <p>Open this dialog from the NVDA menu: Preferences, then ClassicSpeech, then Web / Browse Mode Settings. Its Categories list has four pages.</p>
 

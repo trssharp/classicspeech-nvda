@@ -43,7 +43,7 @@ from ._speech_core.prosody_routing import (
     wrap_system_notification_sequence,
 )
 from ._speech_core import nvda_settings_backup
-from ._speech_core import settings_file
+from ._speech_core import settings_file, compact_toasts
 from ._speech_core.key_labels import apply_key_labels_live, get_key_label_config, get_key_label_runtime
 from ._speech_core.processors.core_ui import CoreUISpeechProcessor
 from ._speech_core.settings import (
@@ -644,6 +644,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._install_keyboard_entry_profile_route()
         self._install_mouse_pointer_profile_route()
         self._install_windows_toast_system_route()
+        self._toastArrival = compact_toasts.ToastArrivalRuntime(
+            lambda: bool(getattr(self, "_speechHookRegistered", False)), log
+        )
+        self._toastArrival.install()
         self._install_system_notification_profile_routes()
         self._install_configuration_save_revert_system_routes()
         self._install_remote_speech_compatibility()
@@ -699,6 +703,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._uninstall_speech_schemes()
         self._uninstall_nvda_sounds()
         self._restore_remote_speech_compatibility()
+        if getattr(self, "_toastArrival", None) is not None:
+            self._toastArrival.restore()
         self._restore_windows_toast_system_route()
         self._restore_system_notification_profile_routes()
         self._restore_configuration_save_revert_system_routes()
@@ -1283,6 +1289,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 output = wrap_keyboard_entry_sequence(speechSequence)
                 self._record_history(rawHistorySequence, output)
                 self._debug_log("typed keyboard/braille entry uses Keyboard profile")
+                if get_debug_logging_enabled():
+                    self._debug_log(f"filter output: {output}")
                 return output
 
             if is_mouse_pointer_profile_routing_active():
@@ -1290,13 +1298,19 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 output = wrap_mouse_sequence(speechSequence)
                 self._record_history(rawHistorySequence, output)
                 self._debug_log("mouse pointer feedback uses Mouse profile")
+                if get_debug_logging_enabled():
+                    self._debug_log(f"filter output: {output}")
                 return output
 
             if is_system_notification_profile_routing_active() or self._is_system_voice_script_active():
                 self._clear_hotkey_carryover()
-                output = wrap_system_notification_sequence(speechSequence)
+                # Text-only toast presentation; retain existing routing priority,
+                # raw history, scheme processing and message completion commands.
+                output = wrap_system_notification_sequence(compact_toasts.transform(speechSequence))
                 self._record_history(rawHistorySequence, output)
                 self._debug_log("scoped System notification uses System profile")
+                if get_debug_logging_enabled():
+                    self._debug_log(f"filter output: {output}")
                 return output
 
             if self._is_review_cursor_status_script_active():
@@ -1304,6 +1318,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 output = wrap_review_literal_sequence(speechSequence)
                 self._record_history(rawHistorySequence, output)
                 self._debug_log("review cursor status uses Review profile")
+                if get_debug_logging_enabled():
+                    self._debug_log(f"filter output: {output}")
                 return output
 
             self._apply_text_processing(speechSequence)
@@ -1340,6 +1356,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 output = wrap_review_literal_sequence(speechSequence)
                 self._record_history(rawHistorySequence, output)
                 self._debug_log("object navigation native sequence uses Review profile")
+                if get_debug_logging_enabled():
+                    self._debug_log(f"filter output: {output}")
                 return output
 
             # A real Review Cursor reading script owns every one of its native
@@ -1351,6 +1369,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 output = wrap_review_literal_sequence(speechSequence)
                 self._record_history(rawHistorySequence, output)
                 self._debug_log("review cursor sequence uses Review profile")
+                if get_debug_logging_enabled():
+                    self._debug_log(f"filter output: {output}")
                 return output
 
             # Speech for actual history entries inside our own history dialog is
@@ -1381,6 +1401,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 )
                 self._record_history(rawHistorySequence, output)
                 self._debug_log("bypass: NVDA text speech carrying scheme marks")
+                if get_debug_logging_enabled():
+                    self._debug_log(f"filter output: {output}")
                 return output
 
             # Sequence merging is for focus-mode/app control chatter only.
@@ -1424,6 +1446,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                         f"(script={self._current_speech_script_name()}): {speechSequence}"
                     ),
                 )
+                if get_debug_logging_enabled():
+                    self._debug_log(f"filter output: {output}")
                 return output
 
             # NVDA's own role/state label markers are dropped before semantic
