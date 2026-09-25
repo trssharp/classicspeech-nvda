@@ -1,6 +1,7 @@
 """Reusable Apply/OK/Cancel/Close transaction lifecycle for settings dialogs."""
 
 import logHandler
+import wx
 
 
 log = logHandler.log
@@ -18,6 +19,14 @@ class SettingsDialogTransactionMixin:
 
 	def _initializeDialogTransaction(self):
 		self._captureTransactionBaseline()
+
+	def onCategoryCharHook(self, event):
+		"""Accept from the category list only; leave other control keys native."""
+		if event.GetKeyCode() in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER) and not event.HasAnyModifiers():
+			# Consume even on save failure: no second native default activation.
+			self.onOK(event)
+		else:
+			event.Skip()
 
 	def onApply(self, event):
 		try:

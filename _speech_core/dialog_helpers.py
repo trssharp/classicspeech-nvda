@@ -163,8 +163,9 @@ def iter_dialog_descendants(container, max_depth=8, max_objects=150):
 # ---------------------------------------------------------------------------
 # Default button
 #
-# The default button is the one Enter activates after a change in one of the
-# dialog's other controls. ClassicSpeech asks, in this order:
+# NVDA+E first reports an eligible focused push/split button. Otherwise it
+# uses the dialog's own default detection below, also used by automatic focus
+# speech. These detectors ask, in this order:
 #
 # 1. NVDA's own wx dialogs, through wx (NVDA's settings dialogs press OK).
 # 2. Standard Windows dialogs, with DM_GETDEFID.
@@ -183,6 +184,7 @@ def iter_dialog_descendants(container, max_depth=8, max_objects=150):
 # ---------------------------------------------------------------------------
 
 #: Where an answer came from.
+SOURCE_FOCUS = "focus"
 SOURCE_WX = "wx"
 SOURCE_DIALOG = "dialog"
 SOURCE_STYLE = "style"
@@ -191,10 +193,11 @@ SOURCE_APPEARANCE = "appearance"
 
 
 class DefaultButton:
-	"""A dialog's default button, as ClassicSpeech found it.
+	"""A button selected by the query or dialog-default detection.
 
-	``certain`` is False for a guess: a focused button that is the default only
-	because it has focus, or a button picked by how it looks.
+	``certain`` is False for guesses from the permanent-default lookup or
+	appearance. The explicit query's focused-button choice is certain under
+	its reporting policy, not a claim about the dialog's permanent default.
 	"""
 
 	__slots__ = ("name", "hwnd", "obj", "source", "certain")
@@ -836,7 +839,27 @@ def _dialog_buttons(dialog):
 
 
 def query_default_button(obj) -> DefaultButtonQuery:
-	"""Answer NVDA+E: look again from scratch, and by appearance when nothing else can tell."""
+	"""Answer NVDA+E: prefer the focused button, then use dialog-default detection.
+
+	This query policy does not change automatic focus speech or its cache.
+	It is not a resolver for application-specific Enter-key handlers.
+	"""
+	if is_button(obj):
+		try:
+			states = getattr(obj, "states", set()) or set()
+			eligible = not any(
+				getattr(controlTypes.State, name, None) in states
+				for name in ("UNAVAILABLE", "INVISIBLE", "OFFSCREEN")
+			)
+		except Exception:
+			eligible = False
+		hwnd = _window_handle(obj)
+		# Only a native button's own HWND can supply its enabled/visible state;
+		# Office/UIA children may share their containing window's handle.
+		if eligible and hwnd and win32.is_push_button_window(hwnd):
+			eligible = win32.is_usable(hwnd)
+		if eligible:
+			return DefaultButtonQuery(DefaultButton(get_object_name(obj), obj=obj, source=SOURCE_FOCUS))
 	answer, guess, settled = _lookup(obj, use_negative_cache=False)
 	if answer is not None:
 		return DefaultButtonQuery(answer)

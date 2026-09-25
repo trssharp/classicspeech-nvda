@@ -1886,10 +1886,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             # application does not report it.
             return _("Default button {name}, by appearance").format(name=name)
         if not button.certain:
-            # Translators: NVDA+E cannot tell the dialog's default button,
-            # because the focused button counts as the default for as long as
-            # it has focus; Enter presses that button.
-            return _("No default button known. Enter presses {name}").format(name=name)
+            return _("No default button")
         return _("Default button {name}").format(name=name)
 
     @scriptHandler.script(
@@ -1898,9 +1895,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     )
     def script_announceDefaultButton(self, gesture):
         try:
-            # The dialog's default button is the one Enter activates after a
-            # change in another control, reported even while focus is on a
-            # different button.
+            # Prefer an eligible focused button; otherwise retain the dialog's
+            # default detection, including the qualified appearance fallback.
             speak_message(self._defaultButtonMessage(self._getDefaultButton()))
         except Exception as e:
             log.error(f"Failed announcing default button: {e}", exc_info=True)

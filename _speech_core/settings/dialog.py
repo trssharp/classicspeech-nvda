@@ -187,6 +187,7 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		self.CentreOnParent()
 
 		self.categoryList.Bind(wx.EVT_LIST_ITEM_FOCUSED, self.onCategoryChanged)
+		self.categoryList.Bind(wx.EVT_CHAR_HOOK, self.onCategoryCharHook)
 		self.resetActionBtn.Bind(wx.EVT_BUTTON, self.onResetCurrentProfile)
 		self.applyBtn.Bind(wx.EVT_BUTTON, self.onApply)
 		self.okBtn.Bind(wx.EVT_BUTTON, self.onOK)

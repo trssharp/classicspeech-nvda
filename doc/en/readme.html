@@ -105,7 +105,7 @@ li { margin: .25em 0; }
 
 <h3 id="how-settings-dialogs-work">How the settings dialogs work</h3>
 <ul>
-<li>The General Settings and Web / Browse Mode Settings dialogs start with a <strong>Categories</strong> list. Choose a category with the arrow keys, then press <kbd>Tab</kbd> to reach its options.</li>
+<li>The General Settings and Web / Browse Mode Settings dialogs start with a <strong>Categories</strong> list. Choose a category with the arrow keys, then press <kbd>Tab</kbd> to reach its options. While focus is in this list, <kbd>Enter</kbd> or numeric keypad <kbd>Enter</kbd> saves your changes and closes the dialog, just like <strong>OK</strong>. Space and navigation keys keep their normal list behavior; keys in buttons and settings controls are unchanged.</li>
 <li>In those two dialogs, most changes take effect as soon as you make them, so you can hear the difference before you save.</li>
 <li><strong>OK</strong> saves your changes and closes the dialog. <strong>Apply</strong> saves them and leaves the dialog open.</li>
 <li><strong>Cancel</strong>, <kbd>Escape</kbd>, or closing the window puts back the settings you had when you opened the dialog, or when you last pressed Apply.</li>
@@ -368,6 +368,7 @@ li { margin: .25em 0; }
 </table>
 
 <h3 id="changing-a-voice-profile">Changing a category's voice</h3>
+<p>While focus is in the main <strong>Voice profiles</strong> list, unmodified <kbd>Enter</kbd> or numeric keypad <kbd>Enter</kbd> saves your changes and closes the dialog, just like <strong>OK</strong>. This also applies to the Document and web formatting row. Space, arrow keys and modified shortcuts keep their normal behavior. Keys in the voice settings, Preview text and buttons are unchanged.</p>
 <ol>
 <li>In the <strong>Voice profiles</strong> list, select a category.</li>
 <li>Press <kbd>Tab</kbd> to move through the settings your synthesizer offers, such as Voice, Variant, Rate, Pitch, Volume and Inflection. The settings depend on your synthesizer.</li>
@@ -540,17 +541,17 @@ li { margin: .25em 0; }
 <p>ClassicSpeech replaces NVDA's report current focus command with its own announcement. It uses your verbosity settings and always includes the object's shortcut key when there is one. Press <kbd>NVDA+Tab</kbd> twice quickly to spell the announcement and copy it to the clipboard.</p>
 <p><strong>Insert+Tab reports</strong>, in General Settings on the <a href="#misc">Misc</a> page, chooses whether the command reports the focused object or the navigator object, or runs NVDA's own command. When the speech processing hook is off, NVDA's own command runs.</p>
 <h3 id="default-button">Default button: NVDA+E</h3>
-<p>Says the default button of the current dialog: the button that <kbd>Enter</kbd> presses after you change something in one of the dialog's other controls, for example "Default button OK". If there isn't one, you hear "No default button".</p>
-<p>ClassicSpeech names the dialog's default button even while focus is on another button. For example, on the Cancel button of a file dialog you hear "Default button Open". Pressing <kbd>Enter</kbd> on a button still presses that button.</p>
+<p>Reports the focused push button or split button first, for example "Default button Cancel" when Cancel has focus, even if the dialog designates Open or Details as its default. Disabled or hidden buttons are not eligible. When focus is on another kind of control, ClassicSpeech finds the dialog's default button using the detection below. If none can be resolved, you hear "No default button".</p>
+<p>This is a focused-button priority rule, not a prediction of every program's <kbd>Enter</kbd> handling. For example, NVDA settings can handle <kbd>Enter</kbd> as OK even while another button has focus; this command still reports the focused button. The optional automatic "default" announcement on focus continues to mark only the dialog's own default button.</p>
 <p>ClassicSpeech finds the default button in:</p>
 <ul>
-<li>NVDA's and ClassicSpeech's own dialogs. In NVDA's settings dialogs this is OK, which <kbd>Enter</kbd> presses from any control.</li>
+<li>NVDA's and ClassicSpeech's own dialogs. With focus on a non-button control in NVDA's settings dialogs, this is OK.</li>
 <li>Standard Windows dialogs, such as Open and Save As in LibreOffice, Notepad and most other programs, message boxes and property sheets. A split button, such as the Open button of the file dialog, counts too.</li>
 <li>Dialogs of other programs whose buttons report the default state, such as LibreOffice's own dialogs and Microsoft Office dialogs.</li>
 <li>Web forms: the button that <kbd>Enter</kbd> presses in the form's edit fields, when the browser reports it.</li>
 </ul>
-<p>In many programs, a button counts as the default only while it has focus, so the dialog's own default button can't be read while you are on another button. ClassicSpeech remembers it from when focus was in another control of the dialog. If focus has only been on buttons since the dialog opened, you hear, for example, "No default button known. Enter presses Cancel". Move to an edit field or another control and press <kbd>NVDA+E</kbd> again.</p>
-<p>When neither Windows nor the program reports a default button, ClassicSpeech looks at the dialog's buttons on the screen, the way a sighted person tells them apart: many dialogs fill their default button, or draw its border, in the accent color. If exactly one button stands out that way, you hear, for example, "Default button Save, by appearance". This check needs the dialog on the screen. While NVDA's Screen Curtain is on, ClassicSpeech can't see the buttons, and you hear "No default button found. Turn off Screen Curtain so ClassicSpeech can check how the buttons look." ClassicSpeech only compares the colors of the buttons; nothing is saved. Focus speech never uses this check.</p>
+<p>ClassicSpeech retains the dialog's default-button detection and remembers defaults seen while focus was on a non-button control. The focused-button query does not replace that remembered value: move to an edit field or another non-button control and press <kbd>NVDA+E</kbd> to query the dialog's own default.</p>
+<p>When no eligible button has focus and neither Windows nor the program reports a default button, ClassicSpeech looks at the dialog's buttons on the screen, the way a sighted person tells them apart: many dialogs fill their default button, or draw its border, in the accent color. If exactly one button stands out that way, you hear, for example, "Default button Save, by appearance". This check needs the dialog on the screen. While NVDA's Screen Curtain is on, ClassicSpeech can't see the buttons, and you hear "No default button found. Turn off Screen Curtain so ClassicSpeech can check how the buttons look." ClassicSpeech only compares the colors of the buttons; nothing is saved. Focus speech never uses this check.</p>
 <h3 id="page-summary-command">Page summary: NVDA+Shift+U</h3>
 <p>In browse mode, speaks the element counts chosen on the <a href="#page-summary">Page Summary</a> page. Elsewhere, you hear "Page summary is not available here."</p>
 

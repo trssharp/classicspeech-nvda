@@ -6,11 +6,11 @@ ClassicSpeech 1.14 reported the wrong button in two common dialogs:
   "Default button Change...". wxWidgets makes a focused button the temporary
   default, and ClassicSpeech remembered that button for the whole dialog.
 * The Windows file dialog LibreOffice uses: "No default button" in the file
-  name field, because Open is a split button, and "Default button Cancel" on
-  Cancel, because NVDA+E reported whichever button had focus.
+  name field, because Open is a split button.
 
-The default button is the one Enter activates after a change in another
-control. These tests use fake window handles, fake wx windows and fake screen
+NVDA+E now deliberately prefers the focused eligible push or split button.
+With focus elsewhere it retains the dialog-default detection. Automatic focus
+speech still marks only the dialog's own default. These tests use fake window handles, fake wx windows and fake screen
 pixels. A Windows-only test checks the Windows behavior they rely on with a
 real dialog that is never shown.
 """
@@ -382,13 +382,42 @@ class FileDialogTests(DefaultButtonTestBase):
 		self.assertEqual(query.button.source, self.helpers.SOURCE_DIALOG)
 		self.assertEqual(self._message(self.edit), "Default button Open")
 
-	def test_cancel_focus_still_reports_open(self):
+	def test_cancel_focus_takes_priority_over_permanent_open(self):
 		self.user32.move_focus(self.CANCEL, self.OPEN)
 		self.cancel.IAccessibleStates = STATE_SYSTEM_DEFAULT
 		self.open.IAccessibleStates = 0
 		self._focus(self.cancel, self.dialog)
-		self.assertEqual(self._message(self.cancel), "Default button Open")
+		self.assertEqual(self._message(self.cancel), "Default button Cancel")
 		self.assertEqual(self.helpers.focused_button_default_status(self.cancel), (True, False, "Open"))
+
+	def test_outlook_focused_cancel_overrides_details_permanent_default(self):
+		self.user32.windows[self.OPEN].text = "Details"
+		self.open.name = "Details"
+		self.dialog.name = "Send/Receive"
+		# No default state on Cancel is required.
+		self._focus(self.cancel, self.dialog)
+		self.assertEqual(self._message(self.cancel), "Default button Cancel")
+		self._focus(self.edit, self.dialog)
+		self.assertEqual(self._message(self.edit), "Default button Details")
+
+	def test_focused_split_button_overrides_another_permanent_default(self):
+		self.user32.defaultIds[self.DIALOG] = 2
+		self.open.IAccessibleStates = 0
+		self._focus(self.open, self.dialog)
+		self.assertEqual(self._message(self.open), "Default button Open")
+
+	def test_ineligible_focused_button_falls_back_to_dialog_default(self):
+		for state in (controlTypes.State.UNAVAILABLE, controlTypes.State.INVISIBLE, controlTypes.State.OFFSCREEN):
+			with self.subTest(state=state):
+				self.cancel.states = {state}
+				self._focus(self.cancel, self.dialog)
+				self.assertEqual(self._message(self.cancel), "Default button Open")
+		self.cancel.states = set()
+		for attribute in ("enabled", "visible"):
+			with self.subTest(windowAttribute=attribute):
+				setattr(self.user32.windows[self.CANCEL], attribute, False)
+				self.assertEqual(self._message(self.cancel), "Default button Open")
+				setattr(self.user32.windows[self.CANCEL], attribute, True)
 
 	def test_open_focus_is_the_default(self):
 		self.user32.move_focus(self.OPEN, self.OPEN)
@@ -555,6 +584,9 @@ class NvdaDialogTests(DefaultButtonTestBase):
 		# Tab reaches Change...: wx makes it the temporary default while it has focus.
 		dialog.SetTmpDefaultItem(self.change)
 		self._focus(self.changeObj, self.dialogObj)
+		# Query priority intentionally also applies to NVDA settings, despite
+		# their application-specific Enter handler; automatic speech is unchanged.
+		self.assertEqual(self._message(self.changeObj), "Default button Change...")
 		self.assertEqual(self.helpers.focused_button_default_status(self.changeObj), (True, False, "OK"))
 		self.assertEqual(
 			self._insert_default_token(self.changeObj, "button", "button", "Change..."), ["Change...", "button"]
@@ -564,12 +596,33 @@ class NvdaDialogTests(DefaultButtonTestBase):
 		self._focus(self.slider, self.dialogObj)
 		self.assertEqual(self._message(self.slider), "Default button OK")
 
-	def test_plain_wx_dialog_reports_its_own_default_while_another_button_has_focus(self):
+	def test_classicspeech_categories_report_ok_but_focused_cancel_reports_cancel(self):
+		for title in ("ClassicSpeech Settings", "ClassicSpeech Web / Browse Mode Settings", "ClassicSpeech Voice Profiles"):
+			with self.subTest(dialog=title):
+				# These are plain wx dialogs, not NVDA SettingsDialog subclasses.
+				dialog = self.Dialog(self.ok)
+				self.state.top = dialog
+				self.dialogObj.name = title
+				list_name = "Voice profiles" if title == "ClassicSpeech Voice Profiles" else "Categories"
+				category = FakeObject("LISTITEM", list_name, hwnd=self.SLIDER_HWND, processID=NVDA_PID)
+				cancel = type(self.ok)("Cancel", self.CHANGE_HWND)
+				cancel_obj = FakeObject("BUTTON", "Cancel", hwnd=self.CHANGE_HWND, processID=NVDA_PID)
+				self._focus(category, self.dialogObj)
+				self.assertEqual(self._message(category), "Default button OK")
+				dialog.SetTmpDefaultItem(cancel)
+				self._focus(cancel_obj, self.dialogObj)
+				self.assertEqual(self._message(cancel_obj), "Default button Cancel")
+				self.assertEqual(self.helpers.focused_button_default_status(cancel_obj), (True, False, "OK"))
+				dialog.SetTmpDefaultItem(None)
+				self._focus(category, self.dialogObj)
+				self.assertEqual(self._message(category), "Default button OK")
+
+	def test_plain_wx_dialog_reports_focused_button_before_its_own_default(self):
 		dialog = self.Dialog(self.ok)
 		self.state.top = dialog
 		dialog.SetTmpDefaultItem(self.change)
 		self._focus(self.changeObj, self.dialogObj)
-		self.assertEqual(self._message(self.changeObj), "Default button OK")
+		self.assertEqual(self._message(self.changeObj), "Default button Change...")
 		# The temporary default is put back.
 		self.assertIs(dialog.GetTmpDefaultItem(), self.change)
 
@@ -622,30 +675,30 @@ class OtherWindowsToolkitTests(DefaultButtonTestBase):
 		query = self.helpers.query_default_button(self.edit)
 		self.assertEqual((query.button.name, query.button.certain), ("OK", True))
 
-	def test_default_seen_from_the_edit_field_is_kept_while_cancel_has_focus(self):
+	def test_focused_cancel_overrides_remembered_default_only_for_query(self):
 		self._focus(self.edit, self.formObj)
 		self.helpers.remember_default_button_for_focus(self.edit)
 		self.user32.move_focus(self.CANCEL, self.OK)
 		self._focus(self.cancelObj, self.formObj)
-		self.assertEqual(self._message(self.cancelObj), "Default button OK")
+		self.assertEqual(self._message(self.cancelObj), "Default button Cancel")
 		self.assertEqual(self.helpers.focused_button_default_status(self.cancelObj), (True, False, "OK"))
 		self.user32.move_focus(self.OK, self.OK)
 		self._focus(self.okObj, self.formObj)
 		self.assertEqual(self.helpers.focused_button_default_status(self.okObj), (True, True, "OK"))
 
-	def test_focused_button_without_a_remembered_default_is_only_a_guess(self):
+	def test_focused_button_without_a_remembered_default_is_reported(self):
 		self.user32.move_focus(self.CANCEL, self.OK)
 		self._focus(self.cancelObj, self.formObj)
-		self.assertEqual(self._message(self.cancelObj), "No default button known. Enter presses Cancel")
+		self.assertEqual(self._message(self.cancelObj), "Default button Cancel")
 		self.assertEqual(self.helpers.focused_button_default_status(self.cancelObj), (True, False, ""))
 
-	def test_window_seen_without_a_default_reports_none(self):
+	def test_focused_button_overrides_remembered_absence(self):
 		self.user32.windows[self.OK].style = BS_PUSHBUTTON
 		self._focus(self.edit, self.formObj)
 		self.helpers.remember_default_button_for_focus(self.edit)
 		self.user32.move_focus(self.CANCEL, 0)
 		self._focus(self.cancelObj, self.formObj)
-		self.assertEqual(self._message(self.cancelObj), "No default button")
+		self.assertEqual(self._message(self.cancelObj), "Default button Cancel")
 
 	def test_focus_note_is_limited_to_dialogs_and_throttled(self):
 		self._focus(self.edit, self.formObj)
@@ -703,7 +756,7 @@ class AccessibilityTreeTests(DefaultButtonTestBase):
 		self._dialog()
 		self.okObj.IAccessibleStates = STATE_SYSTEM_DEFAULT
 		self._focus(self.cancelObj, self.dialogObj)
-		self.assertEqual(self._message(self.cancelObj), "Default button OK")
+		self.assertEqual(self._message(self.cancelObj), "Default button Cancel")
 		self._focus(self.okObj, self.dialogObj)
 		self.assertEqual(self.helpers.focused_button_default_status(self.okObj), (True, True, "OK"))
 
@@ -727,7 +780,7 @@ class AccessibilityTreeTests(DefaultButtonTestBase):
 		self.cancelObj.IAccessibleStates = STATE_SYSTEM_DEFAULT
 		self._focus(self.cancelObj, self.dialogObj)
 		self.assertEqual(self.helpers.focused_button_default_status(self.cancelObj), (True, False, "OK"))
-		self.assertEqual(self._message(self.cancelObj), "Default button OK")
+		self.assertEqual(self._message(self.cancelObj), "Default button Cancel")
 		self.cancelObj.IAccessibleStates = 0
 		self.okObj.IAccessibleStates = STATE_SYSTEM_DEFAULT
 		self._focus(self.okObj, self.dialogObj)
@@ -746,14 +799,14 @@ class AccessibilityTreeTests(DefaultButtonTestBase):
 		self.helpers.remember_default_button_for_focus(other)
 		self.assertEqual(self.dialogObj.childReads, reads)
 
-	def test_office_focused_button_without_a_note_is_only_a_guess(self):
+	def test_office_focused_button_without_a_note_is_reported(self):
 		self._dialog("bosa_sdm_msword", ia2=False)
 		self.cancelObj.IAccessibleStates = STATE_SYSTEM_DEFAULT
 		self._focus(self.cancelObj, self.dialogObj)
 		self.assertEqual(self.helpers.focused_button_default_status(self.cancelObj), (True, False, ""))
-		self.assertEqual(self._message(self.cancelObj), "No default button known. Enter presses Cancel")
+		self.assertEqual(self._message(self.cancelObj), "Default button Cancel")
 
-	def test_qt_focused_button_default_state_is_only_a_guess(self):
+	def test_qt_query_prefers_focus_without_changing_default_status(self):
 		# Qt uses IAccessible2, but makes the focused button the default.
 		self._dialog("Qt6QWindowIcon")
 		self.okObj.IAccessibleStates = STATE_SYSTEM_DEFAULT
@@ -764,13 +817,13 @@ class AccessibilityTreeTests(DefaultButtonTestBase):
 		self.cancelObj.IAccessibleStates = STATE_SYSTEM_DEFAULT
 		self._focus(self.cancelObj, self.dialogObj)
 		self.assertEqual(self.helpers.focused_button_default_status(self.cancelObj), (True, False, "OK"))
-		self.assertEqual(self._message(self.cancelObj), "Default button OK")
+		self.assertEqual(self._message(self.cancelObj), "Default button Cancel")
 
-	def test_qt_guess_without_an_earlier_answer(self):
+	def test_qt_focused_button_without_an_earlier_answer(self):
 		self._dialog("Qt6QWindowIcon")
 		self.cancelObj.IAccessibleStates = STATE_SYSTEM_DEFAULT
 		self._focus(self.cancelObj, self.dialogObj)
-		self.assertEqual(self._message(self.cancelObj), "No default button known. Enter presses Cancel")
+		self.assertEqual(self._message(self.cancelObj), "Default button Cancel")
 		self.assertEqual(
 			self._insert_default_token(self.cancelObj, "button", "button", "Cancel"), ["Cancel", "button"]
 		)
@@ -815,6 +868,18 @@ class AccessibilityTreeTests(DefaultButtonTestBase):
 		self.assertEqual(self._message(submit), "Default button Search")
 		# Focus speech announces default buttons only in dialogs.
 		self.assertEqual(self._insert_default_token(submit, "button", "button", "Search"), ["Search", "button"])
+
+	def test_unresolved_query_keeps_exact_existing_message(self):
+		self._focus(None)
+		self.assertEqual(self._message(None), "No default button")
+		guess = self.helpers.DefaultButton("Cancel", certain=False)
+		query = self.helpers.DefaultButtonQuery(guess)
+		self.assertEqual(self.module.GlobalPlugin._defaultButtonMessage(query), "No default button")
+
+	def test_unnamed_focused_button_keeps_existing_unknown_label(self):
+		button = FakeObject("BUTTON", "")
+		self._focus(button)
+		self.assertEqual(self._message(button), "Default button unknown")
 
 	def test_web_page_without_a_form_or_dialog(self):
 		link = FakeObject("LINK", "Home", hwnd=0x800)
@@ -878,17 +943,25 @@ class AppearanceTests(DefaultButtonTestBase):
 		self._focus(self.text, self.dialogObj)
 		self.assertEqual(self._message(self.text), "Default button Save, by appearance")
 
-	def test_accent_fill_counts_while_a_button_has_focus(self):
+	def test_focused_button_takes_priority_over_appearance(self):
 		self._focus(self.cancel, self.dialogObj)
-		self.assertEqual(self._message(self.cancel), "Default button Save, by appearance")
+		self.assertEqual(self._message(self.cancel), "Default button Cancel")
+
+	def test_focused_button_needs_no_screen_capture_even_with_curtain(self):
+		self.appearance.screen_curtain_active = lambda: True
+		def forbidden_capture(*args):
+			self.fail("Focused button query must not capture screen pixels")
+		self.appearance.set_capture(forbidden_capture)
+		self._focus(self.cancel, self.dialogObj)
+		self.assertEqual(self._message(self.cancel), "Default button Cancel")
 
 	def test_accent_border_counts_only_away_from_buttons(self):
 		self.looks[(10, 400)] = _solid_button(self.GRAY, (0, 120, 215))
 		self._focus(self.text, self.dialogObj)
 		self.assertEqual(self._query_name(self.text), "Save")
-		# With focus on a button, a colored border may just show focus.
+		# With focus on a button, the query does not need appearance.
 		self._focus(self.cancel, self.dialogObj)
-		self.assertIsNone(self.helpers.query_default_button(self.cancel).button)
+		self.assertEqual(self._message(self.cancel), "Default button Cancel")
 
 	def test_two_colored_buttons_are_not_guessed(self):
 		self.looks[(190, 400)] = _solid_button((196, 43, 28))

@@ -75,6 +75,7 @@ class VoiceProfilesDialog(wx.Dialog):
 		self.CentreOnParent()
 
 		self.profileList.Bind(wx.EVT_LIST_ITEM_FOCUSED, self.onProfileChanged)
+		self.profileList.Bind(wx.EVT_CHAR_HOOK, self.onProfileListCharHook)
 		self.applyBtn.Bind(wx.EVT_BUTTON, self.onApply)
 		self.okBtn.Bind(wx.EVT_BUTTON, self.onOK)
 		self.cancelBtn.Bind(wx.EVT_BUTTON, self.onCancel)
@@ -218,6 +219,15 @@ class VoiceProfilesDialog(wx.Dialog):
 		self.editorPanel.SetupScrolling(scroll_x=False)
 		self.previewBtn.Enable(row.editable and not self._preview_is_active())
 		self.Layout()
+
+	def onProfileListCharHook(self, event):
+		"""Accept from the main profile list without changing editor key handling."""
+		if event.GetKeyCode() in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER) and not event.HasAnyModifiers():
+			# Keep the voice/scheme save and preview cleanup lifecycle in onOK.
+			# Consume failures too, avoiding a second native default activation.
+			self.onOK(event)
+		else:
+			event.Skip()
 
 	def onProfileChanged(self, event):
 		if self._preview_is_active():
