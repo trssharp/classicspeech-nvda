@@ -298,7 +298,8 @@ li { margin: .25em 0; }
 <li><strong>Enable ClassicSpeech speech processing hook</strong>: the main switch for ClassicSpeech's speech changes. When cleared, NVDA speech passes through without ClassicSpeech processing, but ClassicSpeech commands still work. Default: checked.</li>
 <li><strong>Speak a message when the speech hook loads</strong>, with <strong>Speech hook loaded message</strong>: say a message when ClassicSpeech starts processing speech, for example after NVDA starts. Default: off, "ClassicSpeech hook loaded".</li>
 <li><strong>Enable ClassicSpeech diagnostic logging</strong>: write detailed ClassicSpeech entries to the NVDA log. It slows speech, so turn it on only to record a problem, then turn it off. Default: off.</li>
-<li><strong>Check for ClassicSpeech updates automatically</strong>: once a day, shortly after NVDA starts, ask GitHub whether a newer ClassicSpeech has been released, and tell you only if there is one. See <a href="#updates">Updating ClassicSpeech</a>. Default: checked.</li>
+<li><strong>Check for updates automatically:</strong> once a day, about 30 seconds after NVDA starts, check the selected channel. Uncheck to stop automatic checks only; Check for Updates still works. Default: checked.</li>
+<li><strong>Update from:</strong> choose <strong>stable</strong> (default) or <strong>dev</strong> for both manual and automatic checks. Changing this preference never installs anything. Apply and OK accept it; Cancel and Close restore the last accepted settings. See <a href="#updates">Updating ClassicSpeech</a>.</li>
 </ul>
 
 <h3 id="compact-windows-toasts">Windows toast announcements</h3>
@@ -599,14 +600,15 @@ li { margin: .25em 0; }
 <p>ClassicSpeech can check for a newer version on the GitHub page it comes from: the releases of the page shown as its homepage in NVDA's Add-on Store. A copy of ClassicSpeech without a GitHub homepage can't check. Check for Updates says so, and automatic checks don't run.</p>
 <ul>
 <li><p>To check now, press <kbd>NVDA+N</kbd>, then choose Preferences, then ClassicSpeech, then <strong>Check for Updates...</strong>. You can also assign a gesture to the <strong>Checks for ClassicSpeech updates</strong> command. You hear "Checking for ClassicSpeech updates", then a message says whether ClassicSpeech is up to date.</p>
-<p>The updater checks GitHub's latest published regular release. Draft releases, prereleases and ordinary workflow build artifacts are not offered. It compares version numbers, not the contents of the installed package:</p>
+<p><strong>stable</strong> checks GitHub's latest regular release, excluding drafts and prereleases. <strong>dev</strong> checks only official public development prereleases tagged <code>dev-YYYYMMDD.RUN</code> with an add-on and matching SHA-256 asset. It never downloads private or expiring Actions artifacts or requires a GitHub login. If none exist, it says "No development release has been published yet." Within the installed channel, it compares version numbers:</p>
 <ul>
 <li>If the published version is newer, it offers the update.</li>
 <li>If the versions match, it reports that ClassicSpeech is up to date. A changed package published with the same version number is not offered again.</li>
 <li>If your installed version is newer, for example a local 2.0 build while GitHub still publishes 1.01, it reports both versions and explains that no update is available. This does not mean your local build has been published.</li>
 </ul>
-<p>To replace a local build with a published package of the same version, download and open the published add-on file yourself. Date-and-run development builds also compare numerically and may be ahead of regular release versions; install a regular release manually when switching back from such a build.</p></li>
-<li>With <strong>Check for ClassicSpeech updates automatically</strong> checked on the <a href="#advanced">Advanced</a> page, ClassicSpeech checks once a day, about 30 seconds after NVDA starts. It says nothing unless there is an update.</li>
+<p>To switch channels, choose <strong>Update from:</strong>, accept the settings, then run <strong>Check for Updates...</strong>. A manual channel-switch offer identifies the installed and target channels and versions and warns that the target may be numerically lower. This supports returning from a date-version dev build to stable 2.0. Automatic checks never switch channels. Development builds may be unstable. Choosing a channel alone does not install it: you must accept the download and NVDA's own installation and compatibility checks.</p>
+<p>New packages record their installed build channel separately from this preference. Older date/run packages without that metadata are treated as unknown and require a manual channel transition. Equal versions are not offered repeatedly; replacing one with a different package of the same version requires downloading it yourself.</p></li>
+<li>With <strong>Check for updates automatically:</strong> checked on the <a href="#advanced">Advanced</a> page, ClassicSpeech checks once a day, about 30 seconds after NVDA starts. It says nothing unless there is an update.</li>
 </ul>
 <p>When a newer version is available, a dialog opens. It says which version you have and which version is available, and then holds the new release's notes in a box called <strong>What's new</strong>.</p>
 <p>That box is a read-only edit box, so the notes are text you can read rather than a message that is spoken once. Focus starts in it, so you can read straight away:</p>

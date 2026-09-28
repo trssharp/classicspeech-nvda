@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import re
 import zipfile
 from datetime import datetime
@@ -53,6 +54,8 @@ def _parse_args() -> argparse.Namespace:
         default="",
         help="Optional safe build label, normally g followed by the commit short SHA.",
     )
+    parser.add_argument("--channel", choices=("auto", "stable", "dev"), default="auto")
+    parser.add_argument("--commit", default="", help="Full source commit SHA (required for dev).")
     return parser.parse_args()
 
 
@@ -65,6 +68,21 @@ def build_version(utc_date: str, run_number: str) -> str:
     if not run_number.isdecimal() or int(run_number) < 1:
         raise ValueError(f"Run number must be a positive integer: {run_number!r}")
     return f"{day}.{int(run_number)}"
+
+
+def build_metadata(version: str, channel: str = "auto", commit: str = "") -> dict:
+    """Generate artifact provenance, independent of persisted update preference."""
+    if channel == "auto":
+        channel = "unknown" if _CI_BUILD_VERSION.fullmatch(version) else "stable"
+    if channel not in ("stable", "dev", "unknown"):
+        raise ValueError("Invalid build channel")
+    if commit and not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise ValueError("Commit must be a full lowercase SHA")
+    if channel == "dev":
+        if not re.fullmatch(r"[0-9]{8}\.[1-9][0-9]*", version) or not commit:
+            raise ValueError("Development packages require a date/run version and full commit SHA")
+        datetime.strptime(version[:8], "%Y%m%d")
+    return {"version": version, "channel": channel, "commit": commit}
 
 
 def package_filename(version: str, label: str = "") -> str:
@@ -227,6 +245,9 @@ def main() -> None:
         print(f"CHANGELOG={'updated' if changed else 'unchanged'} from docs/{RELEASE_NOTES}")
         return
     version = args.version
+    metadata = build_metadata(version, args.channel, args.commit)
+    if args.channel == "dev" and args.label:
+        raise SystemExit("Development asset names must not have a label")
     package_name = package_filename(version, args.label)
     try:
         check_release_changelog(manifest.read_text(encoding="utf-8"), release_notes, version)
@@ -241,6 +262,7 @@ def main() -> None:
 
     with zipfile.ZipFile(package_path, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("manifest.ini", manifest_with_version(manifest, version))
+        archive.writestr("globalPlugins/_speech_core/build_info.json", json.dumps(metadata, sort_keys=True) + "\n")
         for relative_path in RUNTIME_FILES:
             source = ROOT / relative_path
             if not source.is_file():
@@ -284,6 +306,8 @@ def main() -> None:
             "globalPlugins/classicSpeech.py",
             "globalPlugins/_speech_core/nvda_settings_backup.py",
             "globalPlugins/_speech_core/settings_file.py",
+            "globalPlugins/_speech_core/build_info.json",
+            "globalPlugins/_speech_core/update_channels.py",
             "globalPlugins/_speech_core/processors/web/page_entry.py",
             "globalPlugins/_speech_core/settings/text/__init__.py",
             "globalPlugins/_speech_core/settings/text/config.py",

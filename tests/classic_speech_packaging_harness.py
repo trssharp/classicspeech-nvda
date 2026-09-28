@@ -95,7 +95,7 @@ class PackageVersioningTests(unittest.TestCase):
     def test_package_keeps_page_entry_runtime_inside_web_processors(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             output_directory = Path(temporary_directory)
-            arguments = SimpleNamespace(version="20260728.1", label="layout", sync_changelog=False)
+            arguments = SimpleNamespace(version="20260728.1", label="layout", sync_changelog=False, channel="auto", commit="")
             with mock.patch.object(self.packager, "DIST", output_directory), mock.patch.object(
                 self.packager, "_parse_args", return_value=arguments
             ):
@@ -127,7 +127,7 @@ class PackageVersioningTests(unittest.TestCase):
     def test_package_contains_the_user_guide_nvda_opens(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             output_directory = Path(temporary_directory)
-            arguments = SimpleNamespace(version="20260918.1", label="guide", sync_changelog=False)
+            arguments = SimpleNamespace(version="20260918.1", label="guide", sync_changelog=False, channel="auto", commit="")
             with mock.patch.object(self.packager, "DIST", output_directory), mock.patch.object(
                 self.packager, "_parse_args", return_value=arguments
             ):
@@ -196,7 +196,7 @@ class ManifestChangelogTests(unittest.TestCase):
     def test_package_manifest_keeps_the_whats_new(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             output_directory = Path(temporary_directory)
-            arguments = SimpleNamespace(version="20260920.1", label="notes", sync_changelog=False)
+            arguments = SimpleNamespace(version="20260920.1", label="notes", sync_changelog=False, channel="auto", commit="")
             with mock.patch.object(self.packager, "DIST", output_directory), mock.patch.object(
                 self.packager, "_parse_args", return_value=arguments
             ):

@@ -1,0 +1,102 @@
+name: Publish development prerelease (manual only)
+
+# Deliberately no automatic trigger. Never enable publication on push/PR/schedule.
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: 'Full 40-character SHA of the current trusted dev head to publish'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: classicspeech-dev-publication
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'trssharp/classicspeech-nvda' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.build.outputs.version }}
+      commit: ${{ steps.identity.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Pin and verify the trusted dev head
+        id: identity
+        env:
+          EXPECTED: ${{ inputs.commit }}
+          EVENT_SHA: ${{ github.sha }}
+        run: |
+          [[ "$EXPECTED" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED" = "$EVENT_SHA"
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
+          test "$(git ls-remote origin refs/heads/dev | cut -f1)" = "$EXPECTED"
+          echo "commit=$EXPECTED" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: nvaccess/nvda
+          path: .nvda-master
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - run: python -m pip install 'configobj==5.0.9'
+      - name: Full verification of this exact commit
+        env:
+          CLASSICSPEECH_NVDA_MASTER: ${{ github.workspace }}/.nvda-master
+        run: python scripts/verify.py
+      - name: Build public development assets
+        id: build
+        env:
+          COMMIT: ${{ steps.identity.outputs.commit }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          version="$(python -c 'from scripts.package_addon import build_version; from datetime import datetime, timezone; import os; print(build_version(datetime.now(timezone.utc).strftime("%Y-%m-%d"), os.environ["RUN_NUMBER"]))')"
+          python scripts/package_addon.py --version "$version" --channel dev --commit "$COMMIT"
+          mkdir -p release-assets
+          cp "dist/ClassicSpeech-$version.nvda-addon"* release-assets/
+          printf 'Development build %s\n\nSource commit: %s\n\nExperimental dev build, not a stable release.\n' "$version" "$COMMIT" > release-assets/notes.md
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dev-release-${{ github.sha }}
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: verify
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'trssharp/classicspeech-nvda' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dev-release-${{ github.sha }}
+          path: release-assets
+      - name: Publish immutable public prerelease, never latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: trssharp/classicspeech-nvda
+          COMMIT: ${{ needs.verify.outputs.commit }}
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$VERSION" =~ ^[0-9]{8}\.[1-9][0-9]*$ ]]
+          test "$(gh api repos/$GH_REPO/git/ref/heads/dev --jq .object.sha)" = "$COMMIT"
+          # Fail if dev moved, or this unique tag already exists. No overwrite/rerun replacement.
+          # refs/heads/dev was verified again immediately before publication.
+          cd release-assets
+          sha256sum --check "ClassicSpeech-$VERSION.nvda-addon.sha256"
+          gh api --method POST "repos/$GH_REPO/git/refs" -f "ref=refs/tags/dev-$VERSION" -f "sha=$COMMIT"
+          gh release create "dev-$VERSION" "ClassicSpeech-$VERSION.nvda-addon" "ClassicSpeech-$VERSION.nvda-addon.sha256" --verify-tag --prerelease --draft=false --latest=false --title "ClassicSpeech development $VERSION" --notes-file notes.md
+          gh release view "dev-$VERSION" --json tagName,isDraft,isPrerelease,assets,url > published.json
+          python -c 'import json, os; d=json.load(open("published.json")); v=os.environ["VERSION"]; assert d["tagName"] == "dev-"+v and d["isPrerelease"] is True and d["isDraft"] is False; assert {a["name"] for a in d["assets"]} == {"ClassicSpeech-"+v+".nvda-addon", "ClassicSpeech-"+v+".nvda-addon.sha256"}; print(d["url"])'
