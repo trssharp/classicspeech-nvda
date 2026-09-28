@@ -62,7 +62,7 @@ jobs:
           python scripts/package_addon.py --version "$version" --channel dev --commit "$COMMIT"
           mkdir -p release-assets
           cp "dist/ClassicSpeech-$version.nvda-addon"* release-assets/
-          printf 'Development build %s\n\nSource commit: %s\n\nExperimental dev build, not a stable release.\n' "$version" "$COMMIT" > release-assets/notes.md
+          python -m scripts.dev_release_notes --version "$version" --commit "$COMMIT" --output release-assets/notes.md
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v7
         with:

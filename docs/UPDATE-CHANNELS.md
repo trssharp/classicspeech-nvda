@@ -38,31 +38,43 @@ The separate `verify-dev.yml` runs tests/packages on dev and the updater feature
 branch, but has read-only permissions and cannot publish releases.
 The existing stable `verify-and-package.yml` is unchanged.
 
-**Current activation blocker:** the repository's default branch is `main`.
-GitHub documents that a workflow must exist on the default branch to receive
-`workflow_dispatch`. A file present only on dev is not enough to promise a usable
-Run workflow button/API dispatch. This change does not modify main, bootstrap a
-workflow there, or dispatch any publication. Publication is **not launch-ready**
-until a separately authorized default-branch registration is reviewed and landed.
-Do not bypass this with an automatic trigger or a token/proxy. See
-[GitHub's manual workflow documentation](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow).
+The manual publisher is registered on the default branch, `main` (workflow-only
+enablement `e53860e`). Dispatch **main**, supplying the reviewed full dev SHA;
+main's workflow validates and checks out that SHA explicitly. Its build scripts,
+notes and runtime all come from the pinned dev checkout, not main. The dev-branch
+workflow retains its dev-dispatch guard; do not copy it wholesale over main's
+adapted workflow.
 
-After that prerequisite is explicitly authorized and completed:
+**Rolling-notes alignment:** main's enabled publisher initially writes only a
+build/commit warning. After this rolling-notes feature reaches dev, a separate,
+authorized workflow-only change on main must replace that notes-generation line
+with `python -m scripts.dev_release_notes --version "$version" --commit "$COMMIT"
+--output release-assets/notes.md` (one shell line). Keep main's dispatch guards,
+pinned checkout and commit-based artifact names unchanged. Until that follow-up
+lands, the registered main workflow does not include the rolling What's new in
+its GitHub release body. Registration itself is no longer blocked.
+
+For an explicitly approved publication:
 
 1. Review the exact trusted `dev` head and its verification results. Record its
-   full 40-character SHA. The workflow refuses forks and any branch except dev.
+   full 40-character SHA. The active workflow refuses forks and dispatches outside main.
 2. Manually run **Publish development prerelease (manual only)** with branch
-   `dev` and input `commit` equal to that full SHA. CLI equivalent:
-   `gh workflow run publish-dev.yml --ref dev -f commit=FULL_40_CHARACTER_SHA`.
+   `main` and input `commit` equal to that full dev SHA. CLI equivalent:
+   `gh workflow run publish-dev.yml --ref main -f commit=FULL_40_CHARACTER_SHA`.
    This command publishes a release; do not run it for ordinary CI verification.
-3. The read-only job checks the dispatch SHA, checked-out SHA and current remote
-   dev head all agree, runs every `tests/*harness.py` through `scripts/verify.py`,
+3. The read-only job validates the full input SHA against the current remote
+   dev head, checks out that SHA and confirms HEAD agrees, runs every `tests/*harness.py` through `scripts/verify.py`,
    and packages that exact commit. Both development verification and publication
    use the same discovery-based verifier; the stable workflow also discovers the
    same harness glob instead of a separate hand-maintained test list.
 4. UTC date and this workflow's run number generate one numeric manifest version
    and a unique `dev-` tag. The package records `dev` plus the full commit. Public
-   assets contain the add-on and checksum. Notes identify the source commit.
+   assets contain the add-on and checksum. After the main-workflow alignment above,
+   notes identify the version and source commit, warn that the build is experimental,
+   and include the same [rolling What's new](DEVELOPMENT.md) as the package manifest.
+   Both read the notes from the pinned checkout using the same parser; later edits
+   to dev cannot change a published version's notes. Stable notes and default
+   verification packaging remain unchanged.
 5. Only the publication job has `contents: write`. It consumes this run's
    verified artifact, checks the checksum, rechecks the current dev head, creates
    the immutable tag at the verified commit, and publishes with prerelease true,

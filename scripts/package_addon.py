@@ -20,6 +20,7 @@ APP_MODULE_DIRECTORIES = ("appModules",)
 DOC_DIRECTORIES = ("doc",)
 LOCALE_DIRECTORIES = ("locale",)
 RELEASE_NOTES = "RELEASE-2.0.md"
+DEVELOPMENT_NOTES = "DEVELOPMENT.md"
 # NVDA 2026.1 and later show the manifest's changelog, rendered from Markdown, when you choose
 # "What's new" for an add-on in the Add-on Store. Every release's changelog is this section of
 # its release notes; --sync-changelog copies it into manifest.ini.
@@ -168,6 +169,16 @@ def release_whats_new(notes_text: str) -> str | None:
     return "\n".join(lines[start:end]).strip() or None
 
 
+def development_whats_new() -> str:
+    """Read rolling notes from this checkout, using the stable section parser."""
+    notes = ROOT / "docs" / DEVELOPMENT_NOTES
+    text = release_whats_new(notes.read_text(encoding="utf-8"))
+    if text is None:
+        raise ValueError(f"{notes.name} has no {WHATS_NEW_HEADING!r} section")
+    check_changelog(text)
+    return text
+
+
 def release_notes_version(name: str) -> str | None:
     """Return the version a release notes file is for, from its RELEASE-<version>.md name."""
     match = _RELEASE_NOTES_NAME.fullmatch(name)
@@ -238,6 +249,8 @@ def main() -> None:
         raise SystemExit(f"Missing manifest: {manifest}")
     release_notes = ROOT / "docs" / RELEASE_NOTES
     if args.sync_changelog:
+        if args.channel == "dev":
+            raise SystemExit("Development changelogs are package-only; do not sync them into the stable manifest")
         try:
             changed = sync_changelog(manifest, release_notes)
         except (OSError, ValueError) as error:
@@ -250,8 +263,13 @@ def main() -> None:
         raise SystemExit("Development asset names must not have a label")
     package_name = package_filename(version, args.label)
     try:
-        check_release_changelog(manifest.read_text(encoding="utf-8"), release_notes, version)
-    except ValueError as error:
+        package_manifest = manifest_with_version(manifest, version)
+        if args.channel == "dev":
+            release_notes = ROOT / "docs" / DEVELOPMENT_NOTES
+            package_manifest = manifest_with_changelog(package_manifest, development_whats_new())
+        else:
+            check_release_changelog(manifest.read_text(encoding="utf-8"), release_notes, version)
+    except (OSError, ValueError) as error:
         raise SystemExit(str(error)) from error
     package_path = DIST / package_name
     checksum_path = package_path.with_suffix(package_path.suffix + ".sha256")
@@ -261,7 +279,7 @@ def main() -> None:
     checksum_path.unlink(missing_ok=True)
 
     with zipfile.ZipFile(package_path, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("manifest.ini", manifest_with_version(manifest, version))
+        archive.writestr("manifest.ini", package_manifest)
         archive.writestr("globalPlugins/_speech_core/build_info.json", json.dumps(metadata, sort_keys=True) + "\n")
         for relative_path in RUNTIME_FILES:
             source = ROOT / relative_path
@@ -293,7 +311,7 @@ def main() -> None:
             if source.is_dir():
                 _add_locale_tree(archive, source)
 
-        archive.write(release_notes, f"globalPlugins/docs/{RELEASE_NOTES}")
+        archive.write(release_notes, f"globalPlugins/docs/{release_notes.name}")
 
     with zipfile.ZipFile(package_path) as archive:
         invalid_member = archive.testzip()
