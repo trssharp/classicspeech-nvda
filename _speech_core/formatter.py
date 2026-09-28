@@ -24,6 +24,7 @@ from .tokens import (
 	coerce_tokens,
 )
 from .schemes.runtime import label_marker_for_token
+from .processors.numbers import format_position_numbers
 
 log = logHandler.log
 DEBUG = False
@@ -512,7 +513,8 @@ class SpeechFormatter:
 			# Complete formatter output is owned by the one profile transaction added
 			# by ``format``. Do not inject token-scoped prosody inside it: that
 			# would duplicate Rate/Pitch/Volume and bypass the direct transaction.
-			sequence.append(text)
+			# Position filtering has already run; change presentation only.
+			sequence.append(format_position_numbers(text) if token.kind == TOKEN_POSITION else text)
 
 			# In after-token placement, pauses between tokens are owned by the
 			# preceding token. The final-token option controls the trailing pause.

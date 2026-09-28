@@ -642,6 +642,29 @@ def _convert_integer(number_text: str, mode: str, threshold: str) -> str:
 	return number_text
 
 
+def format_position_numbers(text: str) -> str:
+	"""Render an already recognized Position token, never general speech text.
+
+	Only Number Processing's main choice applies here. Keep the native choice
+	identical, without phone/date/currency or long-number threshold processing.
+	Fail closed for unknown layouts or unsupported integers on either side.
+	"""
+	mode = get_number_processing_mode()
+	if mode == MODE_SYNTHESIZER:
+		return text
+	match = re.fullmatch(r"([0-9]+(?:,[0-9]+)*)(\s+of\s+)([0-9]+(?:,[0-9]+)*)", text)
+	if not match:
+		return text
+	first, separator, total = match.groups()
+	if not all(_is_supported_whole_number_token(value) for value in (first, total)):
+		return text
+	return (
+		_convert_integer(first, mode, THRESHOLD_SYNTHESIZER)
+		+ separator
+		+ _convert_integer(total, mode, THRESHOLD_SYNTHESIZER)
+	)
+
+
 def process_number_text(text: str, allow_number_modes: bool = True) -> str:
 	"""Apply opt-in number, phone, currency, and numeric date processing to literal strings."""
 	mode = get_number_processing_mode() if allow_number_modes else MODE_SYNTHESIZER
