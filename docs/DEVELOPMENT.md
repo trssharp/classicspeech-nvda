@@ -32,8 +32,10 @@ Development builds are experimental, not stable releases.
 
 ### Updates and development builds
 
-- Advanced settings offer stable (the default) or dev updates alongside the
-  existing automatic-check preference. Apply/OK accept the choice; Cancel/Close
+- Advanced settings offer stable or dev updates alongside the existing
+  automatic-check preference. With no saved channel choice, development packages
+  default to dev; stable, unknown and legacy builds default to stable. Explicitly
+  saved choices are preserved across updates. Apply/OK accept the choice; Cancel/Close
   restore the last accepted settings. Turning off automatic checks still allows
   manual checks.
 - Development checks use official public prereleases with an add-on and checksum,

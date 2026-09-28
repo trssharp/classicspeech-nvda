@@ -38,6 +38,27 @@ def official_dev_assets(data, repository, version):
     return data.get("html_url") == f"https://github.com/{repository}/releases/tag/dev-{version}"
 
 
+def default_update_channel():
+    """Default only: trust packaged, version-matched metadata, never version shape.
+
+    Scratchpad, legacy and unreadable/unknown builds stay on stable. This is
+    evaluated when registering the schema, not on every preference read.
+    """
+    from configobj import ConfigObj, ConfigObjError
+
+    try:
+        data = json.loads(METADATA_PATH.read_text(encoding="utf-8"))
+        manifest = ConfigObj(str(METADATA_PATH.parents[2] / "manifest.ini"),
+                             encoding="utf-8", file_error=True, interpolation=False)
+        version = data.get("version")
+        if (data.get("channel") == "dev" and isinstance(version, str)
+                and version and manifest.get("version") == version):
+            return "dev"
+    except (OSError, ValueError, TypeError, AttributeError, ConfigObjError):
+        pass
+    return "stable"
+
+
 def installed_channel(version):
     """Metadata describes the installed artifact, never the user's preference.
 

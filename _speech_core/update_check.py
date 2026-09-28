@@ -326,7 +326,12 @@ def download_release(release, version, repository, folder, session=None):
 def preferred_channel():
 	from .settings.config_core import _read_classic_speech_section
 
-	return "dev" if _read_classic_speech_section().get("updateChannel") == "dev" else "stable"
+	from .plugin_config import DEFAULT_UPDATE_CHANNEL
+
+	# Missing is not an explicit stable choice. Malformed saved values still
+	# fail closed to stable, preserving the existing normalization policy.
+	channel = _read_classic_speech_section().get("updateChannel", DEFAULT_UPDATE_CHANNEL)
+	return "dev" if channel == "dev" else "stable"
 
 
 def set_preferred_channel(channel):

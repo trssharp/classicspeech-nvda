@@ -4,11 +4,16 @@ import config
 import logHandler
 
 from .nvda_settings_backup import classic_speech_settings_exist
+from .update_channels import default_update_channel
 from .settings.edge_notifications_config import DEFAULT_ENABLED_ACTIVITY_IDS
 
 log = logHandler.log
 
 _EDGE_NOTIFICATION_DEFAULT_IDS_SPEC = ", ".join(repr(activity_id) for activity_id in DEFAULT_ENABLED_ACTIVITY_IDS)
+
+# Register the correct default before NVDA/ConfigObj can materialize it.
+# Loading settings.ini afterwards still replaces it with an explicit choice.
+DEFAULT_UPDATE_CHANNEL = default_update_channel()
 
 _CLASSIC_SPEECH_SPEC = {
     "defaultProfile": "string(default='Beginner')",
@@ -24,7 +29,7 @@ _CLASSIC_SPEECH_SPEC = {
     "speechHookLoadedMessage": "string(default='ClassicSpeech hook loaded')",
     "debugLogging": "boolean(default=False)",
     "checkForUpdatesAutomatically": "boolean(default=True)",
-    "updateChannel": "string(default='stable')",
+    "updateChannel": f"string(default='{DEFAULT_UPDATE_CHANNEL}')",
     # Seconds since the epoch of the last successful update check.
     "lastUpdateCheck": "integer(default=0)",
     "announceMenuOpen": "boolean(default=True)",

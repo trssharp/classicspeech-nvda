@@ -3,7 +3,11 @@
 ## Users
 
 Advanced settings expose **Check for updates automatically:** (checked by default)
-and **Update from:** (`stable`, the default, or `dev`). Both manual and automatic
+and **Update from:** (`stable` or `dev`). With no saved preference, packaged dev
+builds default to dev; stable, unknown, legacy and Scratchpad builds default to
+stable. Explicit saved choices win on either build. The default is registered
+before ConfigObj validation, using version-matched packaged metadata, not the
+version number format. Settings save timing is unchanged. Both manual and automatic
 lookups use that preference. Clearing the checkbox stops automatic checks only.
 The existing 30-second startup delay and once-daily successful-check throttle
 remain. Apply/OK accept edits; Cancel/Close restore the latest accepted baseline.

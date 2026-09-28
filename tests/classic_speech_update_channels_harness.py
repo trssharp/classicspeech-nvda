@@ -37,6 +37,136 @@ class ChannelTests(unittest.TestCase):
             self.updates.set_preferred_channel(value)
             self.assertEqual(self.updates.preferred_channel(), expected)
 
+    def _build_metadata(self, channel="dev"):
+        channels = importlib.import_module("globalPlugins._speech_core.update_channels")
+        addon = Path(self.folder) / "addon"
+        path = addon / "globalPlugins" / "_speech_core" / "build_info.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"channel": channel, "version": "20260928.1"}), encoding="utf-8")
+        (addon / "manifest.ini").write_text("name = classicSpeech\nversion = 20260928.1\n", encoding="utf-8")
+        return channels, path
+
+    def test_build_defaults_and_saved_choices_with_real_configobj(self):
+        import config
+        from configobj import ConfigObj
+        from validate import Validator
+        from types import SimpleNamespace
+        settings = importlib.import_module("globalPlugins._speech_core.settings_file")
+        backup = importlib.import_module("globalPlugins._speech_core.nvda_settings_backup")
+        plugin = importlib.import_module("globalPlugins._speech_core.plugin_config")
+        for build in ("dev", "stable", "unknown"):
+            channels, path = self._build_metadata(build)
+            for saved in (None, "stable", "dev", "nightly", ["dev", "stable"]):
+                for injected in (False, True):
+                    with self.subTest(build=build, saved=saved, injected=injected), patch.object(
+                        channels, "METADATA_PATH", path
+                    ), patch.object(backup, "_CONFIG_FOLDER_OVERRIDE", self.folder):
+                        importlib.reload(plugin)
+                        spec = ConfigObj({"classicSpeech": plugin._CLASSIC_SPEECH_SPEC})
+                        base = ConfigObj(configspec=spec)
+                        base.filename = str(Path(self.folder) / "nvda.ini")
+                        if injected:
+                            base.validate(Validator())
+                            self.assertIn("updateChannel", base["classicSpeech"].defaults)
+                            self.assertEqual(base["classicSpeech"]["updateChannel"], "dev" if build == "dev" else "stable")
+                        settings.write_settings_file({} if saved is None else {"updateChannel": saved})
+                        before = Path(settings.settings_path()).read_bytes()
+                        conf = SimpleNamespace(profiles=[base], spec=spec, BASE_ONLY_SECTIONS=set())
+                        with patch.object(config, "conf", conf):
+                            plugin._initClassicSpeechConfig()
+                            expected = saved if saved in ("stable", "dev") else (
+                                "dev" if saved is None and build == "dev" else "stable"
+                            )
+                            self.assertEqual(self.updates.preferred_channel(), expected)
+                            self.assertEqual(Path(settings.settings_path()).read_bytes(), before)
+                            base.write()  # Only the existing NVDA save route writes.
+                            conf.profiles = [ConfigObj(base.filename, encoding="utf-8", configspec=spec)]
+                            plugin._initClassicSpeechConfig()
+                            self.assertEqual(self.updates.preferred_channel(), expected)
+                            # Factory defaults use this build, not a previous saved preference.
+                            conf.profiles = [ConfigObj(configspec=spec)]
+                            conf.profiles[0].validate(Validator())
+                            settings.load_into_nvda(conf, factory_defaults=True)
+                            self.assertEqual(self.updates.preferred_channel(), "dev" if build == "dev" else "stable")
+        importlib.reload(plugin)
+
+    def test_metadata_default_fails_closed_without_version_inference(self):
+        channels, path = self._build_metadata()
+        with patch.object(channels, "METADATA_PATH", path):
+            self.assertEqual(channels.default_update_channel(), "dev")
+            for raw in ("{", "[]", "null", '{}', '{"channel":"nightly"}',
+                        '{"channel":"dev","version":"wrong"}'):
+                path.write_text(raw, encoding="utf-8")
+                self.assertEqual(channels.default_update_channel(), "stable")
+            path.unlink()
+            self.assertEqual(channels.default_update_channel(), "stable")
+            self._build_metadata()
+            manifest = path.parents[2] / "manifest.ini"
+            manifest.write_text("[broken", encoding="utf-8")
+            self.assertEqual(channels.default_update_channel(), "stable")
+            manifest.unlink()
+            self.assertEqual(channels.default_update_channel(), "stable")
+
+    def test_fresh_dev_dialog_ok_apply_cancel_do_not_add_disk_writes(self):
+        import config
+        from configobj import ConfigObj
+        from validate import Validator
+        settings = importlib.import_module("globalPlugins._speech_core.settings_file")
+        backup = importlib.import_module("globalPlugins._speech_core.nvda_settings_backup")
+        plugin = importlib.import_module("globalPlugins._speech_core.plugin_config")
+        module = importlib.import_module("globalPlugins._speech_core.settings.dialog")
+        channels, path = self._build_metadata()
+        with patch.object(channels, "METADATA_PATH", path), patch.object(
+            backup, "_CONFIG_FOLDER_OVERRIDE", self.folder
+        ):
+            importlib.reload(plugin)
+            base = ConfigObj(configspec=ConfigObj({"classicSpeech": plugin._CLASSIC_SPEECH_SPEC}))
+            base.validate(Validator())
+            base.filename = str(Path(self.folder) / "nvda.ini")
+            conf = config.conf
+            conf.profiles = [base]
+            conf.spec = {}
+            with patch.object(config, "conf", conf), patch.object(
+                settings, "write_settings_file", wraps=settings.write_settings_file
+            ) as writer:
+                plugin._initClassicSpeechConfig()
+                self.assertEqual(self.updates.preferred_channel(), "dev")
+                self.assertNotIn("updateChannel", settings._stored_values(base["classicSpeech"]))
+                for accept in ("onApply", "onOK"):
+                    self.updates.set_preferred_channel("dev")
+                    dialog = object.__new__(module.ClassicSpeechDialog)
+                    dialog._popupReleased = False
+                    dialog._committed = False
+                    dialog._initializeDialogTransaction()
+                    class Choice(self.wx.Choice):
+                        def SetSelection(self, value):
+                            self.selection = value
+
+                        def GetSelection(self):
+                            return self.selection
+
+                    with patch.object(self.wx, "Choice", Choice):
+                        panel = dialog.advancedPanel = module.AdvancedPanel(None)
+                    self.assertEqual(panel.updateChannel.GetSelection(), 1)
+                    dialog._saveTransaction = lambda: panel.apply_live()
+                    dialog._clearDirty = lambda: None
+                    panel.updateChannel.GetSelection = lambda: 0
+                    panel.onChanged()
+                    getattr(dialog, accept)(None)
+                    self.assertEqual(self.updates.preferred_channel(), "stable")
+                    panel.updateChannel.GetSelection = lambda: 1
+                    panel.onChanged()
+                    dialog.onCancel(None)
+                    self.assertEqual(self.updates.preferred_channel(), "stable")
+                writer.assert_not_called()
+                self.assertFalse(Path(settings.settings_path()).exists())
+                base.write()
+                writer.assert_called_once()
+                conf.profiles = [ConfigObj(base.filename, encoding="utf-8")]
+                plugin._initClassicSpeechConfig()
+                self.assertEqual(self.updates.preferred_channel(), "stable")
+        importlib.reload(plugin)
+
     def test_dev_release_contract(self):
         parse = self.updates.release_from_github
         good = dev_release()
