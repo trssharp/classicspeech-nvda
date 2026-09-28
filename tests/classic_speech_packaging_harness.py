@@ -84,6 +84,28 @@ class PackageVersioningTests(unittest.TestCase):
             "ClassicSpeech-4.0.0.nvda-addon",
         )
 
+    def test_release_archive_has_full_commit_and_stable_provenance(self):
+        import json
+        commit = "abcdef0123456789" * 2 + "abcdef01"
+        version = self.packager.release_notes_version(self.packager.RELEASE_NOTES)
+        original = (ROOT / "manifest.ini").read_bytes()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            output = Path(temporary_directory)
+            with mock.patch.object(self.packager, "DIST", output), mock.patch.object(
+                sys, "argv", [str(SCRIPT), "--version", version, "--commit", commit]
+            ):
+                self.packager.main()
+            with zipfile.ZipFile(output / f"ClassicSpeech-{version}.nvda-addon") as archive:
+                self.assertEqual(json.loads(archive.read("globalPlugins/_speech_core/build_info.json")),
+                                 {"version": version, "channel": "stable", "commit": commit})
+        self.assertEqual((ROOT / "manifest.ini").read_bytes(), original)
+        workflow = (ROOT / ".github/workflows/verify-and-package.yml").read_text(encoding="utf-8")
+        self.assertIn('--commit "$COMMIT_SHA"', workflow)
+        for invalid in ("abc", "A" * 40, "x" * 40):
+            with self.assertRaises(ValueError):
+                self.packager.build_metadata(version, commit=invalid)
+        self.assertEqual(self.packager.build_metadata("20260928.1")["channel"], "unknown")
+
     def test_invalid_version_or_label_is_rejected(self):
         with self.assertRaises(ValueError):
             self.packager.package_filename("4.0-edge-notifications")
@@ -95,7 +117,7 @@ class PackageVersioningTests(unittest.TestCase):
     def test_package_keeps_page_entry_runtime_inside_web_processors(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             output_directory = Path(temporary_directory)
-            arguments = SimpleNamespace(version="20260728.1", label="layout", sync_changelog=False)
+            arguments = SimpleNamespace(version="20260728.1", label="layout", sync_changelog=False, channel="auto", commit="")
             with mock.patch.object(self.packager, "DIST", output_directory), mock.patch.object(
                 self.packager, "_parse_args", return_value=arguments
             ):
@@ -127,7 +149,7 @@ class PackageVersioningTests(unittest.TestCase):
     def test_package_contains_the_user_guide_nvda_opens(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             output_directory = Path(temporary_directory)
-            arguments = SimpleNamespace(version="20260918.1", label="guide", sync_changelog=False)
+            arguments = SimpleNamespace(version="20260918.1", label="guide", sync_changelog=False, channel="auto", commit="")
             with mock.patch.object(self.packager, "DIST", output_directory), mock.patch.object(
                 self.packager, "_parse_args", return_value=arguments
             ):
@@ -196,7 +218,7 @@ class ManifestChangelogTests(unittest.TestCase):
     def test_package_manifest_keeps_the_whats_new(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             output_directory = Path(temporary_directory)
-            arguments = SimpleNamespace(version="20260920.1", label="notes", sync_changelog=False)
+            arguments = SimpleNamespace(version="20260920.1", label="notes", sync_changelog=False, channel="auto", commit="")
             with mock.patch.object(self.packager, "DIST", output_directory), mock.patch.object(
                 self.packager, "_parse_args", return_value=arguments
             ):
