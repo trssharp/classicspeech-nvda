@@ -28,6 +28,7 @@ import time
 from dataclasses import dataclass
 
 from .localization import _
+from .update_channels import dev_version, official_dev_assets, installed_channel, OFFICIAL_REPOSITORY
 
 API_URL = "https://api.github.com/repos/{repository}/releases/latest"
 RELEASES_URL = "https://github.com/{repository}/releases"
@@ -58,6 +59,7 @@ class Release:
 	addon_url: str = ""
 	addon_size: int = 0
 	checksum_url: str = ""
+	channel: str = "stable"
 
 
 # -- pure helpers ---------------------------------------------------------------
@@ -90,18 +92,26 @@ def is_newer(candidate, installed):
 	return new + (0,) * (width - len(new)) > old + (0,) * (width - len(old))
 
 
-def release_from_github(data):
+def release_from_github(data, channel="stable", repository=OFFICIAL_REPOSITORY):
 	"""Return the Release described by GitHub's JSON for a release, or None."""
-	if not isinstance(data, dict) or data.get("draft") or data.get("prerelease"):
+	if not isinstance(data, dict) or data.get("draft") or channel not in ("stable", "dev"):
 		return None
 	tag = str(data.get("tag_name") or "")
-	version = tag[1:] if tag[:1] in ("v", "V") else tag
+	if channel == "dev":
+		version = dev_version(tag)
+		if data.get("prerelease") is not True or not version or not official_dev_assets(data, repository, version):
+			return None
+	else:
+		if data.get("prerelease"):
+			return None
+		version = tag[1:] if tag[:1] in ("v", "V") else tag
 	if parse_version(version) is None:
 		return None
 	addon, checksum = None, None
 	assets = [asset for asset in data.get("assets") or () if isinstance(asset, dict)]
 	for asset in assets:
-		if str(asset.get("name") or "").lower().endswith(ADDON_EXTENSION):
+		if (str(asset.get("name") or "").lower().endswith(ADDON_EXTENSION)
+			and (channel == "stable" or asset.get("name") == f"ClassicSpeech-{version}.nvda-addon")):
 			addon = asset
 			break
 	if addon is not None:
@@ -109,6 +119,7 @@ def release_from_github(data):
 		checksum = next((asset for asset in assets if asset.get("name") == wanted), None)
 	return Release(
 		version=version,
+		channel=channel,
 		name=str(data.get("name") or f"ClassicSpeech {version}"),
 		notes=str(data.get("body") or ""),
 		page_url=str(data.get("html_url") or ""),
@@ -194,8 +205,10 @@ def _headers(version, repository):
 	}
 
 
-def fetch_latest_release(version, repository, session=None):
+def fetch_latest_release(version, repository, session=None, channel="stable"):
 	"""Ask GitHub for the latest release. Raises UpdateError."""
+	if channel == "dev":
+		return fetch_dev_release(version, repository, session=session)
 	getter = session or _requests()
 	try:
 		response = getter.get(
@@ -218,6 +231,36 @@ def fetch_latest_release(version, repository, session=None):
 	return release
 
 
+def fetch_dev_release(version, repository, session=None):
+	"""Scan public releases, not authenticated/expiring Actions artifacts."""
+	if repository != OFFICIAL_REPOSITORY:
+		raise UpdateError(_("Development updates are available only from the official ClassicSpeech repository."))
+	getter = session or _requests()
+	latest = None
+	# Bound a malicious/never-ending response; never treat a truncated scan as complete.
+	for page in range(1, 101):
+		url = f"https://api.github.com/repos/{repository}/releases?per_page=100&page={page}"
+		try:
+			response = getter.get(url, headers=_headers(version, repository), timeout=CHECK_TIMEOUT_SECONDS)
+		except Exception as error:
+			raise UpdateError(_("GitHub could not be reached. Check your internet connection.")) from error
+		if response.status_code != 200:
+			raise UpdateError(_("GitHub answered with error {code}.").format(code=response.status_code))
+		try:
+			data = response.json()
+			if not isinstance(data, list):
+				raise ValueError("expected release list")
+			for item in data:
+				release = release_from_github(item, channel="dev", repository=repository)
+				if release and (latest is None or is_newer(release.version, latest.version)):
+					latest = release
+		except Exception as error:
+			raise UpdateError(_("GitHub's answer could not be read.")) from error
+		if len(data) < 100:
+			return latest
+	raise UpdateError(_("There are too many release pages to check safely. Please try again later."))
+
+
 def download_release(release, version, repository, folder, session=None):
 	"""Download the release's add-on file into ``folder`` and check it. Returns its path.
 
@@ -226,6 +269,11 @@ def download_release(release, version, repository, folder, session=None):
 	"""
 	if not release.addon_url:
 		raise UpdateError(_("The release has no add-on file."))
+	prefix = f"https://github.com/{repository}/releases/download/"
+	if (not release.addon_url.startswith(prefix)
+		or (release.checksum_url and not release.checksum_url.startswith(prefix))
+		or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*\.nvda-addon", release.addon_name)):
+		raise UpdateError(_("The release contains an untrusted download location or file name."))
 	if not release.checksum_url:
 		raise UpdateError(_("The release has no checksum file, so its add-on file can't be checked."))
 	if release.addon_size > MAX_DOWNLOAD_BYTES:
@@ -274,6 +322,18 @@ def download_release(release, version, repository, folder, session=None):
 
 
 # -- settings -----------------------------------------------------------------------
+
+def preferred_channel():
+	from .settings.config_core import _read_classic_speech_section
+
+	return "dev" if _read_classic_speech_section().get("updateChannel") == "dev" else "stable"
+
+
+def set_preferred_channel(channel):
+	from .settings.config_core import _ensure_classic_speech_section
+
+	_ensure_classic_speech_section()["updateChannel"] = "dev" if channel == "dev" else "stable"
+
 
 def automatic_checks_enabled():
 	from .settings.config_core import _as_bool, _read_classic_speech_section
@@ -333,7 +393,7 @@ class UpdateChecker:
 
 	def check(self, manual=True):
 		self._timer = None
-		if self._stopped or self._busy:
+		if self._stopped or self._busy or _is_secure():
 			return
 		addon = installed_addon()
 		if addon is None:
@@ -355,7 +415,11 @@ class UpdateChecker:
 			from .message_priority import speak_message
 
 			speak_message(_("Checking for ClassicSpeech updates"))
-		self._run(lambda: fetch_latest_release(version, repository), lambda outcome: self._checked(outcome, version, repository, manual))
+		channel = preferred_channel()
+		self._run(
+			lambda: fetch_latest_release(version, repository, channel=channel),
+			lambda outcome: self._checked_current(outcome, version, repository, manual, channel),
+		)
 
 	def _run(self, work, done):
 		"""Run ``work`` in a background thread, then ``done(result or UpdateError)`` in NVDA's main thread."""
@@ -373,7 +437,14 @@ class UpdateChecker:
 
 		threading.Thread(target=target, name="ClassicSpeechUpdates", daemon=True).start()
 
-	def _checked(self, outcome, version, repository, manual):
+	def _checked_current(self, outcome, version, repository, manual, channel):
+		# A dialog can change or roll back the preference while the network runs.
+		if channel != preferred_channel() or (not manual and not automatic_checks_enabled()):
+			self._busy = False
+			return
+		self._checked(outcome, version, repository, manual, channel)
+
+	def _checked(self, outcome, version, repository, manual, channel="stable"):
 		self._busy = False
 		if self._stopped:
 			return
@@ -387,6 +458,17 @@ class UpdateChecker:
 			return
 		_remember_check()
 		release = outcome
+		if release is None:
+			if manual:
+				self._message(_("No development release has been published yet."))
+			return
+		installed = installed_channel(version)
+		switching = installed != channel
+		if switching:
+			if not manual or parse_version(release.version) == parse_version(version):
+				return
+			self._offer(release, version, repository, switching=True)
+			return
 		if not is_newer(release.version, version):
 			if manual:
 				if is_newer(version, release.version):
@@ -402,13 +484,18 @@ class UpdateChecker:
 			return
 		self._offer(release, version, repository)
 
-	def _offer(self, release, version, repository):
+	def _offer(self, release, version, repository, switching=False):
 		import wx
 
 		summary = _("ClassicSpeech {new} is available. You have version {installed}.").format(
 			new=release.version,
 			installed=version,
 		)
+		if switching:
+			summary = _("Switch from installed channel {old} to {new}? You have {installed}; the target is {target}. "
+				"This may install a numerically lower version. Development builds may be unstable.").format(
+				old=installed_channel(version), new=release.channel, installed=version, target=release.version,
+			)
 		notes = notes_as_text(release.notes)
 		if not notes:
 			# Translators: Shown in the What's new box for a release with no notes.

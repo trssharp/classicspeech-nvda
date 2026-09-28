@@ -62,7 +62,7 @@ jobs:
             version="$(BUILD_DATE="$build_date" python -c 'from scripts.package_addon import build_version; import os; print(build_version(os.environ["BUILD_DATE"], os.environ["RUN_NUMBER"]))')"
             label="g${COMMIT_SHA:0:7}"
           fi
-          package_output="$(python scripts/package_addon.py --version "$version" --label "$label")"
+          package_output="$(python scripts/package_addon.py --version "$version" --label "$label" --commit "$COMMIT_SHA")"
           package_name="$(printf '%s\n' "$package_output" | awk -F= '/^PACKAGE_NAME=/{print $2}')"
           test -n "$package_name"
           echo "$package_output"

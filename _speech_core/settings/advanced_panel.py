@@ -3,7 +3,9 @@ from ..localization import _
 import wx
 import logHandler
 
-from ..update_check import automatic_checks_enabled, set_automatic_checks_enabled
+from ..update_check import (
+	automatic_checks_enabled, set_automatic_checks_enabled, preferred_channel, set_preferred_channel,
+)
 from .accessibility import _set_panel_description
 from .advanced_config import (
 	_get_announce_speech_hook_loaded_enabled,
@@ -80,10 +82,19 @@ class AdvancedPanel(wx.Panel):
 
 		self.checkForUpdates = wx.CheckBox(
 			self,
-			label=_("Check for ClassicSpeech updates automatically"),
+			label=_("Check for updates automatically:"),
 		)
 		self.checkForUpdates.SetValue(automatic_checks_enabled())
 		mainSizer.Add(self.checkForUpdates, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+
+		channelRow = wx.BoxSizer(wx.HORIZONTAL)
+		channelRow.Add(wx.StaticText(self, label=_("Update from:")), 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+		self.updateChannel = wx.Choice(self, choices=[_("stable"), _("dev")])
+		self.updateChannel.SetName(_("Update from:"))
+		self.updateChannel.SetSelection(1 if preferred_channel() == "dev" else 0)
+		channelRow.Add(self.updateChannel, 1, wx.EXPAND)
+		mainSizer.Add(channelRow, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
+		self.updateChannel.Bind(wx.EVT_CHOICE, self.onChanged)
 
 		self.SetSizer(mainSizer)
 		self._syncSpeechHookLoadedMessageAvailability()
@@ -114,5 +125,8 @@ class AdvancedPanel(wx.Panel):
 		checkForUpdates = self.__dict__.get("checkForUpdates")
 		if checkForUpdates is not None:
 			set_automatic_checks_enabled(checkForUpdates.GetValue())
+		channel = self.__dict__.get("updateChannel")
+		if channel is not None:
+			set_preferred_channel("dev" if channel.GetSelection() == 1 else "stable")
 		if save:
 			return

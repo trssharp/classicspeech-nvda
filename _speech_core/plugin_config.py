@@ -24,6 +24,7 @@ _CLASSIC_SPEECH_SPEC = {
     "speechHookLoadedMessage": "string(default='ClassicSpeech hook loaded')",
     "debugLogging": "boolean(default=False)",
     "checkForUpdatesAutomatically": "boolean(default=True)",
+    "updateChannel": "string(default='stable')",
     # Seconds since the epoch of the last successful update check.
     "lastUpdateCheck": "integer(default=0)",
     "announceMenuOpen": "boolean(default=True)",
