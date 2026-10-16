@@ -44,6 +44,7 @@ from ._speech_core.prosody_routing import (
 )
 from ._speech_core import nvda_settings_backup
 from ._speech_core import settings_file, compact_toasts
+from ._speech_core import title_window_state
 from ._speech_core.key_labels import apply_key_labels_live, get_key_label_config, get_key_label_runtime
 from ._speech_core.processors.core_ui import CoreUISpeechProcessor
 from ._speech_core.settings import (
@@ -650,6 +651,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._toastArrival.install()
         self._install_system_notification_profile_routes()
         self._install_configuration_save_revert_system_routes()
+        self._titleWindowStateRuntime = title_window_state.install()
         self._install_remote_speech_compatibility()
         self._schemeTagger = SchemeTagger(
             is_active=lambda: bool(getattr(self, "_speechHookRegistered", False))
@@ -686,6 +688,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         log.info(f"ClassicSpeech loaded (profile: {defaultProfile}, hook: {self._speechHookRegistered})")
 
     def terminate(self):
+        titleRuntime = getattr(self, "_titleWindowStateRuntime", None)
+        if titleRuntime is not None:
+            titleRuntime.restore()
         self._remove_config_reset_handler()
         checker = getattr(self, "_updateChecker", None)
         if checker is not None:

@@ -18,6 +18,7 @@ DEFAULT_UPDATE_CHANNEL = default_update_channel()
 _CLASSIC_SPEECH_SPEC = {
     "defaultProfile": "string(default='Beginner')",
     "announceDefaultButton": "boolean(default=False)",
+    "includeWindowStateInTitle": "boolean(default=False)",
     "preventAutomaticSpeechInterrupt": "boolean(default=False)",
     "automaticSpeechInterruptFallbackMs": "integer(default=1000)",
     # Speak ClassicSpeech's own messages first; only a key press interrupts them.

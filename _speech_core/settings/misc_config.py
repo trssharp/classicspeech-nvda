@@ -15,6 +15,14 @@ from .constants import QUERY_OBJECT_SOURCE_FOCUS, QUERY_OBJECT_SOURCE_NATIVE, QU
 log = logHandler.log
 
 
+def _get_include_window_state_in_title():
+	return _as_bool(_read_classic_speech_section().get("includeWindowStateInTitle", False))
+
+
+def _set_include_window_state_in_title(enabled):
+	_ensure_classic_speech_section()["includeWindowStateInTitle"] = bool(enabled)
+
+
 def _get_default_button_enabled():
 	conf = _ensure_classic_speech_section()
 	return bool(conf.get("announceDefaultButton", False))

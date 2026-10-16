@@ -10,6 +10,11 @@ Development builds are experimental, not stable releases.
 
 ### Speech and notifications
 
+- Misc settings offer **Include window state when reporting the title**, off by
+  default. NVDA+T on its first press appends the foreground window's normal,
+  maximized or minimized state when available. Native spelling and copy keep only
+  the title; automatic focus announcements and existing voice routing are unchanged.
+
 - Incoming Windows toast announcements omit the leading English "New notification
   from" wording. For the recognized toast layout, they also omit the trailing
   notification count, Actions marker and "window" label. Notification content,
