@@ -27,6 +27,7 @@ from numbers import Real
 import logHandler
 
 from . import store
+from ..voice_profile_trigger import settings_gui_open
 from .markers import (
 	ElementEndMarker,
 	ElementStartMarker,
@@ -385,6 +386,8 @@ def resolve_voice_snapshot(record):
 
 def _voice_plan(item_id, items_cfg, allow_prosody):
 	"""Return ``("prosody", begin, reset)``, ``("trigger", factory)`` or ``None``."""
+	if settings_gui_open():
+		return None
 	voice = _item_voice(items_cfg, item_id)
 	if voice is None:
 		return None
