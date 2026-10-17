@@ -13,6 +13,9 @@ def settings_gui_open():
 	a dialog are saved in the profile the user was using. ClassicSpeech's voice
 	overlays follow the same rule: the settings dialogs of NVDA and ClassicSpeech
 	mark themselves with ``shouldSuspendConfigProfileTriggers``.
+	Use this same uncached predicate at automatic voice generation and queued
+	trigger entry. A shown marked window suspends routing even after Alt+Tab;
+	no foreground-window policy or native configuration-profile reset is needed.
 	"""
 	try:
 		import gui

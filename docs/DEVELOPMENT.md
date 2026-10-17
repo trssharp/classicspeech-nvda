@@ -26,6 +26,14 @@ Development builds are experimental, not stable releases.
 
 ### Buttons and settings
 
+- Automatic Voice Profile and scheme voice changes now all pause while the NVDA
+  menu or a settings dialog that suspends NVDA configuration-profile triggers is
+  open, including rate, pitch and volume changes. A shown dialog still pauses them
+  after switching applications. Speech uses the current NVDA voice; automatic
+  routing resumes after closing the menu or dialog. Explicit Preview still works.
+  This is a voice-routing bypass, not a disabled speech filter: text formatting,
+  scheme sounds and speech history remain active, and native configuration profiles
+  are not reset. Existing per-utterance voice restoration is unchanged.
 - NVDA+E reports an eligible focused push or split button first, including Cancel,
   then falls back to the existing dialog-default and appearance detection. This
   contextual query does not change automatic default-button speech or resolve

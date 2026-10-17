@@ -382,7 +382,7 @@ li { margin: .25em 0; }
 <ul>
 <li>ClassicSpeech saves only the settings you change, and keeps them separately for each synthesizer.</li>
 <li>ClassicSpeech never changes your NVDA voice settings. It uses a category's settings while speaking that kind of speech, then returns to your voice.</li>
-<li>While a settings dialog of NVDA or ClassicSpeech, or the NVDA menu, is open, a category that uses another voice speaks with your own NVDA voice. NVDA treats its configuration profiles the same way, so the settings you change there, including your voice settings, are saved as you set them. Preview still uses the category's voice. A category that changes only rate, pitch or volume keeps doing so.</li>
+<li>While the NVDA menu or a settings dialog that suspends NVDA configuration-profile triggers is open, all automatic ClassicSpeech category and scheme voice changes are bypassed, including rate, pitch and volume. Speech uses your current NVDA voice settings. This includes ClassicSpeech's settings dialogs and continues if you switch to another application while the dialog remains shown. Automatic voices resume when the menu or dialog closes. Preview still uses the voice you selected. This bypass does not turn off ClassicSpeech speech processing: text formatting, scheme sounds and speech history remain active. Your active NVDA configuration profiles are not reset.</li>
 <li>If you change an NVDA setting while a category's voice is still speaking, for example with a toggle command, your change is kept.</li>
 <li><strong>Reset all Voice Profile overrides</strong> removes your changes to the first five categories for the active synthesizer, after asking you to confirm. Document and web formatting voices are not affected.</li>
 </ul>
@@ -487,7 +487,7 @@ li { margin: .25em 0; }
 <li>Press <strong>Speak a voice preview</strong> to hear it.</li>
 </ol>
 <p><strong>Reset this item</strong> removes the item's sound and voice.</p>
-<p>While a settings dialog of NVDA or ClassicSpeech, or the NVDA menu, is open, an item whose voice uses another voice or synthesizer speaks with your own NVDA voice, and <strong>Speak a voice preview</strong> still uses the item's voice. See <a href="#changing-a-voice-profile">Changing a category's voice</a>.</p>
+<p>While the NVDA menu or a settings dialog that suspends NVDA configuration-profile triggers is open, all automatic scheme voices are bypassed, including rate, pitch and volume changes. Scheme sounds and text processing remain active, and <strong>Speak a voice preview</strong> still uses the item's voice. A shown settings dialog keeps this bypass active even after switching applications. See <a href="#changing-a-voice-profile">Changing a category's voice</a>.</p>
 <p>The active synthesizer switches voices fastest. Another synthesizer has to be loaded each time the item is spoken and unloaded afterwards, which adds a noticeable delay. If ClassicSpeech can't load it, the item keeps using your active synthesizer.</p>
 
 <h3 id="nvda-sounds">Replacing NVDA's own sounds</h3>

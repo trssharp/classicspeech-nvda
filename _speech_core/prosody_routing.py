@@ -14,6 +14,7 @@ from numbers import Real
 
 from speech.commands import EndUtteranceCommand, PitchCommand, RateCommand, VolumeCommand
 from .voice_profile_runtime import active_full_profile_trigger
+from .voice_profile_trigger import settings_gui_open
 
 
 _preview_route_suppressed = ContextVar("classic_speech_preview_route_suppressed", default=False)
@@ -208,7 +209,7 @@ def _profile_prosody_commands(profile_id):
     from the same configured base as NVDA's ``BaseProsodyCommand``, never set
     driver attributes, and pair every begin command with a no-argument reset.
     """
-    if _preview_route_suppressed.get():
+    if _preview_route_suppressed.get() or settings_gui_open():
         return (), ()
     driver, snapshot = _active_profile_snapshot(profile_id)
     if driver is None:
@@ -259,7 +260,7 @@ def wrap_profile_sequence(sequence, profile_id, *, fallback_prosody=True):
     # audible to own, so do not enter and immediately exit a profile transaction.
     if not any(isinstance(item, str) and item for item in items):
         return items
-    if _preview_route_suppressed.get():
+    if _preview_route_suppressed.get() or settings_gui_open():
         return items
     full_trigger = active_full_profile_trigger(profile_id, _active_profile_snapshot)
     if full_trigger is not None:
