@@ -4,6 +4,8 @@ import wx
 import logHandler
 
 from .misc_config import (
+	_get_include_window_state_in_title,
+	_set_include_window_state_in_title,
 	_get_default_button_enabled,
 	_get_guess_object_position_information_when_unavailable,
 	_get_object_navigation_processing_enabled,
@@ -37,6 +39,12 @@ class MiscPanel(wx.Panel):
 		)
 		self.announceDefaultButton.SetValue(_get_default_button_enabled())
 		mainSizer.Add(self.announceDefaultButton, 0, wx.ALL | wx.EXPAND, 8)
+
+		self.includeWindowStateInTitle = wx.CheckBox(
+			self, label=_("Include window state when reporting the title"),
+		)
+		self.includeWindowStateInTitle.SetValue(_get_include_window_state_in_title())
+		mainSizer.Add(self.includeWindowStateInTitle, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 8)
 
 		self.guessObjectPositionInformationWhenUnavailable = wx.CheckBox(
 			self,
@@ -106,6 +114,7 @@ class MiscPanel(wx.Panel):
 		self.SetSizer(mainSizer)
 
 		self.announceDefaultButton.Bind(wx.EVT_CHECKBOX, self.onChanged)
+		self.includeWindowStateInTitle.Bind(wx.EVT_CHECKBOX, self.onChanged)
 		self.guessObjectPositionInformationWhenUnavailable.Bind(wx.EVT_CHECKBOX, self.onChanged)
 		self.queryObjectSourceChoice.Bind(wx.EVT_CHOICE, self.onChanged)
 		self.objectNavigationProcessing.Bind(wx.EVT_CHECKBOX, self.onChanged)
@@ -134,6 +143,7 @@ class MiscPanel(wx.Panel):
 		interrupt_for_enter = self.speechInterruptForEnter.GetValue()
 
 		_set_default_button_enabled(default_button)
+		_set_include_window_state_in_title(self.includeWindowStateInTitle.GetValue())
 		_set_guess_object_position_information_when_unavailable(guess_position)
 		_set_query_object_source(query_source)
 		_set_object_navigation_processing_enabled(object_nav_processing)

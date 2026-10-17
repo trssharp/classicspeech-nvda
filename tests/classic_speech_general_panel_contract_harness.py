@@ -224,6 +224,7 @@ class GeneralPanelContractTests(unittest.TestCase):
 
         panel = types.SimpleNamespace(
             announceDefaultButton=Control(True),
+            includeWindowStateInTitle=Control(True),
             guessObjectPositionInformationWhenUnavailable=Control(True),
             queryObjectSourceChoice=Control(2),
             objectNavigationProcessing=Control(True),
@@ -237,6 +238,7 @@ class GeneralPanelContractTests(unittest.TestCase):
 
         section = self._section()
         self.assertTrue(section["announceDefaultButton"])
+        self.assertTrue(section["includeWindowStateInTitle"])
         self.assertEqual(section["queryObjectSource"], "navigator")
         self.assertTrue(section["objectNavigationProcessing"])
         self.assertTrue(section["preventAutomaticSpeechInterrupt"])

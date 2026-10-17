@@ -273,6 +273,7 @@ li { margin: .25em 0; }
 
 <h3 id="misc">Misc</h3>
 <ul>
+<li><strong>Include window state when reporting the title</strong>: append "normal", "maximized" or "minimized" when you press NVDA's title command (<kbd>NVDA+T</kbd>) once. Default: off. It describes the same foreground window as the title; if its state cannot be read, only the native title is reported. Pressing twice still spells only the title, and pressing three times still copies only the title. Automatic window-focus announcements are unchanged.</li>
 <li><strong>Announce default button in dialogs</strong>: add "default" when focus reaches a dialog's default button, as in "OK, default, button", or "Open, default, split button" in a file dialog. The default button is the one <kbd>Enter</kbd> presses after you change something in another control of the dialog; see <a href="#default-button">Default button: NVDA+E</a>. A button that counts as the default only while it has focus is not announced as the default. Default: off.</li>
 <li><strong>Guess object position information when unavailable</strong>: NVDA's own setting. It estimates positions such as "3 of 10" when an application doesn't report them. Default: off.</li>
 <li><strong>Insert+Tab reports</strong>: what the <kbd>NVDA+Tab</kbd> command reports.
