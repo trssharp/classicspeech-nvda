@@ -126,6 +126,8 @@ _CLASSIC_SPEECH_SPEC = {
         },
         "mutedLabels": "string_list(default=list())",
     },
+    # Versioned, bounded JSON managed by settings.presets, persisted in settings.ini.
+    "presentationPresets": "string(default='')",
     "shapeData": {
         "pauseMode": "string(default='global')",
         "globalPause": "integer(default=80)",

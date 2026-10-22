@@ -100,13 +100,13 @@ class SpeechTimingPanel(wx.Panel):
 			choice.Bind(wx.EVT_CHOICE, self.onInlineChanged)
 
 	def _findPauseChoiceIndex(self, pause_ms: int):
-		for index, (_label, value) in enumerate(GLOBAL_PAUSE_CHOICES):
+		for index, (_label, value) in enumerate(self.__dict__.get("globalPauseOptions", GLOBAL_PAUSE_CHOICES)):
 			if int(value) == int(pause_ms):
 				return index
 		return 1
 
 	def _findTokenPauseChoiceIndex(self, pause_ms: int):
-		for index, (_label, value) in enumerate(TOKEN_PAUSE_CHOICES):
+		for index, (_label, value) in enumerate(self.__dict__.get("tokenPauseOptions", TOKEN_PAUSE_CHOICES)):
 			if int(value) == int(pause_ms):
 				return index
 		return 0
@@ -119,15 +119,17 @@ class SpeechTimingPanel(wx.Panel):
 
 	def _getPauseValueFromChoice(self):
 		selection = self.globalPauseChoice.GetSelection()
-		if selection < 0 or selection >= len(GLOBAL_PAUSE_CHOICES):
+		options = self.__dict__.get("globalPauseOptions", GLOBAL_PAUSE_CHOICES)
+		if selection < 0 or selection >= len(options):
 			return 80
-		return int(GLOBAL_PAUSE_CHOICES[selection][1])
+		return int(options[selection][1])
 
 	def _getTokenPauseValueFromChoice(self, choice):
 		selection = choice.GetSelection()
-		if selection < 0 or selection >= len(TOKEN_PAUSE_CHOICES):
+		options = self.__dict__.get("tokenPauseOptions", TOKEN_PAUSE_CHOICES)
+		if selection < 0 or selection >= len(options):
 			return 0
-		return int(TOKEN_PAUSE_CHOICES[selection][1])
+		return int(options[selection][1])
 
 	def _getPausePlacementFromChoice(self):
 		selection = self.pausePlacementChoice.GetSelection()
@@ -137,7 +139,7 @@ class SpeechTimingPanel(wx.Panel):
 
 	def _refreshShapeFromControls(self):
 		shape = copy.deepcopy(self.shapeConfig)
-		shape["pauseMode"] = PAUSE_MODE_GLOBAL
+		shape.setdefault("pauseMode", PAUSE_MODE_GLOBAL)
 		shape["globalPause"] = self._getPauseValueFromChoice()
 		shape["pausePlacement"] = self._getPausePlacementFromChoice()
 		shape["pauseAfterFinalToken"] = bool(self.pauseAfterFinalToken.GetValue())
@@ -148,10 +150,22 @@ class SpeechTimingPanel(wx.Panel):
 		shape["pauses"] = pauses
 		# Hybrid timing: global pause stays the baseline. Each token either uses
 		# global (-1), turns pause off (0), or overrides with an explicit value.
-		shape["pauseMode"] = PAUSE_MODE_GLOBAL
 		self.shapeConfig = shape
 
 	def _loadControlsFromShape(self):
+		# Existing files can contain valid pauses between the standard choices.
+		# Expose them rather than silently replacing them on preset load or Apply.
+		self.globalPauseOptions = list(GLOBAL_PAUSE_CHOICES)
+		self.tokenPauseOptions = list(TOKEN_PAUSE_CHOICES)
+		globalValue = int(self.shapeConfig.get("globalPause", 80))
+		if globalValue not in {v for _label, v in self.globalPauseOptions}:
+			self.globalPauseOptions.append((_("{ms} ms").format(ms=globalValue), globalValue))
+		for value in self.shapeConfig.get("pauses", {}).values():
+			if value not in {v for _label, v in self.tokenPauseOptions}:
+				self.tokenPauseOptions.append((_("{ms} ms").format(ms=value), value))
+		self.globalPauseChoice.SetItems([label for label, value in self.globalPauseOptions])
+		for choice in self.tokenPauseChoices.values():
+			choice.SetItems([label for label, value in self.tokenPauseOptions])
 		self.globalPauseChoice.SetSelection(
 			self._findPauseChoiceIndex(int(self.shapeConfig.get("globalPause", 80)))
 		)
@@ -185,6 +199,11 @@ class SpeechTimingPanel(wx.Panel):
 		return copy.deepcopy(self.shapeConfig)
 
 	def apply_live(self, save=False):
+		# Preserve token edits made since this panel's last load.
+		latest = _clone_shape_from_manager()
+		for key in ("pauseMode", "globalPause", "pauses", "pausePlacement", "pauseAfterFinalToken"):
+			latest[key] = copy.deepcopy(self.shapeConfig[key])
+		self.shapeConfig = latest
 		_save_shape_config(self.shapeConfig) if save else _preview_shape_config(self.shapeConfig)
 
 	def reset_to_defaults(self):

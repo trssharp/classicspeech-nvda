@@ -30,6 +30,7 @@ li { margin: .25em 0; }
 <li><a href="#getting-started">Getting started</a></li>
 <li><a href="#general-settings">General Settings</a>
 <ol>
+<li><a href="#presentation-presets">Presentation Presets</a></li>
 <li><a href="#verbosity">Verbosity</a></li>
 <li><a href="#token-editor">Token Editor</a></li>
 <li><a href="#speech-timing">Speech Timing</a></li>
@@ -115,8 +116,29 @@ li { margin: .25em 0; }
 <p>Some pages also show options that belong to NVDA itself, such as Document Reading / Proofing and Browse Mode. NVDA saves those in its own configuration, as usual. Before ClassicSpeech changes one of NVDA's settings for the first time, it records the value NVDA had, so resetting or removing ClassicSpeech can put it back.</p>
 
 <h2 id="general-settings">General Settings</h2>
-<p>Open this dialog from the NVDA menu: Preferences, then ClassicSpeech, then General Settings. The dialog is called ClassicSpeech Settings, and its Categories list has eleven pages, described below in order.</p>
+<p>Open this dialog from the NVDA menu: Preferences, then ClassicSpeech, then General Settings. The dialog is called ClassicSpeech Settings, and its Categories list has twelve pages, described below in order.</p>
 <p>Next to the OK button there is a reset button whose name depends on the page: <strong>Reset Profile Now</strong> on Verbosity, <strong>Reset Tokens to Defaults Now</strong> on Token Editor, and <strong>Reset Key Labels to Defaults Now</strong> on Key Labels. Other pages have no reset button.</p>
+
+<h3 id="presentation-presets">Presentation Presets</h3>
+<p>Presets save token order, renamed and muted role/state labels, speech timing, all three verbosity profiles, menu announcements, hotkeys, key labels, and two Misc announcements together. Edit values in their existing categories, then return here to save them together.</p>
+<ul>
+<li><strong>Verbosity:</strong> the selected profile plus Name, Role, State, Description, Tooltip, position behavior and reading edit-field contents for Beginner, Intermediate and Advanced, including profiles you have not visited in this dialog.</li>
+<li><strong>Token Editor and Speech Timing:</strong> token order/labels and global/per-token pauses, placement and final pause.</li>
+<li><strong>Menus:</strong> all four announcement switches and their messages, including retained messages while disabled.</li>
+<li><strong>Hotkeys and Key Labels:</strong> where/which shortcuts are spoken, formatting, simple dialog access-key behavior, and key-name renames/mutes.</li>
+<li><strong>Misc:</strong> Include window state when reporting the title and Announce default button in dialogs. Other Misc options are excluded.</li>
+</ul>
+<p>Use the arrow keys in the native preset list to select a preset. Selection alone never loads it. Tab to <strong>Load</strong> to use the selected preset. If the current presentation has been modified, ClassicSpeech asks before discarding those changes. The status names the loaded preset and says <strong>modified</strong> when its content differs; changing settings back removes that status.</p>
+<ul>
+<li><strong>Save as...</strong> creates a preset from the current working settings. Names must be unique, ignoring letter case, and contain 1 to 80 characters.</li>
+<li><strong>Update</strong> replaces the selected user preset with current presentation settings, after a confirmation naming that preset. Updating an older token/timing preset adds the newly supported categories while preserving unknown future data.</li>
+<li><strong>Rename...</strong> changes a user preset's name.</li>
+<li><strong>Delete</strong> removes a user preset, after confirmation. It does not change the current presentation.</li>
+<li><strong>ClassicSpeech defaults</strong> restores canonical defaults for all included presentation categories, not native NVDA defaults or a copy of your personal settings. This built-in preset cannot be updated, renamed or deleted.</li>
+</ul>
+<p>Library changes are staged: <strong>Apply</strong> or <strong>OK</strong> accepts them; <strong>Cancel</strong>, Escape or closing the window discards changes since opening or the last Apply. Loading previews the presentation immediately, with the same rollback boundary. These actions do not immediately write settings.ini; the existing NVDA configuration-save boundary still applies.</p>
+<p>Older token/timing presets leave newer categories unchanged when loaded. Their modified status compares only categories they actually contain. <strong>Save as</strong> always captures all currently supported presentation categories. This is not an all-settings snapshot: text/number processing, document/proofing, web settings, voices, schemes, interruption/priority controls, command-source/navigation-processing switches, updates, diagnostics, enable/hook switches and other Advanced settings are excluded. Native preferences are not saved as preset content; the existing verbosity/hotkey behavior still synchronizes NVDA's object-description, tooltip, position and shortcut-reporting switches. Cancel restores those exact previous values.</p>
+<p>Invalid preset records are ignored without replacing current settings. Future fields/domains are preserved but not applied. An unsupported library version is read-only: its exact data is kept unchanged through Apply, OK, Cancel and Close. Save as, Update, Rename and Delete are unavailable until you use a compatible version or explicitly replace the library. You can still load ClassicSpeech defaults without replacing the saved library.</p>
 
 <h3 id="verbosity">Verbosity</h3>
 <p>Choose how much ClassicSpeech says about each object. A verbosity profile is a named set of these choices.</p>

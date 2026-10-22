@@ -6,6 +6,8 @@ import wx
 import logHandler
 
 from .check_lists import check_list_class
+from .shape_config import _clone_shape_from_manager
+from .config_core import _get_live_verbosity_manager
 
 from .accessibility import _set_panel_description
 from .profile_config import (
@@ -53,6 +55,10 @@ class VerbosityPanel(wx.Panel):
 		self.currentEditProfile = _get_active_profile_name()
 		self.profileConfig = _clone_profile_from_manager(self.currentEditProfile)
 		self.profileBehavior = _get_profile_behavior(self.currentEditProfile)
+		self.workingProfiles = {name: _clone_profile_from_manager(name) for name in PROFILE_NAMES}
+		self.workingBehaviors = {name: _get_profile_behavior(name) for name in PROFILE_NAMES}
+		self.savedProfiles = copy.deepcopy(self.workingProfiles)
+		self.savedBehaviors = copy.deepcopy(self.workingBehaviors)
 		self._description = (
 			_("Choose the active verbosity profile and which object details ClassicSpeech speaks for that profile.")
 		)
@@ -165,6 +171,9 @@ class VerbosityPanel(wx.Panel):
 		if checkBox is not None:
 			behavior["readEditFieldContents"] = bool(checkBox.GetValue())
 		self.profileBehavior = behavior
+		if "workingProfiles" in self.__dict__:
+			self.workingProfiles[self.currentEditProfile] = copy.deepcopy(profile)
+			self.workingBehaviors[self.currentEditProfile] = copy.deepcopy(behavior)
 
 	def _loadEditorsFromProfileConfig(self):
 		enabled = self.profileConfig.get("enabledTokens", {})
@@ -175,12 +184,13 @@ class VerbosityPanel(wx.Panel):
 		self._loadReadEditFieldContents()
 
 	def onActiveProfileChanged(self, evt=None):
+		self._refreshWorkingConfigFromControls()
 		self.currentEditProfile = _profile_name_from_choice(
 			self.activeProfileChoice,
 			self.currentEditProfile,
 		)
-		self.profileConfig = _clone_profile_from_manager(self.currentEditProfile)
-		self.profileBehavior = _get_profile_behavior(self.currentEditProfile)
+		self.profileConfig = copy.deepcopy(self.workingProfiles[self.currentEditProfile])
+		self.profileBehavior = copy.deepcopy(self.workingBehaviors[self.currentEditProfile])
 		self._loadEditorsFromProfileConfig()
 
 		try:
@@ -222,14 +232,21 @@ class VerbosityPanel(wx.Panel):
 			self.currentEditProfile,
 		)
 
+		# Verbosity owns enabled tokens and behavior, not global shape.
+		# Refresh the legacy combined setter payload for every event/switch/reset.
+		self.profileConfig.update(_clone_shape_from_manager())
+
 		if save:
 			_set_active_profile_name(self.currentEditProfile)
 			_save_profile_config(self.currentEditProfile, self.profileConfig)
 			_save_profile_behavior(self.currentEditProfile, self.profileBehavior)
 
+		# Activate before preview; set_profile would rebuild from saved overrides.
+		manager = _get_live_verbosity_manager()
+		if manager is not None:
+			manager.current_profile = self.currentEditProfile
 		_preview_profile_config(self.currentEditProfile, self.profileConfig)
 		_apply_profile_behavior_runtime(self.profileConfig, self.profileBehavior)
-		_apply_profile_live(self.currentEditProfile)
 
 	def reset_current_profile(self):
 		message = _(
@@ -252,6 +269,7 @@ class VerbosityPanel(wx.Panel):
 		self.profileConfig = _clone_profile_from_manager(self.currentEditProfile)
 		self.profileBehavior = _get_profile_behavior(self.currentEditProfile)
 		self._loadEditorsFromProfileConfig()
+		self._refreshWorkingConfigFromControls()
 		self.apply_live(save=True)
 
 	def get_working_profile_name(self):

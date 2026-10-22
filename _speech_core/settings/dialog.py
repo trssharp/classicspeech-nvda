@@ -1,6 +1,7 @@
 from ..localization import _
 
 import copy
+import config as nvda_config
 
 import wx
 from wx.lib import scrolledpanel
@@ -55,6 +56,13 @@ from .speech_timing_panel import SpeechTimingPanel
 from .text.panel import TextProcessingPanel
 from .token_editor_panel import TokenEditorPanel
 from .verbosity_panel import VerbosityPanel
+from .presets.panel import PresentationPresetsPanel
+from .presets.model import merge as merge_presentation
+from .presets import adapters as presentation_adapters
+from .presets import native_state as presentation_native_state
+from .presets.model import FIELDS as SHAPE_FIELDS
+from .shape_config import _clone_shape_from_manager, _preview_shape_config
+from .config_core import _get_live_verbosity_manager
 
 
 log = logHandler.log
@@ -68,6 +76,7 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 	shouldSuspendConfigProfileTriggers = True
 
 	CATEGORY_NAMES = [
+		_("Presentation Presets"),
 		_("Verbosity"),
 		_("Token Editor"),
 		_("Speech Timing"),
@@ -108,6 +117,7 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 			style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.LC_NO_HEADER,
 		)
 		self.categoryList.SetName(_("Categories"))
+		self.categoryList.SetMinSize((220, -1))
 		self.categoryList.InsertColumn(0, _("Categories"))
 		for categoryName in self.CATEGORY_NAMES:
 			self.categoryList.Append((categoryName,))
@@ -136,8 +146,10 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		self.hotkeysPanel = HotkeysPanel(self.panelHost)
 		self.miscPanel = MiscPanel(self.panelHost)
 		self.advancedPanel = AdvancedPanel(self.panelHost)
+		self.presentationPresetsPanel = PresentationPresetsPanel(self.panelHost)
 
 		self.dynamicPanels = [
+			self.presentationPresetsPanel,
 			self.verbosityPanel,
 			self.tokenEditorPanel,
 			self.speechTimingPanel,
@@ -155,7 +167,8 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 			self.panelHostSizer.Add(panel, 1, wx.EXPAND)
 			panel.Hide()
 
-		self.verbosityPanel.Show()
+		self.presentationPresetsPanel.Show()
+		self.panelHost.SetupScrolling(scroll_x=False)
 
 		rightSizer.Add(self.panelHost, 1, wx.ALL | wx.EXPAND, 8)
 		contentSizer.Add(rightSizer, 1, wx.ALL | wx.EXPAND, 8)
@@ -165,6 +178,8 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		bottomRow = wx.BoxSizer(wx.HORIZONTAL)
 
 		self.resetActionBtn = wx.Button(self, label=_("Reset Profile Now"))
+		self.resetActionBtn.Hide()
+		self.resetActionBtn.Enable(False)
 		bottomRow.Add(self.resetActionBtn, 0, wx.ALL, 8)
 
 		bottomRow.AddStretchSpacer()
@@ -200,8 +215,18 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		wx.CallAfter(self._setInitialFocus)
 
 	def _captureTransactionBaseline(self):
-		conf = _ensure_classic_speech_section()
-		self._originalClassicSpeech = _to_plain_data(conf)
+		manager = _get_live_verbosity_manager()
+		self._originalVerbosityRuntime = (
+			(manager.current_profile, copy.deepcopy(manager.get_profile_config()))
+			if manager is not None else None
+		)
+		self._originalNativeLeaves = presentation_native_state.capture()
+		try:
+			base = nvda_config.conf.profiles[0]
+		except Exception:
+			base = nvda_config.conf
+		self._originalClassicSpeechPresent = 'classicSpeech' in base
+		self._originalClassicSpeech = _to_plain_data(base.get('classicSpeech', {}))
 		self._originalDocumentFormatting = _capture_document_formatting_state()
 		self._originalPresentation = {
 			"reportKeyboardShortcuts": _get_nvda_setting(
@@ -225,6 +250,17 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		try:
 			conf = _ensure_classic_speech_section()
 			_replace_section_contents(conf, self._originalClassicSpeech)
+			try:
+				self._applyRuntimeFromCurrentConfig()
+				runtime = self.__dict__.get('_originalVerbosityRuntime')
+				manager = _get_live_verbosity_manager()
+				if runtime is not None and manager is not None:
+					manager.current_profile = runtime[0]
+					manager.set_profile_config(copy.deepcopy(runtime[1]), save=False)
+			finally:
+				# Runtime setters may materialize absent defaults. Keep the exact raw
+				# transaction snapshot, including library and shape section presence.
+				_replace_section_contents(conf, self._originalClassicSpeech)
 
 			_set_nvda_setting(
 				"presentation",
@@ -252,13 +288,23 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 				self._originalPresentation["reportTooltips"],
 			)
 			_restore_document_formatting_state(self._originalDocumentFormatting)
-
-			self._applyRuntimeFromCurrentConfig()
+			if self.__dict__.get('_originalNativeLeaves') is not None:
+				presentation_native_state.restore(self._originalNativeLeaves)
+			if self.__dict__.get('_originalClassicSpeechPresent') is False:
+				try:
+					base = nvda_config.conf.profiles[0]
+				except Exception:
+					base = nvda_config.conf
+				base.pop('classicSpeech', None)
 		except Exception:
 			log.exception("ClassicSpeech: failed to restore original dialog state")
 
 	def _applyRuntimeFromCurrentConfig(self):
 		"""Re-apply live state after restoring the saved dialog snapshot."""
+		verbosity = _get_live_verbosity_manager()
+		if verbosity is not None:
+			# set_profile alone reloads verbosity, but leaves previewed shape live.
+			verbosity.load_from_config()
 		_set_speech_hook_enabled(_get_speech_hook_enabled())
 		apply_key_labels_live(get_key_label_config())
 
@@ -271,6 +317,9 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 
 
 	def _markDirty(self):
+		presets = self.__dict__.get("presentationPresetsPanel")
+		if presets is not None:
+			presets.refresh_status()
 		try:
 			self.applyBtn.Enable(True)
 		except Exception:
@@ -292,15 +341,15 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		for i, panel in enumerate(self.dynamicPanels):
 			panel.Show(i == index)
 
-		if index == 0:
+		if index == 1:
 			self.resetActionBtn.Show()
 			self.resetActionBtn.SetLabel(_("Reset Profile Now"))
 			self.resetActionBtn.Enable(True)
-		elif index == 1:
+		elif index == 2:
 			self.resetActionBtn.Show()
 			self.resetActionBtn.SetLabel(_("Reset Tokens to Defaults Now"))
 			self.resetActionBtn.Enable(True)
-		elif index == 7:
+		elif index == 8:
 			self.resetActionBtn.Show()
 			self.resetActionBtn.SetLabel(_("Reset Key Labels to Defaults Now"))
 			self.resetActionBtn.Enable(True)
@@ -309,7 +358,7 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 			self.resetActionBtn.Enable(False)
 
 		self.panelHost.Layout()
-		self.panelHost.SetupScrolling()
+		self.panelHost.SetupScrolling(scroll_x=False)
 		self.Layout()
 
 		wx.CallAfter(self._setInitialFocus)
@@ -328,11 +377,14 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 			log.exception("ClassicSpeech: postPopup failed during dialog close")
 
 	def _saveTransaction(self):
+		presets = self.__dict__.get("presentationPresetsPanel")
+		if presets is not None:
+			presets.library.serialize()
 		profile_name = self.verbosityPanel.get_working_profile_name()
 
 		profile_config = self.verbosityPanel.get_working_profile_config()
 		profile_behavior = self.verbosityPanel.get_working_profile_behavior()
-		shape_config = self.speechTimingPanel.get_working_shape_config()
+		shape_config = self.get_working_shape()
 		key_label_config = self.keyLabelsPanel.get_working_key_label_config()
 		hotkey_config = self.hotkeysPanel.get_working_hotkey_config()
 		hotkey_mode = hotkey_config["mode"]
@@ -356,7 +408,21 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		profile_config["order"] = list(shape_config.get("order", []))
 
 		_set_active_profile_name(profile_name)
-		_save_profile_config(profile_name, profile_config)
+		# Commit every transaction-local profile, including profiles no longer visible.
+		working = self.verbosityPanel.__dict__.get('workingProfiles')
+		if working is not None:
+			for name, value in working.items():
+				# Do not materialize untouched inactive overrides just by opening General.
+				if (name != profile_name
+					and value['enabledTokens'] == self.verbosityPanel.savedProfiles[name]['enabledTokens']
+					and self.verbosityPanel.workingBehaviors[name] == self.verbosityPanel.savedBehaviors[name]):
+					continue
+				value = copy.deepcopy(value)
+				value.update(shape_config)
+				_save_profile_config(name, value)
+				_save_profile_behavior(name, self.verbosityPanel.workingBehaviors[name])
+		else:
+			_save_profile_config(profile_name, profile_config)
 		_save_shape_config(shape_config)
 		_save_key_label_config(key_label_config)
 		_set_hotkey_mode(hotkey_mode)
@@ -377,6 +443,9 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		self.verbosityPanel.currentEditProfile = profile_name
 		self.verbosityPanel.profileConfig = copy.deepcopy(profile_config)
 		self.verbosityPanel.profileBehavior = copy.deepcopy(profile_behavior)
+		if working is not None:
+			self.verbosityPanel.savedProfiles = copy.deepcopy(working)
+			self.verbosityPanel.savedBehaviors = copy.deepcopy(self.verbosityPanel.workingBehaviors)
 
 		self.speechTimingPanel.shapeConfig = copy.deepcopy(shape_config)
 		self.speechTimingPanel._loadControlsFromShape()
@@ -392,6 +461,31 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		self.hotkeysPanel.hotkeyTypes = hotkey_config["types"]
 		self.hotkeysPanel.dialogAccessKeyOnly = hotkey_config["dialogAccessKeyOnly"]
 		self.hotkeysPanel._loadControlsFromConfig()
+		if presets is not None:
+			presets.save_library()
+			presets.refresh_status()
+
+	def get_working_shape(self):
+		"""Read each editor's owned fields, never a stale combined panel copy."""
+		shape = copy.deepcopy(_clone_shape_from_manager())
+		shape.update(self.speechTimingPanel.get_working_shape_config())
+		shape["order"] = self.tokenEditorPanel.get_working_order()
+		shape["renames"] = self.tokenEditorPanel.get_working_renames()
+		shape["mutedLabels"] = self.tokenEditorPanel.get_working_muted_labels()
+		return shape
+
+	def get_working_presentation(self):
+		return {**self.get_working_shape(), **presentation_adapters.capture(self)}
+
+	def load_working_presentation(self, snapshot):
+		shape = merge_presentation(self.get_working_shape(), snapshot)
+		shape = {k: shape[k] for k in SHAPE_FIELDS}
+		presentation_adapters.apply(self, snapshot)
+		self.tokenEditorPanel.shapeConfig = copy.deepcopy(shape)
+		self.speechTimingPanel.shapeConfig = copy.deepcopy(shape)
+		self.tokenEditorPanel._loadEditorsFromShapeConfig()
+		self.speechTimingPanel._loadControlsFromShape()
+		_preview_shape_config(shape)
 
 	def _getSelectedCategoryIndex(self):
 		try:
@@ -401,16 +495,19 @@ class ClassicSpeechDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		return index if index != -1 else 0
 
 	def onCategoryChanged(self, evt):
+		presets = self.__dict__.get("presentationPresetsPanel")
+		if presets is not None:
+			presets.refresh_status()
 		self._showPanelByIndex(evt.GetIndex())
 
 	def onResetCurrentProfile(self, evt):
 		index = self._getSelectedCategoryIndex()
-		if index == 0:
+		if index == 1:
 			self.verbosityPanel.reset_current_profile()
 			self._captureTransactionBaseline()
-		elif index == 1:
+		elif index == 2:
 			self.tokenEditorPanel.reset_tokens_to_defaults()
 			self._captureTransactionBaseline()
-		elif index == 7:
+		elif index == 8:
 			self.keyLabelsPanel.reset_key_labels_to_defaults()
 			self._captureTransactionBaseline()
