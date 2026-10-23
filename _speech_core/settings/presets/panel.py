@@ -20,10 +20,11 @@ class PresentationPresetsPanel(wx.Panel):
         self.libraryChanged = False
         description = _(
             'Save tokens, timing, all three verbosity profiles, menus, hotkeys, key labels, '
-            'Misc title-window-state and default-button announcements, and Browse/Focus Mode indication together. '
+            'Misc title-window-state and default-button announcements, Browse/Focus Mode indication, '
+            'and the speech hook startup announcement together. '
             'Edit values in General Settings and Web / Browse Mode Settings. Selecting a preset does not load it. '
             'Older presets leave missing categories unchanged. Voices, schemes, interruption '
-            'controls, Advanced and other native NVDA preferences are not included.'
+            'controls, hook enablement, other Advanced settings and other native NVDA preferences are not included.'
         )
         _set_panel_description(self, _('Presentation Presets'), description)
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -41,6 +42,8 @@ class PresentationPresetsPanel(wx.Panel):
             ('updateBtn', _('&Update'), self.onUpdate),
             ('renameBtn', _('&Rename...'), self.onRename),
             ('deleteBtn', _('&Delete'), self.onDelete),
+            ('importBtn', _('&Import…'), self.onImport),
+            ('exportBtn', _('&Export…'), self.onExport),
         ):
             button = wx.Button(self, label=label)
             setattr(self, attr, button)
@@ -73,6 +76,8 @@ class PresentationPresetsPanel(wx.Panel):
         key = self.selected()
         editable = key is not None and key != DEFAULT_ID and not self.library.read_only
         self.saveAsBtn.Enable(not self.library.read_only)
+        self.importBtn.Enable(not self.library.read_only)
+        self.exportBtn.Enable(key in self.library.records)
         self.loadBtn.Enable(key is not None)
         for button in (self.updateBtn, self.renameBtn, self.deleteBtn):
             button.Enable(editable)
@@ -204,6 +209,56 @@ class PresentationPresetsPanel(wx.Panel):
             self.library.delete(key)
             self.refresh_list()
             self.changed()
+
+    def _transfer_path(self, exporting=False):
+        # Called directly by a native button event, outside NVDA's core pump.
+        style = wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT if exporting else wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
+        dialog = wx.FileDialog(self, _('Export presentation preset') if exporting else _('Import presentation preset'),
+                               defaultFile='presentation-preset.json' if exporting else '',
+                               wildcard=_('JSON files (*.json)|*.json'), style=style)
+        try:
+            if dialog.ShowModal() != wx.ID_OK or self.dialog._destroying:
+                return None
+            return dialog.GetPath()
+        finally:
+            dialog.Destroy()
+
+    def onImport(self, event=None):
+        from . import transfer
+        from ...message_priority import speak_message
+        try:
+            self.library._require_writable()
+            path = self._transfer_path()
+            if path is None:
+                return
+            record = transfer.read(path)
+            try:
+                name = self.library.validate_name(record['name'])
+            except ValueError:
+                name = self.prompt_name(_('Import preset as'), record['name'])
+                if name is None or self.dialog._destroying:
+                    return
+            key = transfer.stage(self.library, record, name)
+        except (OSError, ValueError) as error:
+            speak_message(_('Could not import preset: {reason}').format(reason=str(error)))
+            return
+        self.refresh_list(key)
+        self.changed()
+        speak_message(_('{name} preset imported. Select Load to use it.').format(name=name))
+
+    def onExport(self, event=None):
+        from . import transfer
+        from ...message_priority import speak_message
+        try:
+            record = transfer.selected_record(self.library, self.selected())
+            path = self._transfer_path(exporting=True)
+            if path is None:
+                return
+            transfer.write(path, record)
+        except (OSError, ValueError) as error:
+            speak_message(_('Could not export preset: {reason}').format(reason=str(error)))
+            return
+        speak_message(_('{name} preset exported.').format(name=record['name']))
 
     def save_library(self):
         if self.libraryChanged and not self.library.read_only:

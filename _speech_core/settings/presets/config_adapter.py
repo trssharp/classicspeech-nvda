@@ -47,6 +47,11 @@ def _capture():
                     'types': _get_hotkey_types(), 'dialogAccessKeyOnly': _get_hotkey_dialog_access_key_only()},
         'keyLabels': {'version': 1, **get_key_label_config()},
         'misc': {'version': 1, **{k: _as_bool(conf.get(k, v), v) for k, v in domains.MISC_DEFAULTS.items()}},
+        # Preserve stored blank/whitespace text, not the Advanced getter's
+        # effective spoken fallback. Capture must not materialize missing keys.
+        'speechHookAnnouncement': {'version': 1, **{
+            k: _as_bool(conf.get(k, v), v) if type(v) is bool else str(conf.get(k, v) or '')
+            for k, v in domains.HOOK_ANNOUNCEMENT_DEFAULTS.items()}},
         'messages': {'version': 1,
                      'browseModeMessage': messages.get_custom_browse_mode_message() or '',
                      'focusModeMessage': messages.get_custom_focus_mode_message() or '',
@@ -76,6 +81,10 @@ def apply(snapshot):
         _apply_profile_behavior_runtime(_clone_profile_from_manager(active), _get_profile_behavior(active))
     if 'menus' in snapshot:
         conf.update({k: snapshot['menus'][k] for k in domains.MENU_DEFAULTS})
+    if 'speechHookAnnouncement' in snapshot:
+        # Preference/text only: never invoke the hook lifecycle or play speech.
+        conf.update({k: snapshot['speechHookAnnouncement'][k]
+                     for k in domains.HOOK_ANNOUNCEMENT_DEFAULTS})
     if 'hotkeys' in snapshot:
         data = snapshot['hotkeys']
         _set_hotkey_mode(data['mode'])

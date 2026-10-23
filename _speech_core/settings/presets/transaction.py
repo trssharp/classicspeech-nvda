@@ -11,6 +11,7 @@ HOTKEY_KEYS = ('hotkeyMode', 'hotkeyFormat', 'hotkeyTypes', 'hotkeyDialogAccessK
 PATHS = [(k,) for k in (*domains.MENU_DEFAULTS, *domains.MISC_DEFAULTS, *HOTKEY_KEYS,
                         'defaultProfile', 'positionMode', 'readEditFieldContents', 'presentationPresets')]
 PATHS += [('shapeData', k) for k in FIELDS]
+PATHS += [(k,) for k in domains.HOOK_ANNOUNCEMENT_DEFAULTS]
 PATHS += [('keyLabelData', k) for k in ('renames', 'mutedLabels')]
 PATHS += [('modeIndicationData', k) for k in ('browseModeMessage', 'focusModeMessage')]
 for name in domains.PROFILE_NAMES:

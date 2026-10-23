@@ -119,6 +119,11 @@ class PackageVersioningTests(unittest.TestCase):
         self.assertIn("globalPlugins/_speech_core/settings/text/__init__.py", members)
         self.assertIn("globalPlugins/_speech_core/settings/text/config.py", members)
         self.assertIn("globalPlugins/_speech_core/settings/text/panel.py", members)
+        self.assertIn("globalPlugins/_speech_core/settings/presets/transfer.py", members)
+        for module in ('domains', 'config_adapter', 'transaction'):
+            self.assertIn(f"globalPlugins/_speech_core/settings/presets/{module}.py", members)
+        self.assertNotIn("tests/classic_speech_presentation_presets_announcement_harness.py", members)
+        self.assertNotIn("tests/classic_speech_presentation_presets_transfer_harness.py", members)
         self.assertNotIn("globalPlugins/_speech_core/settings/text_processing_config.py", members)
         self.assertNotIn("globalPlugins/_speech_core/settings/text_processing_panel.py", members)
         self.assertIn("locale/es/LC_MESSAGES/nvda.mo", members)

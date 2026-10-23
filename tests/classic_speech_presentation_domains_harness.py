@@ -362,7 +362,7 @@ class PresentationDomainsTests(unittest.TestCase):
     def test_all_new_domains_have_explicit_validated_allowlists(self):
         from globalPlugins._speech_core.settings.presets import domains
         from globalPlugins._speech_core.settings.presets.model import Library, defaults
-        expected = {'verbosity', 'menus', 'hotkeys', 'keyLabels', 'misc', 'messages'}
+        expected = {'verbosity', 'menus', 'hotkeys', 'keyLabels', 'misc', 'messages', 'speechHookAnnouncement'}
         self.assertEqual(set(domains.FIELDS), expected)
         current = dict(defaults(), **domains.defaults())
         lib = Library('', current)

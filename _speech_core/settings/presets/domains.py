@@ -15,6 +15,9 @@ MENU_DEFAULTS = {
 HOTKEY_DEFAULTS = {'mode': 'both', 'format': 'native', 'types': 'both', 'dialogAccessKeyOnly': False}
 MISC_DEFAULTS = {'includeWindowStateInTitle': False, 'announceDefaultButton': False}
 MESSAGE_DEFAULTS = {'browseModeMessage': '', 'focusModeMessage': '', 'passThroughAudioIndication': True}
+HOOK_ANNOUNCEMENT_DEFAULTS = {
+    'announceSpeechHookLoaded': False, 'speechHookLoadedMessage': 'ClassicSpeech hook loaded',
+}
 FIELDS = {
     'verbosity': ('version', 'defaultProfile', 'profiles'),
     'menus': ('version',) + tuple(MENU_DEFAULTS),
@@ -22,6 +25,7 @@ FIELDS = {
     'keyLabels': ('version', 'renames', 'mutedLabels'),
     'misc': ('version',) + tuple(MISC_DEFAULTS),
     'messages': ('version',) + tuple(MESSAGE_DEFAULTS),
+    'speechHookAnnouncement': ('version',) + tuple(HOOK_ANNOUNCEMENT_DEFAULTS),
 }
 
 
@@ -41,6 +45,7 @@ def defaults():
         'keyLabels': {'version': 1, 'renames': {}, 'mutedLabels': []},
         'misc': {'version': 1, **MISC_DEFAULTS},
         'messages': {'version': 1, **MESSAGE_DEFAULTS},
+        'speechHookAnnouncement': {'version': 1, **HOOK_ANNOUNCEMENT_DEFAULTS},
     }
 
 
@@ -91,6 +96,9 @@ def validate(name, data):
                  and _text(data['browseModeMessage']) and _text(data['focusModeMessage']))
     elif name == 'misc':
         valid = all(type(data[k]) is bool for k in MISC_DEFAULTS)
+    elif name == 'speechHookAnnouncement':
+        valid = (type(data['announceSpeechHookLoaded']) is bool
+                 and _text(data['speechHookLoadedMessage']))
     if not valid:
         raise ValueError('Invalid ' + name + ' presentation values')
     return result
