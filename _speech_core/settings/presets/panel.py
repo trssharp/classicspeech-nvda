@@ -4,7 +4,7 @@ from gui import nvdaControls
 
 from ...localization import _
 from ..accessibility import _set_panel_description
-from ..config_core import _read_classic_speech_section, _ensure_classic_speech_section
+from ..config_core import _ensure_classic_speech_section
 from .model import Library, DEFAULT_ID, DEFAULT_NAME
 
 CONFIG_KEY = 'presentationPresets'
@@ -14,13 +14,14 @@ class PresentationPresetsPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
         self.dialog = wx.GetTopLevelParent(self)
-        self.library = Library(_read_classic_speech_section().get(CONFIG_KEY, ''),
+        from .transaction import base
+        self.library = Library(base().get('classicSpeech', {}).get(CONFIG_KEY, ''),
                                self.dialog.get_working_presentation())
         self.libraryChanged = False
         description = _(
             'Save tokens, timing, all three verbosity profiles, menus, hotkeys, key labels, '
-            'and Misc title-window-state and default-button announcements together. '
-            'Edit values in their existing categories. Selecting a preset does not load it. '
+            'Misc title-window-state and default-button announcements, and Browse/Focus Mode indication together. '
+            'Edit values in General Settings and Web / Browse Mode Settings. Selecting a preset does not load it. '
             'Older presets leave missing categories unchanged. Voices, schemes, interruption '
             'controls, Advanced and other native NVDA preferences are not included.'
         )
@@ -102,17 +103,45 @@ class PresentationPresetsPanel(wx.Panel):
                              wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) == wx.YES
 
     def onLoad(self, event=None):
+        from ...message_priority import speak_message
+        from .transaction import Transaction
+        import logHandler
+
         key = self.selected()
         if key is None:
+            speak_message(_('Could not load preset: no preset selected.'))
             return
+        name = (_(DEFAULT_NAME) if key == DEFAULT_ID else
+                self.library.records.get(key, {}).get('name', _('Selected')))
         if self.library.modified(self.dialog.get_working_presentation()) and not self.confirm(
                 _('Discard modified presentation settings and load the selected preset?')):
             return
-        self.dialog.load_working_presentation(self.library.load(key))
+        # Roll back this Load, not the dialog's earlier Apply baseline. The
+        # existing owned-leaf transaction also restores native/runtime state.
+        rollback = Transaction()
+        loaded, reference = self.library.loaded, self.library.reference
+        try:
+            self.dialog.load_working_presentation(self.library.load(key))
+        except (KeyError, ValueError, TypeError, RuntimeError) as error:
+            logHandler.log.exception('ClassicSpeech preset load failed')
+            self.library.loaded, self.library.reference = loaded, reference
+            try:
+                rollback.restore()
+            finally:
+                # A rollback error must still propagate, never become success.
+                if key != DEFAULT_ID and key not in self.library.records:
+                    reason = _('The selected preset is no longer available.')
+                else:
+                    reason = str(error)
+                message = (_('Could not load {name} preset: {reason}').format(name=name, reason=reason)
+                           if reason else _('Could not load {name} preset.').format(name=name))
+                speak_message(message)
+            return
         if not self.library.read_only:
             self.libraryChanged = True
         self.dialog._markDirty()
         self.refresh_status()
+        speak_message(_('{name} preset loaded').format(name=name))
 
     def prompt_name(self, title, value=''):
         while True:

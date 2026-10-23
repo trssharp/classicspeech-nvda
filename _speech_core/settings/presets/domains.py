@@ -14,12 +14,14 @@ MENU_DEFAULTS = {
 }
 HOTKEY_DEFAULTS = {'mode': 'both', 'format': 'native', 'types': 'both', 'dialogAccessKeyOnly': False}
 MISC_DEFAULTS = {'includeWindowStateInTitle': False, 'announceDefaultButton': False}
+MESSAGE_DEFAULTS = {'browseModeMessage': '', 'focusModeMessage': '', 'passThroughAudioIndication': True}
 FIELDS = {
     'verbosity': ('version', 'defaultProfile', 'profiles'),
     'menus': ('version',) + tuple(MENU_DEFAULTS),
     'hotkeys': ('version',) + tuple(HOTKEY_DEFAULTS),
     'keyLabels': ('version', 'renames', 'mutedLabels'),
     'misc': ('version',) + tuple(MISC_DEFAULTS),
+    'messages': ('version',) + tuple(MESSAGE_DEFAULTS),
 }
 
 
@@ -38,6 +40,7 @@ def defaults():
         'hotkeys': {'version': 1, **HOTKEY_DEFAULTS},
         'keyLabels': {'version': 1, 'renames': {}, 'mutedLabels': []},
         'misc': {'version': 1, **MISC_DEFAULTS},
+        'messages': {'version': 1, **MESSAGE_DEFAULTS},
     }
 
 
@@ -83,6 +86,9 @@ def validate(name, data):
                  and all(_text(k) and k for k in muted))
         if valid:
             result['mutedLabels'] = sorted(set(muted))
+    elif name == 'messages':
+        valid = (type(data['passThroughAudioIndication']) is bool
+                 and _text(data['browseModeMessage']) and _text(data['focusModeMessage']))
     elif name == 'misc':
         valid = all(type(data[k]) is bool for k in MISC_DEFAULTS)
     if not valid:

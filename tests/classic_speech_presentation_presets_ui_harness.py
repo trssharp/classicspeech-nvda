@@ -80,15 +80,22 @@ class PresetUITests(unittest.TestCase):
 
     def dialog(self):
         import wx
+        from globalPlugins._speech_core.settings.presets.dialog import PresentationPresetsDialog
+        d = object.__new__(PresentationPresetsDialog)
+        self.stack.enter_context(patch.object(wx, 'GetTopLevelParent', lambda p: d, create=True))
+        PresentationPresetsDialog.__init__(d, None)
+        d.Destroy = Mock()
+        return d
+
+    def general_dialog(self):
+        import wx
         from globalPlugins._speech_core.settings import dialog as module
         d = object.__new__(module.ClassicSpeechDialog)
         self.stack.enter_context(patch.object(wx, 'GetTopLevelParent', lambda p: d, create=True))
-        # All preset-owned panels are real; unrelated categories are isolated.
         for name in ('TextProcessingPanel', 'NumberProcessingPanel',
                      'DocumentReadingProofingPanel', 'AdvancedPanel'):
             self.stack.enter_context(patch.object(module, name, wx.Panel))
         module.ClassicSpeechDialog.__init__(d, None)
-
         d.Destroy = Mock()
         return d
 
@@ -123,8 +130,9 @@ class PresetUITests(unittest.TestCase):
                     self.assertEqual(self.plugin.processor.verbosity.get_shape_config(), defaults())
                     self.assertFalse(p.libraryChanged)
                     # Ordinary control changes must not authorize a library rewrite either.
-                    d.speechTimingPanel.globalPauseChoice.SetSelection(0)
-                    d.speechTimingPanel.onInlineChanged()
+                    current = d.get_working_presentation()
+                    current['globalPause'] = 0
+                    d.load_working_presentation(current)
                     getattr(d, terminal)(self.event())
                     self.assertEqual(self.section()['presentationPresets'], raw)
                     self.assertEqual(self.dialog().presentationPresetsPanel.library.serialize(), raw)
@@ -132,28 +140,26 @@ class PresetUITests(unittest.TestCase):
     def test_real_verbosity_events_cannot_replay_stale_shape_after_load_or_edit(self):
         import wx
         d = self.dialog()
-        p = d.presentationPresetsPanel
         shape = d.get_working_presentation()
         shape.update(globalPause=333, renames={'button': 'push'})
-        key = p.library.save_as('Loaded', shape)
-        p.refresh_list(key)
-        with patch.object(p, 'confirm', return_value=True): p.onLoad()
-        v = d.verbosityPanel
+        d.load_working_presentation(shape)
+        d.onOK(None)
+        g = self.general_dialog()
+        self.assertNotIn('presentationPresetsPanel', g.__dict__)
+        v = g.verbosityPanel
         v.readEditFieldContentsCheckBox.SetValue(False)
         v.readEditFieldContentsCheckBox.bindings[wx.EVT_CHECKBOX](self.event())
         self.assertEqual(self.plugin.processor.verbosity.get_shape_config(), self.shape_only(shape))
-        self.assertEqual(d.get_working_shape(), self.shape_only(shape))
-        self.assertIn('modified', p.status.label)
-        self.assertTrue(d.onApply(None))
+        self.assertEqual(g.get_working_shape(), self.shape_only(shape))
+        self.assertTrue(g.onApply(None))
         applied = copy.deepcopy(self.section())
-        d.tokenEditorPanel.rolePanel._workingRenames['button'] = 'edited'
-        d.tokenEditorPanel.onInlineChanged()
-        expected = d.get_working_presentation()
+        g.tokenEditorPanel.rolePanel._workingRenames['button'] = 'edited'
+        g.tokenEditorPanel.onInlineChanged()
+        expected = g.get_working_shape()
         v.positionModeChoice.SetSelection(1)
         v.positionModeChoice.bindings[wx.EVT_CHOICE](self.event())
-        self.assertEqual(self.plugin.processor.verbosity.get_shape_config(), self.shape_only(expected))
-        self.assertIn('modified', p.status.label)
-        d.onCancel(None)
+        self.assertEqual(self.plugin.processor.verbosity.get_shape_config(), expected)
+        g.onCancel(None)
         self.assertEqual(self.section(), applied)
         self.assertEqual(self.plugin.processor.verbosity.get_shape_config(), self.shape_only(shape))
 
@@ -172,17 +178,15 @@ class PresetUITests(unittest.TestCase):
         import wx
         d = self.dialog()
         p = d.presentationPresetsPanel
-        self.assertEqual(d.CATEGORY_NAMES[0], 'Presentation Presets')
-        self.assertIs(d.dynamicPanels[0], p)
-        self.assertTrue(p.shown)
-        self.assertFalse(d.resetActionBtn.shown)
+        self.assertNotIn('dynamicPanels', d.__dict__)
+        self.assertFalse(d.applyBtn.shown)
         self.assertEqual(d.panelHost.scrolling, {'scroll_x': False})
         before = d.get_working_presentation()
         e = self.event()
         p.presetList.bindings[wx.EVT_LIST_ITEM_FOCUSED](e)
         e.Skip.assert_called_once()
         self.assertEqual(d.get_working_presentation(), before)
-        self.assertNotIn(wx.EVT_CHAR_HOOK, p.presetList.bindings)
+        self.assertEqual(p.presetList.bindings[wx.EVT_CHAR_HOOK], d.onCategoryCharHook)
         for attr, handler in (('loadBtn', p.onLoad), ('saveAsBtn', p.onSaveAs),
                               ('updateBtn', p.onUpdate), ('renameBtn', p.onRename), ('deleteBtn', p.onDelete)):
             self.assertEqual(getattr(p, attr).bindings[wx.EVT_BUTTON], handler)
@@ -201,24 +205,24 @@ class PresetUITests(unittest.TestCase):
         p.refresh_list(key)
         with patch.object(p, 'confirm', return_value=True): p.onLoad()
         self.assertEqual(d.get_working_presentation(), shape)
-        self.assertEqual(self.plugin.processor.verbosity.get_shape_config(), self.shape_only(shape))
-        self.assertFalse(p.library.modified(d.get_working_presentation()))
-        # Timing must not revert token changes, and vice versa.
-        d.tokenEditorPanel.rolePanel._workingRenames['button'] = 'push'
-        d.tokenEditorPanel.onInlineChanged()
+        with patch.object(p, 'confirm', side_effect=AssertionError('unchanged load must not prompt')): p.onLoad()
+        d.onOK(None)
+        g = self.general_dialog()
+        self.assertEqual(g.get_working_shape(), self.shape_only(shape))
+        g.tokenEditorPanel.rolePanel._workingRenames['button'] = 'push'
+        g.tokenEditorPanel.onInlineChanged()
         self.assertEqual(self.plugin.processor.verbosity.get_global_pause(), 160)
-        d.speechTimingPanel.globalPauseChoice.SetSelection(0)
-        d.speechTimingPanel.onInlineChanged()
+        g.speechTimingPanel.globalPauseChoice.SetSelection(0)
+        g.speechTimingPanel.onInlineChanged()
         self.assertEqual(self.plugin.processor.verbosity.get_shape_config()['renames'], {'button': 'push'})
+        g.onOK(None)
+        d = self.dialog()
+        p = d.presentationPresetsPanel
         self.assertIn('modified', p.status.label)
         current = d.get_working_presentation()
-        with patch.object(p, 'confirm', return_value=False) as confirm:
-            p.onLoad()
-            confirm.assert_called_once()
+        with patch.object(p, 'confirm', return_value=False): p.onLoad()
         self.assertEqual(d.get_working_presentation(), current)
         with patch.object(p, 'confirm', return_value=True): p.onLoad()
-        self.assertEqual(d.get_working_presentation(), shape)
-        with patch.object(p, 'confirm', side_effect=AssertionError('unchanged load must not prompt')): p.onLoad()
         self.assertEqual(d.get_working_presentation(), shape)
 
     def test_load_cancel_restores_exact_raw_shape_and_no_library_disk_write(self):
@@ -313,25 +317,19 @@ class PresetUITests(unittest.TestCase):
         d = self.dialog()
         p = d.presentationPresetsPanel
         with patch.object(p, 'prompt_name', return_value='Work'): p.onSaveAs()
-        d.speechTimingPanel.globalPauseChoice.SetSelection(0)
-        d.speechTimingPanel.onInlineChanged()
+        changed = d.get_working_presentation()
+        changed['globalPause'] = 0
+        d.load_working_presentation(changed)
+        p.refresh_status()
         self.assertIn('modified', p.status.label)
-        d.speechTimingPanel.globalPauseChoice.SetSelection(1)
-        d.speechTimingPanel.onInlineChanged()
-        self.assertNotIn('modified', p.status.label)
-        d.speechTimingPanel.globalPauseChoice.SetSelection(0)
-        d.speechTimingPanel.onInlineChanged()
         with patch.object(p, 'confirm', return_value=True): p.onUpdate()
         self.assertTrue(d.onApply(None))
-        self.assertEqual(self.section()['profileData']['Advanced'],
-                         {'enabledTokens': {'role': False}, 'future': ['keep']})
+        self.assertEqual(self.section()['profileData']['Advanced']['future'], ['keep'])
         self.assertEqual(self.section()['unrelated'], {'future': 'keep'})
-        reopened = self.dialog()
-        p = reopened.presentationPresetsPanel
+        p = self.dialog().presentationPresetsPanel
         self.assertEqual(p.library.snapshot(p.selected())['globalPause'], 0)
         with patch.object(p, 'confirm', return_value=True): p.onDelete()
-        reopened.onOK(None)
-        reopened.onClose(self.event())
+        p.dialog.onOK(None)
         self.assertEqual(self.dialog().presentationPresetsPanel.library.records, {})
 
 

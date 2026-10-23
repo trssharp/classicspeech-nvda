@@ -110,6 +110,7 @@ class Library:
         self.invalid = False
         self.read_only = False
         self._raw = raw
+        self._extra = {}
         if raw:
             try:
                 if not isinstance(raw, str) or len(raw) > MAX_BYTES:
@@ -123,6 +124,8 @@ class Library:
                         or data['version'] != VERSION or not isinstance(data.get('records'), dict)
                         or len(data['records']) > MAX_RECORDS):
                     raise ValueError('Unsupported library')
+                self._extra = {k: copy.deepcopy(v) for k, v in data.items()
+                               if k not in ('version', 'records', 'loaded')}
                 for key, record in data['records'].items():
                     try:
                         if not _text(key, 64) or not key or key == DEFAULT_ID or not isinstance(record, dict):
@@ -130,7 +133,7 @@ class Library:
                         name = self.validate_name(record.get('name'))
                         domains = record.get('domains')
                         from_domains(domains)
-                        self.records[key] = {'name': name, 'domains': copy.deepcopy(domains)}
+                        self.records[key] = {**copy.deepcopy(record), 'name': name, 'domains': copy.deepcopy(domains)}
                     except (ValueError, TypeError):
                         self.invalid = True
                 loaded = data.get('loaded')
@@ -223,7 +226,7 @@ class Library:
     def serialize(self):
         if self.read_only:
             return self._raw
-        result = json.dumps({'version': VERSION, 'records': self.records, 'loaded': self.loaded},
+        result = json.dumps({**self._extra, 'version': VERSION, 'records': self.records, 'loaded': self.loaded},
                             ensure_ascii=True, sort_keys=True).replace('%', r'\u0025')
         # ConfigObj interpolation must never interpret user names or labels.
         if len(result) > MAX_BYTES:

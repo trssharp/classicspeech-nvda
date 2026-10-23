@@ -16,17 +16,9 @@ class PresentationDomainsTests(unittest.TestCase):
         base.PresetUITests._controls(self)
 
     def dialog(self):
-        import wx
-        from globalPlugins._speech_core.settings import dialog as module
-        d = object.__new__(module.ClassicSpeechDialog)
-        self.stack.enter_context(patch.object(wx, 'GetTopLevelParent', lambda p: d, create=True))
-        for name in ('TextProcessingPanel', 'NumberProcessingPanel',
-                     'DocumentReadingProofingPanel', 'AdvancedPanel'):
-            self.stack.enter_context(patch.object(module, name, wx.Panel))
-        module.ClassicSpeechDialog.__init__(d, None)
-        from unittest.mock import Mock
-        d.Destroy = Mock()
-        return d
+        return base.PresetUITests.dialog(self)
+
+    general_dialog = base.PresetUITests.general_dialog
 
     def changed(self, current):
         result = copy.deepcopy(current)
@@ -39,6 +31,8 @@ class PresentationDomainsTests(unittest.TestCase):
                     result[domain][key] = 'Custom ' + value
         result['hotkeys'].update(mode='off', format='expandedNoPlus', types='none', dialogAccessKeyOnly=True)
         result['keyLabels'].update(renames={'f1': 'help key'}, mutedLabels=['f2'])
+        result['messages'].update(browseModeMessage='Web %(name)s 100%', focusModeMessage='Forms',
+                                  passThroughAudioIndication=not result['messages']['passThroughAudioIndication'])
         v = result['verbosity']
         v['defaultProfile'] = 'Intermediate'
         for row in v['profiles'].values():
@@ -56,35 +50,38 @@ class PresentationDomainsTests(unittest.TestCase):
         return key
 
     def test_unsaved_outgoing_behavior_survives_switch_and_real_save_as(self):
-        d = self.dialog()
-        v = d.verbosityPanel
+        g = self.general_dialog()
+        v = g.verbosityPanel
         v.readEditFieldContentsCheckBox.SetValue(False)
         v.onInlineProfileChanged()
         v.activeProfileChoice.SetSelection(1)
         v.onActiveProfileChanged()
-        p = d.presentationPresetsPanel
-        with patch.object(p, 'prompt_name', return_value='Unsaved profiles'):
-            p.onSaveAs()
+        self.assertFalse(v.workingBehaviors['Beginner']['readEditFieldContents'])
+        # General accepts all profiles before the independent manager reads them.
+        self.assertTrue(g.onApply(None))
+        p = self.dialog().presentationPresetsPanel
+        with patch.object(p, 'prompt_name', return_value='Accepted profiles'): p.onSaveAs()
         saved = p.library.load(p.library.loaded)
         self.assertFalse(saved['verbosity']['profiles']['Beginner']['readEditFieldContents'])
 
     def test_unchecked_name_preview_is_runtime_not_saved_rebuild(self):
-        d = self.dialog()
+        d = self.general_dialog()
         v = d.verbosityPanel
         v.tokenList.Check(0, False)
         v.onInlineProfileChanged()
         self.assertFalse(v.get_working_profile_config()['enabledTokens']['name'])
         self.assertFalse(self.plugin.processor.verbosity.get_enabled_tokens()['name'])
+        d.onCancel(None)
+        self.assertTrue(self.plugin.processor.verbosity.get_enabled_tokens()['name'])
 
     def test_multi_profile_edits_update_apply_reload_and_cancel(self):
-        import wx
         from globalPlugins._speech_core import settings_file
         import tempfile
         from pathlib import Path
         from globalPlugins._speech_core.settings.config_core import _replace_section_contents
         for close in ('onCancel', 'onClose'):
             with self.subTest(close=close):
-                d = self.dialog()
+                d = self.general_dialog()
                 v = d.verbosityPanel
                 initial_raw = copy.deepcopy(self.section())
                 with patch.object(settings_file, 'write_settings_file', side_effect=AssertionError('premature save')):
@@ -97,18 +94,8 @@ class PresentationDomainsTests(unittest.TestCase):
                         v.onInlineProfileChanged()
                         self.assertFalse(self.plugin.processor.verbosity.get_enabled_tokens()['name'])
                         self.assertTrue(self.plugin.processor.verbosity.get_enabled_tokens()['tooltip'])
-                    expected = copy.deepcopy(d.get_working_presentation())
-                    # No saved per-profile override is written by previews.
                     self.assertEqual(self.section().get('profileData'), initial_raw.get('profileData'))
                     self.assertEqual(self.section().get('profileBehaviorData'), initial_raw.get('profileBehaviorData'))
-                    p = d.presentationPresetsPanel
-                    with patch.object(p, 'prompt_name', return_value='All profiles ' + close): p.onSaveAs()
-                    key = p.library.loaded
-                    v.readEditFieldContentsCheckBox.SetValue(True)
-                    v.onInlineProfileChanged()
-                    expected = copy.deepcopy(d.get_working_presentation())
-                    with patch.object(p, 'confirm', return_value=True): p.onUpdate()
-                    self.assertEqual(p.library.load(key)['verbosity'], expected['verbosity'])
                     self.assertTrue(d.onApply(None))
                     applied = copy.deepcopy(self.section())
                     for index in range(3):
@@ -120,13 +107,17 @@ class PresentationDomainsTests(unittest.TestCase):
                 self.assertEqual(self.section(), applied)
                 self.assertFalse(self.plugin.processor.verbosity.get_enabled_tokens()['name'])
                 self.assertEqual(self.plugin.processor.verbosity.current_profile, 'Advanced')
+                p = self.dialog().presentationPresetsPanel
+                with patch.object(p, 'prompt_name', return_value='All profiles'): p.onSaveAs()
+                expected = p.library.load(p.library.loaded)['verbosity']
+                p.dialog.onOK(None)
                 with tempfile.TemporaryDirectory() as folder:
                     path = str(Path(folder) / 'settings.ini')
                     with patch.object(settings_file, '_may_write_files', return_value=True):
                         self.assertTrue(settings_file.write_settings_file(self.section(), path))
                     _replace_section_contents(self.section(), settings_file.load_settings_file(path))
                     self.plugin.processor.verbosity.load_from_config()
-                    self.assertEqual(self.dialog().get_working_presentation()['verbosity'], expected['verbosity'])
+                    self.assertEqual(self.dialog().get_working_presentation()['verbosity'], expected)
 
     def test_individual_domains_load_only_owned_values_both_directions(self):
         from globalPlugins._speech_core.settings.presets import domains
@@ -165,13 +156,13 @@ class PresentationDomainsTests(unittest.TestCase):
         from pathlib import Path
         from globalPlugins._speech_core import settings_file
         from globalPlugins._speech_core.settings.config_core import _replace_section_contents
-        from globalPlugins._speech_core.settings.presets import adapters
+        from globalPlugins._speech_core.settings.presets import config_adapter as adapters
         from configobj import ConfigObj
         d = self.dialog()
         wanted = self.changed(d.get_working_presentation())
         key = self.load(d, wanted)
         self.assertEqual(d.get_working_presentation(), wanted)
-        self.assertEqual(adapters.capture(d), {k: wanted[k] for k in adapters.domains.FIELDS})
+        self.assertEqual(adapters.capture(), wanted)
         self.assertEqual(self.plugin.processor.verbosity.current_profile, 'Intermediate')
         self.assertTrue(self.plugin.processor.verbosity.announce_default_button)
         self.assertEqual(self.plugin.processor.verbosity.get_global_pause(), 177)
@@ -228,29 +219,31 @@ class PresentationDomainsTests(unittest.TestCase):
         d = self.dialog()
         wanted = self.changed(d.get_working_presentation())
         self.load(d, wanted)
-        v = d.verbosityPanel
+        d.onOK(None)
+        g = self.general_dialog()
+        v = g.verbosityPanel
         for index, name in enumerate(('Beginner', 'Intermediate', 'Advanced')):
             v.activeProfileChoice.SetSelection(index)
             v.activeProfileChoice.bindings[wx.EVT_CHOICE](self.event())
-            self.assertEqual(d.get_working_presentation()['verbosity']['profiles'], wanted['verbosity']['profiles'])
             self.assertEqual(v.get_working_profile_behavior(),
                              {k: wanted['verbosity']['profiles'][name][k] for k in ('positionMode', 'readEditFieldContents')})
-        d.menusPanel.menuOpenMessage.ChangeValue('New menu')
-        d.menusPanel.onChanged()
-        d.hotkeysPanel.dialogAccessKeyOnlyCheck.SetValue(False)
-        d.hotkeysPanel.onInlineChanged()
-        d.miscPanel.includeWindowStateInTitle.SetValue(False)
-        d.miscPanel.onChanged()
+        g.menusPanel.menuOpenMessage.ChangeValue('New menu')
+        g.menusPanel.onChanged()
+        g.hotkeysPanel.dialogAccessKeyOnlyCheck.SetValue(False)
+        g.hotkeysPanel.onInlineChanged()
+        g.miscPanel.includeWindowStateInTitle.SetValue(False)
+        g.miscPanel.onChanged()
         self.assertEqual(self.plugin.processor.verbosity.get_global_pause(), 177)
         self.assertEqual(self.section()['menuOpenMessage'], 'New menu')
         self.assertFalse(self.section()['hotkeyDialogAccessKeyOnly'])
         self.assertFalse(self.section()['includeWindowStateInTitle'])
-        self.assertTrue(d.onApply(None))
-        self.assertEqual(self.dialog().get_working_presentation(), d.get_working_presentation())
+        self.assertTrue(g.onApply(None))
+        reopened = self.dialog().get_working_presentation()
+        self.assertEqual(reopened['verbosity']['profiles'], wanted['verbosity']['profiles'])
 
     def test_native_owned_leaves_and_presence_restore_on_cancel_close_and_apply(self):
         import config
-        from globalPlugins._speech_core.settings.presets import native_state
+        from globalPlugins._speech_core.settings import native_state
         for present in (False, True):
             for close in ('onCancel', 'onClose'):
                 with self.subTest(present=present, close=close):
@@ -369,7 +362,7 @@ class PresentationDomainsTests(unittest.TestCase):
     def test_all_new_domains_have_explicit_validated_allowlists(self):
         from globalPlugins._speech_core.settings.presets import domains
         from globalPlugins._speech_core.settings.presets.model import Library, defaults
-        expected = {'verbosity', 'menus', 'hotkeys', 'keyLabels', 'misc'}
+        expected = {'verbosity', 'menus', 'hotkeys', 'keyLabels', 'misc', 'messages'}
         self.assertEqual(set(domains.FIELDS), expected)
         current = dict(defaults(), **domains.defaults())
         lib = Library('', current)
@@ -386,26 +379,20 @@ class PresentationDomainsTests(unittest.TestCase):
         lib = Library('', defaults())
         key = lib.save_as('Legacy', defaults())
         self.section()['presentationPresets'] = lib.serialize()
+        self.section()['includeWindowStateInTitle'] = True
+        self.section()['menuOpenMessage'] = 'x' * 501
         d = self.dialog()
         p = d.presentationPresetsPanel
-        d.miscPanel.includeWindowStateInTitle.SetValue(True)
-        d.miscPanel.onChanged()
         before = copy.deepcopy(d.get_working_presentation())
         p.refresh_list(key)
         with patch.object(p, 'confirm', return_value=True): p.onLoad()
-        for name in ('verbosity', 'menus', 'hotkeys', 'keyLabels', 'misc'):
+        for name in ('verbosity', 'menus', 'hotkeys', 'keyLabels', 'misc', 'messages'):
             self.assertEqual(d.get_working_presentation()[name], before[name])
-        self.assertNotIn('modified', p.status.label)
-        # An absent domain must not cause a phantom dirty/discard state even
-        # when its current setting cannot fit the new serialization bounds.
-        d.menusPanel.menuOpenMessage.ChangeValue('x' * 501)
-        d.menusPanel.onChanged()
         self.assertNotIn('modified', p.status.label)
         with patch.object(p, 'confirm', side_effect=AssertionError('partial load should not discard unrelated edits')):
             p.onLoad()
-        self.assertEqual(d.menusPanel.menuOpenMessage.GetValue(), 'x' * 501)
-        d.menusPanel.menuOpenMessage.ChangeValue('Representable menu')
-        d.menusPanel.onChanged()
+        self.assertEqual(self.section()['menuOpenMessage'], 'x' * 501)
+        self.section()['menuOpenMessage'] = 'Representable menu'
         with patch.object(p, 'confirm', return_value=True): p.onUpdate()
         self.assertTrue(set(before) - set(defaults()) <= p.library.snapshot(key).keys())
 

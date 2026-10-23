@@ -1,7 +1,7 @@
 """Exact native leaves changed by General; no native section/reset snapshot."""
 import copy
 import config
-from ... import nvda_settings_backup as backup
+from .. import nvda_settings_backup as backup
 
 # Four intrinsic preset effects, plus General's pre-existing unrelated Misc controls.
 NATIVE_KEYS = {
@@ -12,9 +12,9 @@ NATIVE_KEYS = {
 }
 
 
-def capture():
+def capture(keys_by_section=None):
     result = []
-    for section, keys in NATIVE_KEYS.items():
+    for section, keys in (NATIVE_KEYS if keys_by_section is None else keys_by_section).items():
         path = (section,)
         profile, name, _lasting = backup._write_target(config.conf, path)
         present = section in profile

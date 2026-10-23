@@ -720,7 +720,7 @@ class DialogsOutsideTheCoreQueueTests(unittest.TestCase):
 			):
 				queued.add(node.args[1].attr)
 		# Each of these opens a dialog with Show(), which returns at once.
-		self.assertLessEqual(queued, {"_openSettings", "_openWebBrowseSettings", "_openVoiceProfiles", "_openSpeechSchemes"})
+		self.assertLessEqual(queued, {"_openSettings", "_openPresentationPresets", "_openWebBrowseSettings", "_openVoiceProfiles", "_openSpeechSchemes"})
 
 	def test_an_update_check_without_a_github_page_does_not_block_its_caller(self):
 		updates = importlib.import_module("globalPlugins._speech_core.update_check")

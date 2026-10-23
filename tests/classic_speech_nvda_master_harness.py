@@ -213,14 +213,15 @@ class ClassicSpeechNVDAConfigStartupTests(unittest.TestCase):
 		plugin._installClassicSpeechMenu()
 
 		self.assertEqual([item.label for item in plugin._classicSpeechMenuItems], [
-			"General Settings...", "Web / Browse Mode Settings...", "Voice Profiles...",
+			"General Settings...", "Presentation Presets...", "Web / Browse Mode Settings...", "Voice Profiles...",
 			"Speech and Sound Schemes...", "Check for Updates...", "Reset All ClassicSpeech Settings...",
 		])
 		# A separator keeps the update check and the reset apart from the settings dialogs.
 		self.assertEqual(
-			[item.label for item in sys_tray_icon.preferencesMenu.submenu.items][4:],
+			[item.label for item in sys_tray_icon.preferencesMenu.submenu.items][5:],
 			["-", "Check for Updates...", "Reset All ClassicSpeech Settings..."],
 		)
+		self.assertIn(("onClassicSpeechPresentationPresetsMenu", "Presentation Presets..."), bindings)
 		self.assertIn(("onClassicSpeechVoiceProfilesMenu", "Voice Profiles..."), bindings)
 		self.assertIn(("onClassicSpeechSchemesMenu", "Speech and Sound Schemes..."), bindings)
 		self.assertIn(("onClassicSpeechUpdateMenu", "Check for Updates..."), bindings)
