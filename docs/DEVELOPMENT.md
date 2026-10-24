@@ -24,13 +24,54 @@ Development builds are experimental, not stable releases.
   Processing choice. Synthesizer-controlled formatting remains unchanged, as do
   each/first/off position reporting and unrelated phone, date and currency options.
 
+### Presentation presets
+
+- A standalone **Presentation Presets** manager is available from the ClassicSpeech
+  Preferences menu and an unbound Input Gestures command. Presets are explicitly
+  loaded snapshots, not automatically enforced profiles. Save as, Update, Rename
+  and Delete stage the library; protected ClassicSpeech defaults provide a starting
+  point. Loading asks before discarding modified settings and announces its result.
+  Enter or numpad Enter on the preset list accepts like OK, not Load.
+- Presets cover token order, labels and muting; speech timing; all three verbosity
+  profiles; menu announcements; hotkeys; key labels; title-window-state and
+  default-button announcements; Browse/Focus messages and their audio indication;
+  and the Advanced speech-hook startup announcement checkbox and text. Voices,
+  schemes, other text/document/web settings, updates and diagnostics are excluded.
+  Missing domains leave current settings unchanged. Future fields are preserved
+  without applying them, and unsupported libraries remain read-only.
+- Import and Export transfer one saved user preset as validated JSON. Import stages
+  a new record without loading it; name conflicts ask rather than overwrite.
+  Export writes the selected saved record immediately, not unsaved live changes
+  or the whole configuration. Apply/OK accepts library edits; Cancel/Close restores
+  the last accepted owned settings and runtime state without undoing unrelated
+  changes. Persistence still uses NVDA's existing configuration-save boundary.
+
 ### Buttons and settings
+
+- The Voice Profiles dialog now auditions the selected category during normal
+  dialog speech. Voice, Variant and other supported edits are heard immediately;
+  controls follow the voice's actual dependent settings. This stays on the current
+  synthesizer and does not change automatic category routing in other dialogs.
+  Document and web formatting returns normal dialog speech to the opening voice,
+  with its existing explicit item previews retained.
+- Explicit Preview remains available and returns to the selected live audition.
+  Apply accepts edits and continues auditioning; OK accepts and closes. Cancel,
+  Escape and Close discard edits since the last acceptance. Closing always restores
+  the opening native voice settings, including after Apply. Saving NVDA configuration
+  during audition does not persist the audition as the native voice; delayed work
+  is invalidated on close, synthesizer change or plugin unload.
+- **Alt+A** consistently activates an available Apply button in General Settings,
+  Web / Browse Mode Settings, Voice Profiles, Presentation Presets, and Speech and
+  Sound Schemes. Conflicting built-in mnemonics are reassigned; conflicting dynamic
+  driver mnemonics are removed without changing their visible text. Apply retains
+  its existing transaction and does not close the dialog or force a disk save.
 
 - Automatic Voice Profile and scheme voice changes now all pause while the NVDA
   menu or a settings dialog that suspends NVDA configuration-profile triggers is
   open, including rate, pitch and volume changes. A shown dialog still pauses them
   after switching applications. Speech uses the current NVDA voice; automatic
-  routing resumes after closing the menu or dialog. Explicit Preview still works.
+  routing resumes after closing the menu or dialog. Explicit Preview and the
+  dialog-owned Voice Profiles audition described above still work.
   This is a voice-routing bypass, not a disabled speech filter: text formatting,
   scheme sounds and speech history remain active, and native configuration profiles
   are not reset. Existing per-utterance voice restoration is unchanged.
