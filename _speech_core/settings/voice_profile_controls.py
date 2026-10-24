@@ -149,7 +149,7 @@ class VoiceProfileControls:
 					control.SetSelection(values.index(self.snapshot.get(setting.id)))
 				except ValueError:
 					control.SetSelection(wx.NOT_FOUND)
-				control.Bind(wx.EVT_CHOICE, lambda evt, item=profile_setting, values=values: self.set_value(item.setting_id, values[evt.GetSelection()]))
+				control.Bind(wx.EVT_CHOICE, lambda evt, key=setting.id: self._choice_changed(evt, key))
 			control.SetName(profile_setting.label.replace("&", ""))
 			controls.append(control)
 			self._controls_by_setting_id[profile_setting.setting_id] = control
@@ -164,7 +164,12 @@ class VoiceProfileControls:
 		when this editor no longer matches its supported schema; the dialog can
 		then take its existing safe rebuild path.
 		"""
-		settings_by_id = {setting.setting_id: setting for setting in self.settings}
+		fresh = tuple(self._make_setting(setting) for setting in getattr(self.driver, "supportedSettings", ()) if self._include(setting))
+		fresh = tuple(setting for setting in fresh if setting is not None)
+		if [(s.setting_id, s.kind) for s in fresh] != [(s.setting_id, s.kind) for s in self.settings]:
+			return False
+		previous = {setting.setting_id: setting for setting in self.settings}
+		settings_by_id = {setting.setting_id: setting for setting in fresh}
 		for setting_id in settings_by_id:
 			if setting_id == skip_setting_id:
 				continue
@@ -189,6 +194,8 @@ class VoiceProfileControls:
 				elif profile_setting.kind == "boolean":
 					control.SetValue(bool(self.snapshot.get(setting_id, False)))
 				else:
+					if profile_setting.choices != previous[setting_id].choices:
+						control.SetItems([label for _value, label in profile_setting.choices])
 					values = [value for value, _label_text in profile_setting.choices]
 					try:
 						selection = values.index(self.snapshot.get(setting_id))
@@ -197,7 +204,14 @@ class VoiceProfileControls:
 					control.SetSelection(selection)
 		except Exception:
 			return False
+		self.settings = fresh
 		return True
+
+	def _choice_changed(self, event, setting_id):
+		setting = next(item for item in self.settings if item.setting_id == setting_id)
+		index = event.GetSelection()
+		if 0 <= index < len(setting.choices):
+			self.set_value(setting_id, setting.choices[index][0])
 
 	def _numeric_changed(self, event, profile_setting, control):
 		try:

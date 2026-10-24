@@ -24,6 +24,16 @@ def supported_setting_ids(driver) -> tuple[str, ...]:
 	)
 
 
+def ordered_setting_ids(settings, values):
+	"""Apply all advertised selectors before numeric/Boolean dependent values."""
+	ids = [key for key in settings if key in values]
+	selectors = [key for key in ("voice", "variant") if key in ids]
+	selectors.extend(key for key in ids if key not in selectors
+		and not hasattr(settings[key], "minVal")
+		and not isinstance(getattr(settings[key], "defaultVal", None), bool))
+	return selectors + [key for key in ids if key not in selectors]
+
+
 def preview_timeout_seconds(text: str) -> int:
 	"""Give a short preview 15 seconds, with bounded extra time for long text."""
 	return min(30, 15 + min(15, len(text or "") // 20))
@@ -113,6 +123,8 @@ class VoiceProfilePreviewController:
 		self._captured_driver = self._active_synth_getter()
 		if self._captured_driver is None:
 			raise RuntimeError("No active synthesizer is available for preview")
+		self._original_settings = {setting.id: setting for setting in self._captured_driver.supportedSettings
+			if getattr(setting, "id", "") and not setting.id.startswith("_")}
 		self._original_values = {
 			setting_id: getattr(self._captured_driver, setting_id)
 			for setting_id in supported_setting_ids(self._captured_driver)
@@ -225,10 +237,8 @@ class VoiceProfilePreviewController:
 		_stop_scheduled(self._timeout_handle)
 		self._timeout_handle = None
 		self._unsubscribe()
-		# Restore voice first so a driver-side native reset cannot overwrite the
-		# following captured dependent values.
-		restore_ids = (["voice"] if "voice" in self._original_values else [])
-		restore_ids.extend(setting_id for setting_id in self._original_values if setting_id != "voice")
+		# Variant and other selectors can reset dependent values just as Voice can.
+		restore_ids = ordered_setting_ids(self._original_settings, self._original_values)
 		for setting_id in restore_ids:
 			value = self._original_values[setting_id]
 			try:
@@ -250,6 +260,8 @@ class VoiceProfilePreviewController:
 def preview_snapshot(driver, snapshot: dict, announce, on_restore_error=None) -> None:
 	"""Legacy synchronous helper retained for existing non-lifecycle callers/tests."""
 	setting_ids = supported_setting_ids(driver)
+	original_settings = {setting.id: setting for setting in driver.supportedSettings
+		if getattr(setting, "id", "") and not setting.id.startswith("_")}
 	original_values = {setting_id: getattr(driver, setting_id) for setting_id in setting_ids}
 	try:
 		setting_ids = supported_setting_ids(driver)
@@ -265,8 +277,7 @@ def preview_snapshot(driver, snapshot: dict, announce, on_restore_error=None) ->
 			setattr(driver, setting_id, snapshot[setting_id])
 		announce()
 	finally:
-		restore_ids = (["voice"] if "voice" in original_values else [])
-		restore_ids.extend(setting_id for setting_id in original_values if setting_id != "voice")
+		restore_ids = ordered_setting_ids(original_settings, original_values)
 		for setting_id in restore_ids:
 			value = original_values[setting_id]
 			try:

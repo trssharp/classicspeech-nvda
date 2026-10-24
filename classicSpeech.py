@@ -690,6 +690,14 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         log.info(f"ClassicSpeech loaded (profile: {defaultProfile}, hook: {self._speechHookRegistered})")
 
     def terminate(self):
+        voices = getattr(self, "_voiceProfilesDialog", None)
+        if voices is not None:
+            try:
+                voices.onCancel(None)
+            except Exception:
+                log.exception("ClassicSpeech: failed to close Voice Profiles during unload")
+            finally:
+                self._voiceProfilesDialog = None
         presets = getattr(self, "_presentationPresetsDialog", None)
         if presets is not None:
             try:
