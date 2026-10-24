@@ -1,7 +1,8 @@
 """Accessible, transactional editor for ClassicSpeech Voice Profiles.
 
-The dialog edits stored snapshots. Selecting a row never changes the live
-synthesizer; explicit preview temporarily applies and then restores a snapshot.
+The dialog deliberately owns a persistent same-synth audition. Selecting a
+category or editing its settings auditions normal dialog speech, without changing
+NVDA's saved voice. Explicit Preview remains a separate nested transaction.
 """
 from __future__ import annotations
 from ..localization import _
@@ -50,10 +51,22 @@ class VoiceProfilesDialog(wx.Dialog):
 			title=_("ClassicSpeech Voice Profiles"),
 			style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER | wx.MAXIMIZE_BOX,
 		)
+		try:
+			self._initialize(driver)
+		except Exception:
+			self._cancelPreview()
+			self._endAudition()
+			super().Destroy()
+			raise
+
+	def _initialize(self, driver):
 		self.SetName("ClassicSpeechVoiceProfilesDialog")
 		if driver is None:
 			from synthDriverHandler import getSynth
 			driver = getSynth()
+		self._closing = False
+		self._uiGeneration = 0
+		self._audition = self._createAudition(driver)
 		self.store = VoiceProfileStore(driver)
 		self.schemeStore = schemeStore.SchemeStore()
 		self.formattingPanel = None
@@ -86,7 +99,58 @@ class VoiceProfilesDialog(wx.Dialog):
 		self.Bind(wx.EVT_CLOSE, self.onClose)
 		self._select_profile(0)
 		self._clearDirty()
-		wx.CallAfter(self.profileList.SetFocus)
+		self._deferOwned(self.profileList.SetFocus)
+
+	def _createAudition(self, driver):
+		from .voice_profiles_audition import VoiceProfileAudition, VoiceProfileAuditionOverlay
+		import config
+		import speech
+		import synthDriverHandler
+		return VoiceProfileAudition(
+			driver, active_synth_getter=synthDriverHandler.getSynth,
+			cancel_speech=speech.cancelSpeech,
+			overlay_factory=lambda snapshot: VoiceProfileAuditionOverlay(config.conf, driver.name, snapshot),
+			pre_save=config.pre_configSave, post_save=config.post_configSave,
+			config_manager=config.conf,
+			synth_changed=synthDriverHandler.synthChanged, schedule=wx.CallAfter,
+			on_error=lambda key: log.error("ClassicSpeech audition restore/resume failed: %s", key),
+		)
+
+	def _deferOwned(self, callback, *args):
+		generation = self._uiGeneration
+		def run():
+			if self._closing or generation != self._uiGeneration or self.IsBeingDeleted():
+				return
+			callback(*args)
+		wx.CallAfter(run)
+
+	def _auditionProfile(self, profile_id):
+		audition = getattr(self, "_audition", None)
+		if audition is not None:
+			try:
+				audition.select(self.store.get_preview_snapshot(profile_id) if profile_id else None)
+			except Exception:
+				log.exception("ClassicSpeech Voice Profiles live audition failed")
+
+	def _endAudition(self):
+		self._closing = True
+		self._uiGeneration = getattr(self, "_uiGeneration", 0) + 1
+		audition = getattr(self, "_audition", None)
+		if audition is not None:
+			audition.close()
+
+	def _editorSnapshot(self, profile_id):
+		audition = getattr(self, "_audition", None)
+		if audition is not None and audition.active:
+			return audition.snapshot()
+		return self.store.get_snapshot(profile_id)
+
+	def Destroy(self):
+		try:
+			self._cancelPreview()
+		finally:
+			self._endAudition()
+		return super().Destroy()
 
 	def _build_profile_list(self, content):
 		left = wx.BoxSizer(wx.VERTICAL)
@@ -169,6 +233,8 @@ class VoiceProfilesDialog(wx.Dialog):
 		"""Per-item voices for NVDA's document formatting and web elements."""
 		from .schemes_panel import SchemeItemsPanel
 
+		self._uiGeneration = getattr(self, "_uiGeneration", 0) + 1
+		self._auditionProfile(None)
 		self.currentProfileId = None
 		self._clear_editor()
 		self.editorPanel.Show()
@@ -197,10 +263,12 @@ class VoiceProfilesDialog(wx.Dialog):
 		self.Layout()
 
 	def _show_profile(self, row):
+		self._uiGeneration = getattr(self, "_uiGeneration", 0) + 1
+		self._auditionProfile(row.profile_id)
 		self.currentProfileId = row.profile_id
 		self._clear_editor()
 		self.editorPanel.Show()
-		snapshot = self.store.get_snapshot(row.profile_id)
+		snapshot = self._editorSnapshot(row.profile_id)
 		self.currentControls = VoiceProfileControls(
 			self.store.driver,
 			snapshot,
@@ -230,16 +298,19 @@ class VoiceProfilesDialog(wx.Dialog):
 			event.Skip()
 
 	def onProfileChanged(self, event):
-		if self._preview_is_active():
+		if getattr(self, "_closing", False) or self._preview_is_active():
 			return
 		index = event.GetIndex()
+		if index < 0 or index > len(self.store.rows):
+			return
 		if index == len(self.store.rows):
 			if self.formattingPanel is None:
 				self._show_formatting_voices()
 			return
 		next_profile_id = self.store.rows[index].profile_id
-		if next_profile_id != self.currentProfileId:
-			self._markDirty()
+		if next_profile_id == self.currentProfileId:
+			return
+		self._markDirty()
 		self._show_profile(self.store.rows[index])
 
 	def _markDirty(self):
@@ -248,8 +319,20 @@ class VoiceProfilesDialog(wx.Dialog):
 		self.Layout()
 
 	def _profile_value_changed(self, profile_id, setting_id, value):
-		"""Commit an editor change without applying it to the live synthesizer."""
-		self.store.set_value(profile_id, setting_id, value)
+		"""Edit the working record and refresh this deliberately owned audition."""
+		if getattr(self, "_closing", False) or profile_id != self.currentProfileId:
+			return
+		self._cancelPreview()
+		if setting_id in {"voice", "variant"}:
+			audition = getattr(self, "_audition", None)
+			if audition is not None:
+				# Existing native-default probes must capture the real opening
+				# state, not an audition that could outlive a nested unload/change.
+				audition.pause()
+		self.store.set_value(profile_id, setting_id, value, explicit=True)
+		if getattr(self, "_closing", False):
+			return
+		self._auditionProfile(profile_id)
 		self._markDirty()
 		if setting_id in {"voice", "variant"}:
 			# Native selector changes can reset dependent engine defaults. Refresh the
@@ -258,13 +341,13 @@ class VoiceProfilesDialog(wx.Dialog):
 				# ``get_snapshot`` returns a newly resolved baseline+override mapping.
 				# The existing controls otherwise retain the old mapping from before
 				# Voice selection and would display the prior voice's Pitch/Rate/etc.
-				self.currentControls.snapshot = self.store.get_snapshot(profile_id)
+				self.currentControls.snapshot = self._editorSnapshot(profile_id)
 				if self.currentControls.refresh_snapshot_values(skip_setting_id="voice"):
 					return
 			# A driver may expose a changed supported schema. Only in that unusual
 			# case rebuild and restore focus to the replacement Voice control.
 			self._show_profile(next(row for row in self.store.rows if row.profile_id == profile_id))
-			wx.CallAfter(self._focus_editor_control, "Voice")
+			self._deferOwned(self._focus_editor_control, "Voice")
 
 	def _focus_editor_control(self, name):
 		"""Focus a rebuilt named editor control, if the dialog is still alive."""
@@ -347,8 +430,12 @@ class VoiceProfilesDialog(wx.Dialog):
 	def _onPreviewFinished(self, reason):
 		# NVDA's notifications are delivered on its main event loop. CallAfter
 		# keeps the dialog safe if a third-party driver invokes one from elsewhere.
-		if not self.IsBeingDeleted():
-			wx.CallAfter(self._setPreviewBusy, False)
+		if not getattr(self, "_closing", False) and not self.IsBeingDeleted():
+			controller = self._previewController
+			def release():
+				if self._previewController is controller and not self._preview_is_active():
+					self._setPreviewBusy(False)
+			self._deferOwned(release)
 
 	def onResetAllOverrides(self, event):
 		self._cancelPreview()
@@ -432,6 +519,7 @@ class VoiceProfilesDialog(wx.Dialog):
 			self.schemeStore.apply()
 			self.schemeStore.mark_applied()
 			self._clearDirty()
+			self._auditionProfile(self.currentProfileId)
 			return True
 		except Exception:
 			log.exception("ClassicSpeech Voice Profiles apply failed")
@@ -445,18 +533,28 @@ class VoiceProfilesDialog(wx.Dialog):
 
 	def onCancel(self, event):
 		self._cancelPreview()
+		self._endAudition()
 		self.schemeStore.cancel()
 		self.store.cancel()
 		self._clear_editor()
 		self.Destroy()
 
 	def onClose(self, event):
-		self._cancelPreview()
-		self.schemeStore.cancel()
-		self.store.cancel()
-		self._clear_editor()
-		event.Skip()
+		try:
+			try:
+				self._cancelPreview()
+			finally:
+				self._endAudition()
+			try:
+				self.schemeStore.cancel()
+			finally:
+				self.store.cancel()
+			self._clear_editor()
+		finally:
+			event.Skip()
 
 	def _cancelPreview(self):
-		if self._previewController is not None:
+		if getattr(self, "_previewController", None) is not None:
 			self._previewController.cancel()
+			if not getattr(self, "_closing", False):
+				self._setPreviewBusy(False)

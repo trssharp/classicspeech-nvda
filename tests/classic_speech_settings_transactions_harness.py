@@ -253,6 +253,7 @@ class VoiceProfileListEnterTests(unittest.TestCase):
 			store.rows = []
 			stack.enter_context(patch.object(module.schemeStore, "SchemeStore"))
 			# Keep real construction and list/button bindings, not dynamic editors.
+			stack.enter_context(patch.object(module.VoiceProfilesDialog, "_createAudition", return_value=None))
 			stack.enter_context(patch.object(module.VoiceProfilesDialog, "_select_profile"))
 			dialog = module.VoiceProfilesDialog(None, driver=Mock())
 		dialog.bindings = bindings

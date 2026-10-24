@@ -779,6 +779,9 @@ class _SchemeStoreProbe:
 
 class _ResetDialogProbe:
 	"""Small handler receiver that exercises reset without constructing wx widgets."""
+	def _endAudition(self):
+		pass  # No live audition exists in this storage/reset-only receiver.
+
 	def __init__(self, store, events=None):
 		self.store = store
 		self.currentProfileId = "focusNavigation"

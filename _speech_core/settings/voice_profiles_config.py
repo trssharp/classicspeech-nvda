@@ -86,9 +86,14 @@ def _supported_snapshot(driver) -> dict:
 
 def _restore_snapshot(driver, snapshot: dict) -> None:
 	"""Restore a capture after a temporary voice probe, even after one error."""
-	# Voice first lets dependent values be restored after its native reset.
-	setting_ids = ([ _VOICE_SETTING_ID ] if _VOICE_SETTING_ID in snapshot else [])
-	setting_ids.extend(setting_id for setting_id in snapshot if setting_id != _VOICE_SETTING_ID)
+	# Every selector can reset dependent values, not just Voice. Probe callers
+	# must restore Variant/other advertised choices before numeric values too.
+	settings = {setting.id: setting for setting in getattr(driver, "supportedSettings", ())}
+	setting_ids = [key for key in (_VOICE_SETTING_ID, _VARIANT_SETTING_ID) if key in snapshot]
+	setting_ids.extend(key for key in snapshot if key not in setting_ids and key in settings
+		and not hasattr(settings[key], "minVal")
+		and not isinstance(getattr(settings[key], "defaultVal", None), bool))
+	setting_ids.extend(key for key in snapshot if key not in setting_ids)
 	for setting_id in setting_ids:
 		try:
 			setattr(driver, setting_id, snapshot[setting_id])
@@ -272,7 +277,7 @@ class VoiceProfileStore:
 		finally:
 			_restore_snapshot(self.driver, original)
 
-	def set_value(self, profile_id: str, setting_id: str, value) -> None:
+	def set_value(self, profile_id: str, setting_id: str, value, *, explicit=False) -> None:
 		_debug(f"set synth={self.synth_id} profile={profile_id} setting={setting_id} value={value!r}")
 		record = self._profile_record(profile_id)
 		if not self._is_new_record(record):
@@ -297,6 +302,11 @@ class VoiceProfileStore:
 			capture_voice=self._capture_voice_baseline,
 			capture_variant=self._capture_variant_baseline,
 		)
+		if explicit and setting_id not in {_VOICE_SETTING_ID, _VARIANT_SETTING_ID}:
+			# In live audition the control shows actual post-selector defaults,
+			# which may differ from an older captured baseline. A deliberate edit
+			# must remain explicit even when equal to that historical baseline.
+			record["overrides"][setting_id] = _to_plain_data(value)
 
 	def shareable_profiles(self) -> dict:
 		"""Return every synthesizer's working profiles, ready for a voice profiles file."""
