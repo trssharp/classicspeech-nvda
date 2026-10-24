@@ -14,7 +14,25 @@ class ProfileSetting:
 
 
 def _label(setting) -> str:
-	return str(getattr(setting, "displayNameWithAccelerator", getattr(setting, "displayName", setting.id)))
+	label = str(getattr(setting, "displayNameWithAccelerator", getattr(setting, "displayName", setting.id)))
+	# Driver labels belong to NVDA's Voice Settings, where Alt+A may be free.
+	# Both ClassicSpeech hosts already own Apply. Remove only a conflicting
+	# marker: arbitrary third-party/localized labels have no safe replacement
+	# mnemonic without knowing every active control. Keep their text and Tab
+	# access, escaped literal ampersands, and all other driver mnemonics intact.
+	result = []
+	index = 0
+	while index < len(label):
+		if label[index:index + 2] == "&&":
+			result.append("&&")
+			index += 2
+			continue
+		if label[index] == "&" and label[index + 1:index + 2].casefold() == "a":
+			index += 1
+			continue
+		result.append(label[index])
+		index += 1
+	return "".join(result)
 
 
 def _choice_items(value):

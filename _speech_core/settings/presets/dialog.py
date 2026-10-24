@@ -37,7 +37,7 @@ class PresentationPresetsDialog(SettingsDialogTransactionMixin, wx.Dialog):
         row.AddStretchSpacer()
         self.okBtn = wx.Button(self, wx.ID_OK, label=_('OK'))
         self.cancelBtn = wx.Button(self, wx.ID_CANCEL, label=_('Cancel'))
-        self.applyBtn = wx.Button(self, label=_('Apply'))
+        self.applyBtn = wx.Button(self, label=_('&Apply'))
         self.okBtn.SetDefault()
         for button in (self.okBtn, self.cancelBtn, self.applyBtn):
             row.Add(button, 0, wx.ALL, 8)

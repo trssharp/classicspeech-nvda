@@ -159,7 +159,7 @@ class DocumentReadingProofingPanel(wx.Panel):
 			_("&Paragraph indentation"),
 		)
 		self._add_checkbox(group, box, "lineSpacingCheckBox", "reportLineSpacing", _("&Line spacing"))
-		self._add_checkbox(group, box, "alignmentCheckBox", "reportAlignment", _("&Alignment"))
+		self._add_checkbox(group, box, "alignmentCheckBox", "reportAlignment", _("Te&xt alignment"))
 
 	def _add_table_information_group(self, sHelper):
 		group, box = self._add_static_box_group(sHelper, _("Table information"))

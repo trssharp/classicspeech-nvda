@@ -144,7 +144,7 @@ class WebBrowseNativeFidelityTests(unittest.TestCase):
 			"Use &screen layout (when supported)",
 			"&Enable browse mode on page load",
 			"Automatic &Say All on page load",
-			"Include l&ayout tables",
+			"Include layout ta&bles",
 			"Automatic focus mode for focus changes",
 			"Automatic focus mode for caret movement",
 			"Audio indication of focus and browse modes",
