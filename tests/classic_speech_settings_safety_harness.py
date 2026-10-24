@@ -299,7 +299,9 @@ class SettingsDialogPauseTests(_NVDAConfigTestCase):
 		from globalPlugins._speech_core.settings.voice_profiles_dialog import VoiceProfilesDialog
 		from globalPlugins._speech_core.settings.web.dialog import WebBrowseSettingsDialog
 
-		for dialog in (ClassicSpeechDialog, WebBrowseSettingsDialog, VoiceProfilesDialog, SpeechSoundSchemesDialog):
+		from globalPlugins._speech_core.settings.presets.dialog import PresentationPresetsDialog
+
+		for dialog in (ClassicSpeechDialog, PresentationPresetsDialog, WebBrowseSettingsDialog, VoiceProfilesDialog, SpeechSoundSchemesDialog):
 			self.assertIs(getattr(dialog, "shouldSuspendConfigProfileTriggers", False), True, dialog.__name__)
 
 	def test_without_nvdas_gui_voice_profiles_are_not_paused(self):

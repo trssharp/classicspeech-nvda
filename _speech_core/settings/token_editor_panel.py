@@ -199,6 +199,11 @@ class TokenEditorPanel(wx.Panel):
 
 	def apply_live(self, save=True):
 		self._refreshWorkingConfigFromControls()
+		# Only this editor's fields may replace the latest live timing state.
+		latest = _clone_shape_from_manager()
+		for key in ("order", "renames", "mutedLabels"):
+			latest[key] = copy.deepcopy(self.shapeConfig[key])
+		self.shapeConfig = latest
 		order = self._getTokenOrderFromList()
 		renames = self._rebuildMergedRenames()
 		mutedLabels = self._rebuildMutedLabels()

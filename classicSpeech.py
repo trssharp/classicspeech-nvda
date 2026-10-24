@@ -62,6 +62,7 @@ from ._speech_core.settings.config_core import _forget_normalized_section
 from ._speech_core.settings.profile_config import nvda_settings_set_by_saved_settings
 from ._speech_core.settings.web import WebBrowseSettingsDialog
 from ._speech_core.settings.voice_profiles_dialog import VoiceProfilesDialog
+from ._speech_core.settings.presets.dialog import PresentationPresetsDialog
 from ._speech_core.schemes import store as scheme_store
 from ._speech_core.cancelable import strip_cancelable
 from ._speech_core.history import SpeechHistoryBuffer, consume_history_native_passthrough
@@ -629,6 +630,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self.history = SpeechHistoryBuffer()
         self._settingsDialog = None
         self._webBrowseDialog = None
+        self._presentationPresetsDialog = None
         self._voiceProfilesDialog = None
         self._schemesDialog = None
         self._classicSpeechMenu = None
@@ -688,6 +690,14 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         log.info(f"ClassicSpeech loaded (profile: {defaultProfile}, hook: {self._speechHookRegistered})")
 
     def terminate(self):
+        presets = getattr(self, "_presentationPresetsDialog", None)
+        if presets is not None:
+            try:
+                presets.onCancel(None)
+            except Exception:
+                log.exception("ClassicSpeech: failed to close Presentation Presets during unload")
+            finally:
+                self._presentationPresetsDialog = None
         titleRuntime = getattr(self, "_titleWindowStateRuntime", None)
         if titleRuntime is not None:
             titleRuntime.restore()
@@ -1519,6 +1529,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             preferencesMenu = sysTrayIcon.preferencesMenu
             classicSpeechMenu = wx.Menu()
             generalItem = classicSpeechMenu.Append(wx.ID_ANY, _("General Settings..."))
+            presetsItem = classicSpeechMenu.Append(wx.ID_ANY, _("Presentation Presets..."))
             webItem = classicSpeechMenu.Append(wx.ID_ANY, _("Web / Browse Mode Settings..."))
             voiceProfilesItem = classicSpeechMenu.Append(wx.ID_ANY, _("Voice Profiles..."))
             schemesItem = classicSpeechMenu.Append(wx.ID_ANY, _("Speech and Sound Schemes..."))
@@ -1527,6 +1538,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             resetItem = classicSpeechMenu.Append(wx.ID_ANY, _("Reset All ClassicSpeech Settings..."))
             submenuItem = preferencesMenu.AppendSubMenu(classicSpeechMenu, _("ClassicSpeech"))
             sysTrayIcon.Bind(wx.EVT_MENU, self.onClassicSpeechGeneralSettingsMenu, generalItem)
+            sysTrayIcon.Bind(wx.EVT_MENU, self.onClassicSpeechPresentationPresetsMenu, presetsItem)
             sysTrayIcon.Bind(wx.EVT_MENU, self.onClassicSpeechWebBrowseSettingsMenu, webItem)
             sysTrayIcon.Bind(wx.EVT_MENU, self.onClassicSpeechVoiceProfilesMenu, voiceProfilesItem)
             sysTrayIcon.Bind(wx.EVT_MENU, self.onClassicSpeechSchemesMenu, schemesItem)
@@ -1536,7 +1548,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             self._classicSpeechMenu = classicSpeechMenu
             self._classicSpeechMenuItem = submenuItem
             self._classicSpeechMenuItems = [
-                generalItem, webItem, voiceProfilesItem, schemesItem, updateItem, resetItem,
+                generalItem, presetsItem, webItem, voiceProfilesItem, schemesItem, updateItem, resetItem,
             ]
         except Exception:
             self._classicSpeechPreferencesMenu = None
@@ -1600,6 +1612,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def onClassicSpeechGeneralSettingsMenu(self, evt):
         queueHandler.queueFunction(queueHandler.eventQueue, self._openSettings)
+
+    def onClassicSpeechPresentationPresetsMenu(self, evt):
+        queueHandler.queueFunction(queueHandler.eventQueue, self._openPresentationPresets)
+
+    @scriptHandler.script(
+        description=_("Opens ClassicSpeech Presentation Presets"),
+        category=_("ClassicSpeech"),
+    )
+    def script_openClassicSpeechPresentationPresets(self, gesture):
+        queueHandler.queueFunction(queueHandler.eventQueue, self._openPresentationPresets)
 
     def onClassicSpeechWebBrowseSettingsMenu(self, evt):
         queueHandler.queueFunction(queueHandler.eventQueue, self._openWebBrowseSettings)
@@ -2013,7 +2035,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def _open_settings_dialogs(self):
         dialogs = []
-        for name in ("_settingsDialog", "_webBrowseDialog", "_voiceProfilesDialog", "_schemesDialog"):
+        for name in ("_settingsDialog", "_webBrowseDialog", "_presentationPresetsDialog", "_voiceProfilesDialog", "_schemesDialog"):
             dialog = getattr(self, name, None)
             if dialog:
                 dialogs.append(dialog)
@@ -2097,7 +2119,42 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         nvda_settings_backup.save_nvda_configuration()
         return result
 
+    def _raisePresentationOverlap(self, names):
+        # General owns the preset leaves; Web owns mode indication. Do not let
+        # either dialog's Cancel roll back the other one's accepted changes.
+        # Voice Profiles and Schemes own separate data and remain available.
+        for name in names:
+            dialog = getattr(self, name, None)
+            if dialog:
+                try:
+                    dialog.Raise()
+                    dialog.SetFocus()
+                    return True
+                except RuntimeError:
+                    setattr(self, name, None)
+        return False
+
+    def _onPresentationPresetsDestroyed(self, event):
+        event.Skip()
+        if event.GetEventObject() is self._presentationPresetsDialog:
+            self._presentationPresetsDialog = None
+
+    def _openPresentationPresets(self):
+        if self._raisePresentationOverlap(("_settingsDialog", "_webBrowseDialog", "_presentationPresetsDialog")):
+            return
+        gui.mainFrame.prePopup()
+        try:
+            dialog = PresentationPresetsDialog(gui.mainFrame)
+            self._presentationPresetsDialog = dialog
+            dialog.Bind(wx.EVT_WINDOW_DESTROY, self._onPresentationPresetsDestroyed)
+            dialog.Show()
+        except Exception:
+            gui.mainFrame.postPopup()
+            log.exception("ClassicSpeech: failed to open Presentation Presets")
+
     def _openSettings(self):
+        if self._raisePresentationOverlap(("_presentationPresetsDialog",)):
+            return
         try:
             if self._settingsDialog:
                 try:
@@ -2122,6 +2179,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 pass
 
     def _openWebBrowseSettings(self):
+        if self._raisePresentationOverlap(("_presentationPresetsDialog",)):
+            return
         try:
             if self._webBrowseDialog:
                 try:

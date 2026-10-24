@@ -395,7 +395,8 @@ class VerbosityManager:
         if hasattr(enabledSection, "dict"):
             enabledSection = enabledSection.dict()
 
-        for token_kind in DEFAULT_TOKEN_ORDER:
+        # Tooltip is a verbosity detail although it is not a shape/order token.
+        for token_kind in (*DEFAULT_TOKEN_ORDER, TOKEN_TOOLTIP):
             if token_kind == TOKEN_VALUE:
                 continue
             if token_kind in enabledSection:
@@ -676,7 +677,8 @@ class VerbosityManager:
     def set_shape_config(self, shape_config: dict, save=True):
         self.shape_data = self._normalize_shape(shape_config)
         if save:
-            self.save_profile_data()
+            # Shape edits must not rewrite active or unrelated verbosity profiles.
+            self._write_shape_override(self.shape_data)
 
     def reset_shape_config(self, save=True):
         if save:
