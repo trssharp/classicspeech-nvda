@@ -161,7 +161,7 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 		bottomRow.AddStretchSpacer()
 		self.okBtn = wx.Button(self, wx.ID_OK, label=_("OK"))
 		self.cancelBtn = wx.Button(self, wx.ID_CANCEL, label=_("Cancel"))
-		self.applyBtn = wx.Button(self, label=_("Apply"))
+		self.applyBtn = wx.Button(self, label=_("&Apply"))
 		self.applyBtn.Hide()
 		self.okBtn.SetDefault()
 		bottomRow.Add(self.okBtn, 0, wx.ALL, 8)
@@ -308,7 +308,7 @@ class WebBrowseSettingsDialog(SettingsDialogTransactionMixin, wx.Dialog):
 			_("Report aria-description always"),
 			"reportAriaDescription",
 		)
-		self.layoutTablesCheckBox = self._add_web_checkbox(group, box, _("Include l&ayout tables"), "includeLayoutTables")
+		self.layoutTablesCheckBox = self._add_web_checkbox(group, box, _("Include layout ta&bles"), "includeLayoutTables")
 		self.headingsCheckBox = self._add_web_checkbox(group, box, _("&Headings"), "reportHeadings")
 		self.linksCheckBox = self._add_web_checkbox(group, box, _("Lin&ks"), "reportLinks")
 		self.linkTypeCheckBox = self._add_web_checkbox(group, box, _("Link type"), "reportLinkType")

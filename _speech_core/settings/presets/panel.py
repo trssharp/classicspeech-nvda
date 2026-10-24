@@ -38,7 +38,7 @@ class PresentationPresetsPanel(wx.Panel):
         row = wx.BoxSizer(wx.HORIZONTAL)
         for attr, label, handler in (
             ('loadBtn', _('&Load'), self.onLoad),
-            ('saveAsBtn', _('Save &as...'), self.onSaveAs),
+            ('saveAsBtn', _('Save a&s...'), self.onSaveAs),
             ('updateBtn', _('&Update'), self.onUpdate),
             ('renameBtn', _('&Rename...'), self.onRename),
             ('deleteBtn', _('&Delete'), self.onDelete),

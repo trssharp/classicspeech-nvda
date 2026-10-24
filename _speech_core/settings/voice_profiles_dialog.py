@@ -194,7 +194,7 @@ class VoiceProfilesDialog(wx.Dialog):
 		self.importBtn = wx.Button(self, label=_("I&mport voice profiles..."))
 		self.okBtn = wx.Button(self, wx.ID_OK, label=_("OK"))
 		self.cancelBtn = wx.Button(self, wx.ID_CANCEL, label=_("Cancel"))
-		self.applyBtn = wx.Button(self, label=_("Apply"))
+		self.applyBtn = wx.Button(self, label=_("&Apply"))
 		self.applyBtn.Hide()
 		self.okBtn.SetDefault()
 		buttons.Add(previewControls, 1, wx.ALL | wx.EXPAND, 8)
